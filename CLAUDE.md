@@ -34,4 +34,10 @@ The following skills are installed in `.claude/skills/` (sourced from
 - `finishing-a-development-branch` — merge/PR decision workflow
 - `writing-skills` — author new skills
 
+Additional skills sourced from
+[anthropics/skills](https://github.com/anthropics/skills) (MIT-licensed):
+
+- `frontend-design` — production-grade, distinctive frontend UI generation
+  (use when building web components, pages, dashboards, or styling any UI)
+
 Always prefer invoking the matching skill over improvising.
