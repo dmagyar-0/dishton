@@ -30,9 +30,10 @@ Prerequisites: Node 22.x, pnpm 10+, Docker (for `supabase start`), Deno
 
 ```bash
 pnpm install
-cp .env.example .env.local         # fill in VITE_SUPABASE_* from supabase status
-pnpm dev                            # SPA at http://localhost:5173
 supabase start                      # local Postgres + Auth + Storage + Edge Functions
+cp .env.example .env.local         # fill in VITE_SUPABASE_* from `supabase status`
+pnpm db:reset                       # apply migrations + seed data
+pnpm dev                            # SPA at http://localhost:5173
 pnpm test                           # full pyramid (unit + components)
 ```
 
