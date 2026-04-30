@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline — Dishton</title>
+    <style>
+      :root {
+        --paper: #f5efe3;
+        --ink: #2a1a2c;
+        --ink-soft: #4b3a4d;
+        --saffron: #e08a1a;
+        --saffron-ink: #5a3506;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #1a1614;
+          --ink: #ece3d2;
+          --ink-soft: #c8bfae;
+          --saffron: #f2a23c;
+          --saffron-ink: #2a1a06;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: 'General Sans', system-ui, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      .card {
+        max-width: 32rem;
+        text-align: left;
+      }
+      h1 {
+        font-family: 'Fraunces', Georgia, serif;
+        font-weight: 500;
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        line-height: 1.1;
+        margin: 0 0 1rem;
+      }
+      p {
+        font-size: 1.125rem;
+        line-height: 1.7;
+        color: var(--ink-soft);
+        margin: 0 0 1.5rem;
+      }
+      button {
+        font: inherit;
+        background: var(--saffron);
+        color: var(--saffron-ink);
+        border: 0;
+        padding: 0.75rem 1.5rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:focus-visible {
+        outline: 2px solid var(--saffron);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>You&rsquo;re offline.</h1>
+      <p>
+        The recipes you&rsquo;ve already opened are still here &mdash; head back and pick one up.
+        New imports will be available again when you reconnect.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

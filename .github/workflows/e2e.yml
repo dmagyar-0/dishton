@@ -1,0 +1,37 @@
+name: E2E
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+
+jobs:
+  smoke:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Resolve Vercel preview URL
+        id: vercel
+        run: |
+          # The Vercel GitHub integration sets a deployment_status webhook.
+          # Workflows triggered via workflow_run inherit github.event.workflow_run
+          # context but not the original deployment URL — wire this up via the
+          # repository's Vercel integration secret VERCEL_TOKEN + a deployments
+          # API call. For a side project, falling back to a local preview is
+          # acceptable.
+          echo "url=" >> $GITHUB_OUTPUT
+      - run: pnpm test:e2e
+        env:
+          NIM_MOCK_MODE: playwright
+          PLAYWRIGHT_BASE_URL: ${{ steps.vercel.outputs.url }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/

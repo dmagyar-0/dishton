@@ -1,0 +1,107 @@
+# Local Supabase project configuration for the dishton SPA + Edge Functions.
+# Production / preview projects manage their own settings in the Supabase
+# dashboard; this file only governs the local stack started via `supabase start`.
+
+project_id = "dishton"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "app", "storage", "graphql_public"]
+extra_search_path = ["public", "app"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "20MiB"
+
+[storage.buckets.recipe-images]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/avif"]
+objects_path = "./storage/recipe-images"
+
+[storage.buckets.imports]
+public = false
+file_size_limit = "20MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "text/html"]
+objects_path = "./storage/imports"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "http://localhost:5173/auth/callback",
+  "https://localhost:5173",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+minimum_password_length = 10
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+double_confirm_changes = true
+secure_password_change = false
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+# Google OAuth is wired but feature-flagged off; the SPA button hides behind
+# VITE_FEATURE_GOOGLE_AUTH (per docs/15). To turn it on locally, set enabled =
+# true and provide client_id / secret here, then flip the flag.
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = ""
+redirect_uri = "http://localhost:5173/auth/callback"
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+[analytics]
+enabled = false
+
+# Per-function verify_jwt toggles. The doc-08 import flows all require an
+# authenticated caller; translate-recipe likewise.
+[functions.import-url]
+verify_jwt = true
+
+[functions.import-instagram]
+verify_jwt = true
+
+[functions.import-photo]
+verify_jwt = true
+
+[functions.translate-recipe]
+verify_jwt = true

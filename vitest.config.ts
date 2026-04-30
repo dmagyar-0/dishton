@@ -1,0 +1,50 @@
+import path from 'node:path';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
+  esbuild: { jsx: 'automatic' },
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['./vitest.setup.ts'],
+    environmentMatchGlobs: [
+      ['src/ui/**/*.test.tsx', 'jsdom'],
+      ['src/lib/**/*.test.tsx', 'jsdom'],
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/routeTree.gen.ts',
+        'src/main.tsx',
+        'src/lib/database.types.ts',
+        'src/observability/**',
+        'src/feature-flags/registry.ts',
+        'src/styles/**',
+        // Excluded from the 70% overall threshold per docs/12. UI behaviour
+        // is asserted by colocated component tests, not by line coverage.
+        'src/ui/**',
+        'src/routes/**',
+        'src/lib/sw-update-toast.tsx',
+        'src/lib/install-prompt.ts',
+        'src/lib/wake-lock.ts',
+        'src/lib/i18n.*.ts',
+        'src/lib/i18n.ts',
+      ],
+      thresholds: {
+        'src/domain/**': {
+          lines: 90,
+          branches: 90,
+          functions: 90,
+        },
+        lines: 70,
+      },
+    },
+  },
+});
