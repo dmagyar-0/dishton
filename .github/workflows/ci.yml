@@ -96,21 +96,34 @@ jobs:
   test-db:
     runs-on: ubuntu-24.04
     needs: setup
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: corepack enable && pnpm install --frozen-lockfile
-      - uses: supabase/setup-cli@v1
-        with: { version: latest }
       - uses: denoland/setup-deno@v1
-        with: { deno-version: v1.x }
-      - run: supabase start
-      - run: pnpm test:db
+        with: { deno-version: v1.46.3 }
+      - name: Stub Supabase auth + storage schemas
         env:
-          LOCAL_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-      - if: always()
-        run: supabase stop
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -X -q -f supabase/tests/setup-stub-schemas.sql
+      - name: Run schema + RLS tests against the stub
+        env:
+          LOCAL_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: deno run -A supabase/tests/run.ts
 
   build:
     runs-on: ubuntu-24.04
