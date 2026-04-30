@@ -1,0 +1,79 @@
+/* tokens v1 — Editorial Pantry */
+@theme {
+  /* Type */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "General Sans", "Inter Fallback", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-display: clamp(2.75rem, 6vw, 4.5rem);
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  /* Light palette */
+  --color-paper: #f5efe3;
+  --color-paper-2: #ece4d2;
+  --color-ink: #2a1a2c;
+  --color-ink-soft: #4b3a4d;
+  --color-ink-muted: #8b8276;
+  --color-saffron: #e08a1a;
+  --color-saffron-ink: #5a3506;
+  --color-sage: #5c7457;
+  --color-sage-ink: #1f2a1c;
+  --color-aubergine: #5b2742;
+  --color-pomegranate: #b3304a;
+  --color-cream-line: #d8cfb8;
+
+  /* Spacing & radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Shadows — letterpress, not big blurs */
+  --shadow-press: 0 1px 0 rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(42, 26, 44, 0.18);
+  --shadow-press-lg: 0 1px 0 rgba(0, 0, 0, 0.05), 0 18px 36px -16px rgba(42, 26, 44, 0.24);
+  --shadow-stamp: inset 0 0 0 1.5px var(--color-ink);
+
+  /* Motion */
+  --ease-paper: cubic-bezier(0.2, 0.7, 0.1, 1.05);
+  --ease-stamp: cubic-bezier(0.4, 1.6, 0.6, 1);
+  --duration-fast: 140ms;
+  --duration-base: 240ms;
+  --duration-slow: 420ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-paper: #1a1614;
+    --color-paper-2: #221c1a;
+    --color-ink: #ece3d2;
+    --color-ink-soft: #c8bfae;
+    --color-ink-muted: #8a7f6f;
+    --color-saffron: #f2a23c;
+    --color-saffron-ink: #2a1a06;
+    --color-sage: #8aa682;
+    --color-sage-ink: #0e1410;
+    --color-aubergine: #c08aa0;
+    --color-pomegranate: #e8718a;
+    --color-cream-line: #3b332e;
+    --shadow-press: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 28px -16px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @theme {
+    --duration-fast: 1ms;
+    --duration-base: 1ms;
+    --duration-slow: 1ms;
+  }
+}
