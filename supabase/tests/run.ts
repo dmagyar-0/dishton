@@ -28,6 +28,10 @@ async function runPsql(
   args: string[],
   stdinText?: string,
 ): Promise<{ stdout: string; stderr: string; ok: boolean }> {
+  // We deliberately do NOT pass `-c` here. psql's `-c` accepts only a single
+  // statement, which silently drops follow-up `\pset` meta-commands and gives
+  // empty output. Callers wanting to run a script should use `stdinText` and
+  // pipe it through stdin instead, where psql reads the whole script.
   const cmd = new Deno.Command('psql', {
     args: [DB_URL, '-v', 'ON_ERROR_STOP=1', '-X', '-q', ...args],
     stdin: stdinText !== undefined ? 'piped' : 'null',
@@ -58,7 +62,7 @@ async function resetDatabase(): Promise<void> {
     drop function if exists public.app_reserve_ai_budget(bigint);
     drop trigger if exists on_auth_user_created on auth.users;
   `;
-  const r = await runPsql(['-c', sql]);
+  const r = await runPsql([], sql);
   if (!r.ok) {
     console.error('reset failed:', r.stderr);
     Deno.exit(2);
@@ -85,20 +89,23 @@ type Assertion = { label: string; ok: boolean };
 
 async function runTestFile(path: string): Promise<Assertion[]> {
   // Wrap the file body in BEGIN/ROLLBACK and tell psql to emit the final
-  // result set as unaligned, tab-separated rows we can parse without csv lib.
+  // result set as unaligned, tab-separated rows we can parse without a csv
+  // lib. The wrapped script must be piped via stdin (not -c) — meta-commands
+  // like \pset only work in script mode.
   const body = await Deno.readTextFile(path);
   const wrapped = `
 \\set ON_ERROR_STOP on
 \\pset format unaligned
 \\pset fieldsep '\t'
 \\pset tuples_only on
+\\pset footer off
 begin;
 ${body}
 rollback;
 `;
-  const r = await runPsql(['-c', wrapped]);
+  const r = await runPsql([], wrapped);
   if (!r.ok) {
-    return [{ label: `${path} (psql error)`, ok: false }];
+    return [{ label: `${path} (psql error: ${r.stderr.trim().slice(0, 200)})`, ok: false }];
   }
   const lines = r.stdout
     .split('\n')
@@ -106,7 +113,8 @@ rollback;
     .filter(Boolean);
   const out: Assertion[] = [];
   for (const line of lines) {
-    // Skip stray notices that some plpgsql blocks may emit if any.
+    // Skip stray notices and BEGIN/ROLLBACK echoes that psql may emit.
+    if (line === 'BEGIN' || line === 'ROLLBACK' || line.startsWith('NOTICE')) continue;
     const parts = line.split('\t');
     if (parts.length !== 2) continue;
     const [label, okText] = parts;
