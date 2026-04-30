@@ -1,5 +1,5 @@
-import { niceQuantity } from './fractions';
-import type { Quantity, Recipe } from './recipe';
+import { niceQuantity } from './fractions.ts';
+import type { Quantity, Recipe } from './recipe.ts';
 
 export function quantityToNumber(q: Quantity): number {
   return typeof q === 'number' ? q : q.numerator / q.denominator;

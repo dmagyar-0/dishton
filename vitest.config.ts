@@ -27,6 +27,15 @@ export default defineConfig({
         'src/observability/**',
         'src/feature-flags/registry.ts',
         'src/styles/**',
+        // Excluded from the 70% overall threshold per docs/12. UI behaviour
+        // is asserted by colocated component tests, not by line coverage.
+        'src/ui/**',
+        'src/routes/**',
+        'src/lib/sw-update-toast.tsx',
+        'src/lib/install-prompt.ts',
+        'src/lib/wake-lock.ts',
+        'src/lib/i18n.*.ts',
+        'src/lib/i18n.ts',
       ],
       thresholds: {
         'src/domain/**': {

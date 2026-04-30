@@ -1,5 +1,5 @@
-import type { Bcp47 } from '../recipe';
-import { units } from './graph';
+import type { Bcp47 } from '../recipe.ts';
+import { units } from './graph.ts';
 
 /** Symbol of a unit, optionally locale-aware. Falls back to English. */
 export function formatUnit(key: string, locale: Bcp47 | string = 'en'): string {

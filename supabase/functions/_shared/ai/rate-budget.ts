@@ -2,7 +2,6 @@
 // public.app_reserve_ai_budget. On rate_limit, the Edge Function returns
 // HTTP 429 with `retry_after`.
 
-// @ts-expect-error — npm specifier resolved by Deno at runtime
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env } from '../env.ts';
 

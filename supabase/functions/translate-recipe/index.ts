@@ -1,7 +1,6 @@
 // translate-recipe: cache lookup; on miss, call NIM with the translation
 // prompt, validate, upsert recipe_translations, return the payload.
 
-// @ts-expect-error — Deno std import
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from '../_shared/domain/recipe.ts';
 import { Recipe } from '../_shared/domain/recipe.ts';

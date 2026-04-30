@@ -2,7 +2,7 @@
 // are not extra units (those live in graph.ts) but rather mappings from
 // free-text tokens to canonical keys, with locale-aware defaults for "cup".
 
-import type { Bcp47 } from '../recipe';
+import type { Bcp47 } from '../recipe.ts';
 
 const EUROPEAN_LANGUAGES = new Set([
   'de',

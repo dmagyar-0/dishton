@@ -18,7 +18,7 @@
     "test:unit": "vitest run src/domain",
     "test:components": "vitest run src/ui src/lib",
     "test:coverage": "vitest run --coverage",
-    "test:edge": "deno test -A supabase/functions",
+    "test:edge": "deno test -A --config supabase/functions/deno.json supabase/functions",
     "test:db": "deno run -A supabase/tests/run.ts",
     "test:e2e": "playwright test",
     "db:reset": "supabase db reset",

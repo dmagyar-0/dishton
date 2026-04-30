@@ -1,6 +1,5 @@
 // import-instagram: oEmbed → caption + thumbnail → NIM → draft Recipe.
 
-// @ts-expect-error — Deno std import
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from '../_shared/domain/recipe.ts';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';

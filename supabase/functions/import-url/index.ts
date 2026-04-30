@@ -3,11 +3,8 @@
 //
 // Never writes to app.recipes; the SPA does that on Save via app.save_recipe.
 
-// @ts-expect-error — Deno std import
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-// @ts-expect-error — npm specifier resolved by Deno at runtime
 import { Readability } from 'npm:@mozilla/readability@0.5';
-// @ts-expect-error — npm specifier resolved by Deno at runtime
 import { parseHTML } from 'npm:linkedom@0.18';
 import { z } from '../_shared/domain/recipe.ts';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';

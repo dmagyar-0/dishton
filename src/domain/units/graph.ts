@@ -1,4 +1,4 @@
-import type { UnitSystem } from '../recipe';
+import type { UnitSystem } from '../recipe.ts';
 
 export type Dimension = 'mass' | 'volume' | 'count' | 'length' | 'temperature' | 'time';
 

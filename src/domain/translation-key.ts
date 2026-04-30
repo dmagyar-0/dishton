@@ -1,6 +1,6 @@
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex } from '@noble/hashes/utils';
-import type { Recipe } from './recipe';
+import type { Recipe } from './recipe.ts';
 
 /**
  * Stable JSON stringify: sorts object keys recursively so semantically equal

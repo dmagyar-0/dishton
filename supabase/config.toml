@@ -2,8 +2,7 @@
 # Production / preview projects manage their own settings in the Supabase
 # dashboard; this file only governs the local stack started via `supabase start`.
 
-[project]
-id = "dishton"
+project_id = "dishton"
 
 [api]
 enabled = true
@@ -67,7 +66,6 @@ enable_signup = true
 minimum_password_length = 10
 
 [auth.email]
-enabled = true
 enable_signup = true
 enable_confirmations = false
 double_confirm_changes = true
@@ -77,9 +75,9 @@ secure_password_change = false
 enable_signup = false
 enable_confirmations = false
 
-# Google OAuth wiring - disabled locally; enabled in preview / production via
-# the dashboard. The MVP doc 15 keeps the SPA button hidden behind
-# VITE_FEATURE_GOOGLE_AUTH; this provider toggle is the matching server side.
+# Google OAuth is wired but feature-flagged off; the SPA button hides behind
+# VITE_FEATURE_GOOGLE_AUTH (per docs/15). To turn it on locally, set enabled =
+# true and provide client_id / secret here, then flip the flag.
 [auth.external.google]
 enabled = false
 client_id = ""
@@ -94,5 +92,16 @@ inspector_port = 8083
 [analytics]
 enabled = false
 
-[functions]
+# Per-function verify_jwt toggles. The doc-08 import flows all require an
+# authenticated caller; translate-recipe likewise.
+[functions.import-url]
+verify_jwt = true
+
+[functions.import-instagram]
+verify_jwt = true
+
+[functions.import-photo]
+verify_jwt = true
+
+[functions.translate-recipe]
 verify_jwt = true

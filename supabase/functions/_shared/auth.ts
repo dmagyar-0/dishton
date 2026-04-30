@@ -1,7 +1,6 @@
 // Resolves the calling profile from the Authorization header. Edge Functions
 // use this to scope DB writes per `auth.uid()`.
 
-// @ts-expect-error — npm specifier resolved by Deno at runtime
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env } from './env.ts';
 

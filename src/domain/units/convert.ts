@@ -1,4 +1,4 @@
-import { units } from './graph';
+import { units } from './graph.ts';
 
 export function convert(qty: number, from: string, to: string): number {
   if (from === to) return qty;

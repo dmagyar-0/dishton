@@ -3,7 +3,6 @@
 //
 // Edge-function only — never imported from the SPA bundle.
 
-// @ts-expect-error — npm specifier resolved by Deno at runtime
 import { OpenAI } from 'npm:openai@4';
 import { env } from '../env.ts';
 
@@ -54,7 +53,7 @@ export async function nimChat(opts: NimCallOpts): Promise<NimResult> {
       const res = await client().chat.completions.create(
         {
           model,
-          messages: opts.messages,
+          messages: opts.messages as unknown as OpenAI.ChatCompletionMessageParam[],
           temperature: opts.temperature ?? 0.1,
           response_format: { type: 'json_object' },
           max_tokens: 4096,
