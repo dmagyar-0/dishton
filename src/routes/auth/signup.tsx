@@ -35,7 +35,10 @@ function SignupPage() {
             const { error } = await supabase.auth.signUp({
               email: values.email,
               password: values.password,
-              options: { data: { display_name: values.display_name } },
+              options: {
+                data: { display_name: values.display_name },
+                emailRedirectTo: `${location.origin}/auth/callback`,
+              },
             });
             if (error) {
               setServerError(authErrorCopy(error.message));

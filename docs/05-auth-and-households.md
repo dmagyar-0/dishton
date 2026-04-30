@@ -163,7 +163,10 @@ src/routes/
 ### Signup
 
 1. User submits `/auth/signup` (Zod-validated form).
-2. `supabase.auth.signUp({ email, password })`.
+2. `supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${location.origin}/auth/callback` } })`.
+   Passing `emailRedirectTo` is required so the confirmation email links back to
+   the origin the user signed up from (production domain on Vercel, preview URL
+   on Vercel previews, localhost in dev) instead of the project Site URL.
 3. On success: profile row inserted via a database trigger
    `app.handle_new_user` (defined in [04-data-model.md](./04-data-model.md) — add it to a follow-up migration `*_profile_trigger.sql`):
 
