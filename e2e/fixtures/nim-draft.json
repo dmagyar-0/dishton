@@ -1,0 +1,61 @@
+{
+  "title": "Tomato Tarte Tatin",
+  "description": "A savoury riff on the classic, baked upside-down with caramelised tomatoes.",
+  "source_type": "url",
+  "source_url": "https://example.test/tomato-tarte-tatin",
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 4,
+  "total_time_min": 55,
+  "hero_image_path": null,
+  "tags": ["vegetarian", "tarte", "summer"],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "500 g tomatoes",
+      "quantity": 500,
+      "unit": "g",
+      "ingredient_name": "tomatoes",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null
+    },
+    {
+      "position": 1,
+      "raw_text": "30 g caster sugar",
+      "quantity": 30,
+      "unit": "g",
+      "ingredient_name": "caster sugar",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null
+    },
+    {
+      "position": 2,
+      "raw_text": "1 sheet puff pastry",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "puff pastry",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null
+    },
+    {
+      "position": 3,
+      "raw_text": "salt to taste",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "salt",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste"
+    }
+  ],
+  "steps": [
+    { "position": 0, "body": "Preheat the oven to 180 C.", "duration_min": 5 },
+    { "position": 1, "body": "Caramelise the sugar in an oven-proof skillet.", "duration_min": 8 },
+    { "position": 2, "body": "Arrange the tomatoes cut-side down, season.", "duration_min": 5 },
+    { "position": 3, "body": "Drape the puff pastry over the top, tuck in.", "duration_min": 3 },
+    { "position": 4, "body": "Bake until golden, then invert onto a plate.", "duration_min": 30 }
+  ]
+}

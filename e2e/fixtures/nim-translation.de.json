@@ -1,0 +1,73 @@
+{
+  "title": "Tomaten-Tarte-Tatin",
+  "description": "Eine herzhafte Variante des Klassikers, kopfüber mit karamellisierten Tomaten gebacken.",
+  "source_type": "url",
+  "source_url": "https://example.test/tomato-tarte-tatin",
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 4,
+  "total_time_min": 55,
+  "hero_image_path": null,
+  "tags": ["vegetarisch", "tarte", "sommer"],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "500 g Tomaten",
+      "quantity": 500,
+      "unit": "g",
+      "ingredient_name": "Tomaten",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null
+    },
+    {
+      "position": 1,
+      "raw_text": "30 g Streuzucker",
+      "quantity": 30,
+      "unit": "g",
+      "ingredient_name": "Streuzucker",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null
+    },
+    {
+      "position": 2,
+      "raw_text": "1 Blatt Blätterteig",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "Blätterteig",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null
+    },
+    {
+      "position": 3,
+      "raw_text": "Salz nach Geschmack",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "Salz",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste"
+    }
+  ],
+  "steps": [
+    { "position": 0, "body": "Den Ofen auf 180 °C vorheizen.", "duration_min": 5 },
+    {
+      "position": 1,
+      "body": "Den Zucker in einer ofenfesten Pfanne karamellisieren.",
+      "duration_min": 8
+    },
+    {
+      "position": 2,
+      "body": "Die Tomaten mit der Schnittfläche nach unten anordnen, würzen.",
+      "duration_min": 5
+    },
+    {
+      "position": 3,
+      "body": "Den Blätterteig darüber drapieren und einschlagen.",
+      "duration_min": 3
+    },
+    { "position": 4, "body": "Goldgelb backen, dann auf einen Teller stürzen.", "duration_min": 30 }
+  ]
+}
