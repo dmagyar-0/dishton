@@ -11,8 +11,15 @@
 -- and the first deploy of a new project just works.
 --
 -- The list mirrors supabase/config.toml; keep them in sync.
+--
+-- Two notifications are required: `reload config` picks up the new
+-- `pgrst.db_schemas` GUC, and `reload schema` then forces PostgREST to
+-- re-introspect the now-exposed schemas. Without the second NOTIFY the
+-- schema cache stays stale and SPA calls fail with
+-- "Could not find the table 'app.<x>' in the schema cache".
 
 set search_path = public;
 
 alter role authenticator set pgrst.db_schemas = 'public, app, storage, graphql_public';
 notify pgrst, 'reload config';
+notify pgrst, 'reload schema';
