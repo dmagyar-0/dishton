@@ -40,22 +40,30 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - run: pnpm build
+      # Vercel prebuilt deploy: pull project settings, run the build on the
+      # runner (so Vercel skips its server-side build), strip source maps
+      # from the artifact, then upload it as-is.
+      - name: Pull Vercel project settings
+        run: npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build with Vercel
+        run: npx --yes vercel@latest build --prod --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_RELEASE_SHA: ${{ github.sha }}
           VITE_SENTRY_DSN_FRONTEND: ${{ secrets.SENTRY_DSN_FRONTEND }}
 
       - name: Strip source maps from deploy artifact
-        run: find dist -name '*.map' -delete
+        run: find .vercel/output -name '*.map' -delete
 
-      - name: Deploy to Vercel
-        # amondnet/vercel-action@v25 pins Vercel CLI 25.1.0; the deploy API
-        # now requires >= 47.2.2. Call the latest CLI directly instead.
-        run: |
-          npx --yes vercel@latest deploy ./dist --prod --yes \
-            --token "$VERCEL_TOKEN"
+      - name: Deploy prebuilt to Vercel
+        run: npx --yes vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
