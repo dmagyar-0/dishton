@@ -26,6 +26,15 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      - name: Materialize shared domain into functions tree
+        # supabase/functions/_shared/domain is a symlink → src/domain. The
+        # functions-deploy upload only includes supabase/functions, so the
+        # symlink target falls outside the bundle and Deno fails the graph
+        # build with "Module not found". Replace with a real copy at deploy.
+        run: |
+          rm -f supabase/functions/_shared/domain
+          cp -R src/domain supabase/functions/_shared/domain
+
       - name: Deploy Edge Functions
         run: supabase functions deploy
         env:
