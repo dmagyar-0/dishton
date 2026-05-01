@@ -69,6 +69,7 @@ export default {
       hint: 'Sorting ingredients from prose…',
     },
     step_plate: { label: 'Plating the draft', short: 'Plate', hint: 'Arranging it just so…' },
+    long_wait_hint: 'Long recipe — still simmering. This can take up to a minute.',
   },
   errors: {
     rate_limit: 'Importer is busy. Try again in a minute.',

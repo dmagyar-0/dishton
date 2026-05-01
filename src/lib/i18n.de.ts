@@ -73,6 +73,7 @@ export default {
       short: 'Anrichten',
       hint: 'Wir richten alles hübsch an…',
     },
+    long_wait_hint: 'Langes Rezept — köchelt noch. Das kann bis zu einer Minute dauern.',
   },
   errors: {
     rate_limit: 'Importer ist ausgelastet. Bitte in einer Minute erneut versuchen.',

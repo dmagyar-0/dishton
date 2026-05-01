@@ -59,7 +59,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
 function Spinner() {
   return (
     <svg
-      className="h-4 w-4 animate-[spin_var(--duration-slow)_linear_infinite]"
+      className="h-4 w-4 motion-safe:animate-[spin_0.9s_linear_infinite]"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
