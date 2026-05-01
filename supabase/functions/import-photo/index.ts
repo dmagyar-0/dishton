@@ -2,7 +2,7 @@
 // short-lived signed URL → NIM vision → draft Recipe.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { z } from '../_shared/domain/recipe.ts';
+import { z } from 'zod';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';

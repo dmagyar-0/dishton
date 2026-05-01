@@ -2,7 +2,7 @@
 // prompt, validate, upsert recipe_translations, return the payload.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { z } from '../_shared/domain/recipe.ts';
+import { z } from 'zod';
 import { Recipe } from '../_shared/domain/recipe.ts';
 import { buildTranslationCacheKey } from '../_shared/domain/translation-key.ts';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
