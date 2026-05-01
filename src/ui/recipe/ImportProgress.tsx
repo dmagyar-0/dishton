@@ -5,14 +5,17 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/ui/cn';
 
 const STEP_KEYS = ['reach', 'read', 'distill', 'plate'] as const;
-type StepKey = (typeof STEP_KEYS)[number];
 
-const STAGE_TIMINGS_MS: Record<StepKey, number> = {
-  reach: 0,
-  read: 1400,
-  distill: 3200,
-  plate: 8000,
-};
+// Auto-advance through Reach -> Read -> Distill, then hold on Distill
+// (the model call is the longest, and "Plate" reads as done so we never
+// auto-show it while we're still waiting). Plate flips on only when the
+// request finishes successfully — see `setStepIndex(3)` in the success
+// path below.
+const AUTO_ADVANCE_MS: Array<{ index: number; at: number }> = [
+  { index: 1, at: 1500 },
+  { index: 2, at: 3500 },
+];
+const LONG_WAIT_MS = 12000;
 
 const EASE_PAPER: [number, number, number, number] = [0.2, 0.7, 0.1, 1.05];
 
@@ -20,16 +23,20 @@ export function ImportProgress({ active }: { active: boolean }) {
   const { t } = useTranslation();
   const reduce = useReducedMotion();
   const [stepIndex, setStepIndex] = useState(0);
+  const [longWait, setLongWait] = useState(false);
 
   useEffect(() => {
     if (!active) {
       setStepIndex(0);
+      setLongWait(false);
       return;
     }
     setStepIndex(0);
-    const timers = STEP_KEYS.slice(1).map((key, i) =>
-      window.setTimeout(() => setStepIndex(i + 1), STAGE_TIMINGS_MS[key]),
+    setLongWait(false);
+    const timers = AUTO_ADVANCE_MS.map(({ index, at }) =>
+      window.setTimeout(() => setStepIndex(index), at),
     );
+    timers.push(window.setTimeout(() => setLongWait(true), LONG_WAIT_MS));
     return () => {
       for (const id of timers) window.clearTimeout(id);
     };
@@ -77,7 +84,9 @@ export function ImportProgress({ active }: { active: boolean }) {
             </div>
 
             <p className="font-body text-sm text-ink-soft mt-1">
-              {t(`import.step_${STEP_KEYS[stepIndex]}.hint`)}
+              {longWait && stepIndex === 2
+                ? t('import.long_wait_hint')
+                : t(`import.step_${STEP_KEYS[stepIndex]}.hint`)}
             </p>
 
             <InkTrail stepIndex={stepIndex} reduce={reduce ?? false} />
