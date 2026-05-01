@@ -1,7 +1,7 @@
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from './_guards';
 
@@ -13,6 +13,7 @@ export const Route = createFileRoute('/profile')({
 function ProfilePage() {
   const { t } = useTranslation();
   const auth = useAuth();
+  const nav = useNavigate();
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="font-display text-3xl mb-6">{t('nav.profile')}</h1>
@@ -25,7 +26,13 @@ function ProfilePage() {
           </strong>
         </p>
         <p className="text-ink-soft text-sm">{auth.user?.email}</p>
-        <Button variant="ghost" onClick={() => void auth.signOut()}>
+        <Button
+          variant="ghost"
+          onClick={async () => {
+            await auth.signOut();
+            await nav({ to: '/auth/login' });
+          }}
+        >
           Sign out
         </Button>
       </Card>
