@@ -11,12 +11,47 @@ import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives/Tabs';
+import { useToast } from '@/ui/primitives/Toast';
+import { ImportProgress } from '@/ui/recipe/ImportProgress';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createFileRoute } from '@tanstack/react-router';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireHousehold } from '../../_guards';
+
+const KNOWN_ERROR_KEYS = [
+  'rate_limit',
+  'too_many_imports',
+  'fetch_failed',
+  'not_html',
+  'source_too_large',
+  'parse_failed',
+  'schema_failed',
+  'internal',
+  'network',
+] as const;
+type ErrorKey = (typeof KNOWN_ERROR_KEYS)[number];
+
+async function readErrorCode(error: unknown): Promise<ErrorKey> {
+  const ctx = (error as { context?: unknown } | null)?.context;
+  if (ctx instanceof Response) {
+    try {
+      const cloned = ctx.clone();
+      const body = (await cloned.json()) as { error?: string };
+      if (body.error && (KNOWN_ERROR_KEYS as readonly string[]).includes(body.error)) {
+        return body.error as ErrorKey;
+      }
+      return 'internal';
+    } catch {
+      return 'internal';
+    }
+  }
+  const name = (error as { name?: string } | null)?.name ?? '';
+  if (name === 'FunctionsFetchError' || name === 'FunctionsRelayError') return 'network';
+  return 'network';
+}
 
 export const Route = createFileRoute('/h/$householdId/import')({
   beforeLoad: requireHousehold,
@@ -62,7 +97,7 @@ function ImportPage() {
 
 function UrlTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
-  const [serverError, setServerError] = useState<string | null>(null);
+  const { push } = useToast();
   const [draft, setDraft] = useState<unknown>(null);
   const {
     register,
@@ -75,7 +110,7 @@ function UrlTab({ householdId }: { householdId: string }) {
       <form
         className="space-y-3"
         onSubmit={handleSubmit(async (values) => {
-          setServerError(null);
+          setDraft(null);
           bcImportStart('url');
           bcImportInputValidated({ url_length: values.url.length });
           const t0 = performance.now();
@@ -85,24 +120,53 @@ function UrlTab({ householdId }: { householdId: string }) {
           });
           bcImportResponseReceived(Math.round(performance.now() - t0), error ? 500 : 200);
           if (error) {
-            setServerError(error.message);
+            const code = await readErrorCode(error);
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t(`errors.${code}`),
+            });
             return;
           }
+          const payload = data as { needs_review?: boolean; reason?: string } | null;
+          if (payload?.needs_review) {
+            push({
+              variant: 'error',
+              title: t('import.needs_review_title'),
+              description: t('import.needs_review_body'),
+            });
+            setDraft(data);
+            return;
+          }
+          push({
+            variant: 'success',
+            title: t('import.success_title'),
+            description: t('import.success_body'),
+          });
           setDraft(data);
         })}
       >
         <Input placeholder={t('import.url_placeholder')} {...register('url')} />
         {errors.url && <p className="text-pomegranate text-sm">{errors.url.message}</p>}
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
           {t('import.submit')}
         </Button>
-        {serverError && <p className="text-pomegranate text-sm">{serverError}</p>}
       </form>
-      {draft != null && (
-        <pre className="mt-4 text-xs bg-paper-2 p-3 rounded overflow-auto">
-          {JSON.stringify(draft, null, 2)}
-        </pre>
-      )}
+      <ImportProgress active={isSubmitting} />
+      <AnimatePresence>
+        {draft != null && !isSubmitting && (
+          <motion.pre
+            key="draft-preview"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.32, ease: [0.2, 0.7, 0.1, 1.05] }}
+            className="mt-4 text-xs bg-paper border border-cream-line p-3 rounded-[var(--radius-md)] overflow-auto font-mono text-ink-soft"
+          >
+            {JSON.stringify(draft, null, 2)}
+          </motion.pre>
+        )}
+      </AnimatePresence>
     </Card>
   );
 }
