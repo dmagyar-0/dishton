@@ -63,7 +63,11 @@ VitePWA({
   manifestFilename: 'manifest.webmanifest',
   manifest: false, // we ship our own static file
   workbox: {
-    navigateFallback: '/offline.html',
+    // Serve the SPA shell for every navigation. `navigateFallback` is
+    // unconditional in Workbox `generateSW` mode (it always returns the
+    // precached entry of the URL passed in), so pointing it at `/offline.html`
+    // would trap the user there on every refresh, online or off.
+    navigateFallback: '/index.html',
     globPatterns: ['**/*.{js,css,html,svg,woff2}'],
     runtimeCaching: [
       {
@@ -143,15 +147,20 @@ Imports do **not** queue; they require a live Edge Function call (the
 
 ## Offline fallback
 
-`/offline.html` is a hand-written, design-system-styled static page that
-appears when navigation fails entirely (e.g. cache miss + offline). It says:
+Every navigation is served from the precached SPA shell (`/index.html`), so
+the React app always loads — even offline — and surfaces its own offline UI
+when API calls fail. `/offline.html` is a hand-written, design-system-styled
+static page that we keep precached as a defensive fallback (e.g. if a future
+SW iteration removes the SPA shell from the precache). It says:
 
 > You're offline.
 >
 > The recipes you've already opened are still here — head back and pick one
 > up. New imports will be available again when you reconnect.
 
-Plus a "Try again" button that reloads.
+Plus a "Try again" button that reloads. **Do not** wire `navigateFallback` to
+`/offline.html`: that handler is unconditional and would trap the user on the
+offline page on every refresh.
 
 ## Wake Lock
 

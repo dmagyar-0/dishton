@@ -20,7 +20,13 @@ export default defineConfig({
       manifest: false,
       includeAssets: ['offline.html', 'icons/*.png', 'icons/source.svg', 'paper-grain.svg'],
       workbox: {
-        navigateFallback: '/offline.html',
+        // Serve the SPA shell for every navigation. Workbox's `navigateFallback`
+        // handler is unconditional — it always returns the precached entry of
+        // the URL passed in — so pointing it at `/offline.html` would strand the
+        // user on the offline page on every refresh, even when online. The SPA
+        // itself surfaces offline state when API calls fail; `/offline.html`
+        // remains precached via `includeAssets` as a static asset.
+        navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         runtimeCaching: [
           {
