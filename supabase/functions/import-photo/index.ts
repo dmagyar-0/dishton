@@ -22,8 +22,10 @@ serve(async (req: Request) => {
 
   const requestId = crypto.randomUUID();
   const t0 = performance.now();
+  let caller: Awaited<ReturnType<typeof resolveCaller>> | null = null;
+  let jobId: string | null = null;
   try {
-    const caller = await resolveCaller(req);
+    caller = await resolveCaller(req);
     const body = Body.parse(await req.json());
 
     log({
@@ -41,7 +43,7 @@ serve(async (req: Request) => {
       .eq('status', 'running');
     if ((count ?? 0) >= 2) throw new HttpError(409, 'too_many_imports');
 
-    let jobId = body.job_id;
+    jobId = body.job_id ?? null;
     if (!jobId) {
       const { data: job, error: jobErr } = await caller.client
         .from('import_jobs')
@@ -135,6 +137,15 @@ serve(async (req: Request) => {
       cors,
     );
   } catch (e) {
+    if (caller && jobId) {
+      const reason = e instanceof HttpError ? e.message : 'internal';
+      try {
+        await caller.client
+          .from('import_jobs')
+          .update({ status: 'failed', error: reason, completed_at: new Date().toISOString() })
+          .eq('id', jobId);
+      } catch { /* best-effort */ }
+    }
     if (e instanceof HttpError) {
       const res = e.toResponse();
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
