@@ -69,8 +69,10 @@ serve(async (req: Request) => {
 
   const requestId = crypto.randomUUID();
   const t0 = performance.now();
+  let caller: Awaited<ReturnType<typeof resolveCaller>> | null = null;
+  let jobId: string | null = null;
   try {
-    const caller = await resolveCaller(req);
+    caller = await resolveCaller(req);
     const body = Body.parse(await req.json());
 
     log({
@@ -101,6 +103,7 @@ serve(async (req: Request) => {
       .select('id')
       .single();
     if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
+    jobId = job.id as string;
 
     const html = await fetchHtml(body.url);
     const dom = parseHTML(html);
@@ -200,6 +203,18 @@ serve(async (req: Request) => {
       cors,
     );
   } catch (e) {
+    // If we already inserted an import_jobs row, mark it failed so it doesn't
+    // count toward the per-profile concurrency cap. Without this, every 5xx
+    // leaves an orphan row stuck in `running` forever.
+    if (caller && jobId) {
+      const reason = e instanceof HttpError ? e.message : 'internal';
+      try {
+        await caller.client
+          .from('import_jobs')
+          .update({ status: 'failed', error: reason, completed_at: new Date().toISOString() })
+          .eq('id', jobId);
+      } catch { /* best-effort; outer error is what we report */ }
+    }
     if (e instanceof HttpError) {
       log({
         request_id: requestId,
