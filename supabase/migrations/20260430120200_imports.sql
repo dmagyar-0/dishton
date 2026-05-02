@@ -109,13 +109,14 @@ begin
   select * into row from app.ai_rate_budget for update;
   if row.window_started_at < now() - interval '60 seconds' then
     update app.ai_rate_budget
-       set window_started_at = now(), tokens_used = 0;
+       set window_started_at = now(), tokens_used = 0
+     where true;
     row.tokens_used = 0;
   end if;
   if row.tokens_used + p_tokens > row.budget_per_minute then
     return false;
   end if;
-  update app.ai_rate_budget set tokens_used = tokens_used + p_tokens;
+  update app.ai_rate_budget set tokens_used = tokens_used + p_tokens where true;
   return true;
 end;
 $$;
