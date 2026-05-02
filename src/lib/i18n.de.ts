@@ -81,6 +81,8 @@ export default {
     fetch_failed: 'Diese URL ist nicht erreichbar.',
     not_household_member: 'Du hast keine Berechtigung für diesen Haushalt.',
     network: 'Der Importer ist nicht erreichbar. Prüfe deine Verbindung.',
+    timeout:
+      'Der Importer hat zu lange gebraucht. Bitte erneut versuchen — der Entwurf läuft im Hintergrund evtl. noch fertig.',
     internal: 'Auf unserer Seite ist etwas schiefgelaufen. Bitte erneut versuchen.',
     not_html: 'Dieser Link führt nicht zu einer HTML-Seite.',
     source_too_large: 'Diese Seite ist zu groß für den Import. Versuche eine kürzere Rezept-URL.',
