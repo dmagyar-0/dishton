@@ -21,6 +21,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireHousehold } from '../../_guards';
 
+const IMPORT_URL_TIMEOUT_MS = 45_000;
+
 const KNOWN_ERROR_KEYS = [
   'rate_limit',
   'too_many_imports',
@@ -31,6 +33,7 @@ const KNOWN_ERROR_KEYS = [
   'schema_failed',
   'internal',
   'network',
+  'timeout',
 ] as const;
 type ErrorKey = (typeof KNOWN_ERROR_KEYS)[number];
 
@@ -49,6 +52,7 @@ async function readErrorCode(error: unknown): Promise<ErrorKey> {
     }
   }
   const name = (error as { name?: string } | null)?.name ?? '';
+  if (name === 'AbortError' || name === 'TimeoutError') return 'timeout';
   if (name === 'FunctionsFetchError' || name === 'FunctionsRelayError') return 'network';
   return 'network';
 }
@@ -115,12 +119,27 @@ function UrlTab({ householdId }: { householdId: string }) {
           bcImportInputValidated({ url_length: values.url.length });
           const t0 = performance.now();
           bcImportRequestSent('import-url', '');
-          const { data, error } = await supabase.functions.invoke('import-url', {
-            body: { url: values.url, household_id: householdId },
-          });
-          bcImportResponseReceived(Math.round(performance.now() - t0), error ? 500 : 200);
-          if (error) {
-            const code = await readErrorCode(error);
+          // Cap the wait so a hung NIM call (3 × 30 s server-side retry) can't
+          // leave the form spinning indefinitely with no user feedback.
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), IMPORT_URL_TIMEOUT_MS);
+          let invokeError: unknown = null;
+          let data: unknown = null;
+          try {
+            const result = await supabase.functions.invoke('import-url', {
+              body: { url: values.url, household_id: householdId },
+              signal: ac.signal,
+            });
+            invokeError = result.error;
+            data = result.data;
+          } catch (e) {
+            invokeError = e;
+          } finally {
+            clearTimeout(timer);
+          }
+          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 200);
+          if (invokeError) {
+            const code = await readErrorCode(invokeError);
             push({
               variant: 'error',
               title: t('import.error_title'),

@@ -18,6 +18,7 @@ export async function resolveCaller(req: Request): Promise<CallerContext> {
   const jwt = auth.slice(7);
   const client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
+    db: { schema: 'app' },
     global: { headers: { Authorization: auth } },
   });
   const { data, error } = await client.auth.getUser(jwt);
@@ -51,6 +52,9 @@ export function corsHeaders(origin: string | null): Record<string, string> {
   return {
     'access-control-allow-origin': origin ?? '*',
     'access-control-allow-methods': 'POST, OPTIONS',
-    'access-control-allow-headers': 'authorization, content-type',
+    // supabase-js attaches `apikey` and `x-client-info` to every
+    // functions.invoke call. Browsers preflight-block the POST if either is
+    // missing here, leaving the SPA stuck on a request that never leaves.
+    'access-control-allow-headers': 'apikey, authorization, content-type, x-client-info',
   };
 }

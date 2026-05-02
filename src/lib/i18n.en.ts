@@ -77,6 +77,8 @@ export default {
     fetch_failed: "We couldn't reach that URL. Check the link or try again.",
     not_household_member: "You don't have permission to add to this household.",
     network: "We couldn't reach the importer. Check your connection and try again.",
+    timeout:
+      'The importer took too long to respond. Try again — the draft may still finish in the background.',
     internal: 'Something went wrong on our end. Please try again.',
     not_html: 'That link does not point to an HTML page.',
     source_too_large: 'That page is too big to import. Try a shorter recipe URL.',
