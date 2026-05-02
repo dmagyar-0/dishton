@@ -21,7 +21,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireHousehold } from '../../_guards';
 
-const IMPORT_URL_TIMEOUT_MS = 45_000;
+const IMPORT_URL_TIMEOUT_MS = 120_000;
 
 const KNOWN_ERROR_KEYS = [
   'rate_limit',

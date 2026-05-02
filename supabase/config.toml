@@ -86,7 +86,7 @@ redirect_uri = "http://localhost:5173/auth/callback"
 
 [edge_runtime]
 enabled = true
-policy = "oneshot"
+policy = "per_worker"
 inspector_port = 8083
 
 [analytics]

@@ -6,47 +6,62 @@
 -- include the minimal columns plus a stub bcrypt password so the local stack
 -- can exchange them for sessions.
 
-set search_path = public;
+set search_path = public, extensions;
 
 ------------------------------------------------------------------------------
--- Detach the handle_new_user trigger temporarily so we can insert profiles
--- with explicit display names rather than the email-prefix default.
+-- The handle_new_user trigger fires on auth.users insert and creates a
+-- profile with the email-prefix as display_name. We can't disable the
+-- trigger from the postgres role (auth.users is owned by
+-- supabase_auth_admin), so we let it run and then upsert below.
 ------------------------------------------------------------------------------
 
-alter table auth.users disable trigger on_auth_user_created;
-
+-- GoTrue v2.188+ rejects NULL on the *_token / *_change columns ("Database
+-- error querying schema" on sign-in). Seed them as empty strings so a fresh
+-- `supabase db reset` produces sign-in-ready test users.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-  created_at, updated_at
+  created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new,
+  email_change, email_change_token_current, phone_change,
+  phone_change_token, reauthentication_token
 ) values
   ('00000000-0000-0000-0000-000000000000',
    '00000000-0000-0000-0000-000000000001',
    'authenticated', 'authenticated', 'alice@example.test',
-   crypt('test1234', gen_salt('bf')),
+   extensions.crypt('test1234', extensions.gen_salt('bf')),
    now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
-   now(), now()),
+   now(), now(),
+   '', '', '', '', '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000',
    '00000000-0000-0000-0000-000000000002',
    'authenticated', 'authenticated', 'bob@example.test',
-   crypt('test1234', gen_salt('bf')),
+   extensions.crypt('test1234', extensions.gen_salt('bf')),
    now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
-   now(), now()),
+   now(), now(),
+   '', '', '', '', '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000',
    '00000000-0000-0000-0000-000000000003',
    'authenticated', 'authenticated', 'carol@example.test',
-   crypt('test1234', gen_salt('bf')),
+   extensions.crypt('test1234', extensions.gen_salt('bf')),
    now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
-   now(), now())
-on conflict (id) do nothing;
-
-alter table auth.users enable trigger on_auth_user_created;
+   now(), now(),
+   '', '', '', '', '', '', '', '')
+on conflict (id) do update set
+  confirmation_token = excluded.confirmation_token,
+  recovery_token = excluded.recovery_token,
+  email_change_token_new = excluded.email_change_token_new,
+  email_change = excluded.email_change,
+  email_change_token_current = excluded.email_change_token_current,
+  phone_change = excluded.phone_change,
+  phone_change_token = excluded.phone_change_token,
+  reauthentication_token = excluded.reauthentication_token;
 
 insert into app.profiles (id, display_name) values
   ('00000000-0000-0000-0000-000000000001','Alice'),
   ('00000000-0000-0000-0000-000000000002','Bob'),
   ('00000000-0000-0000-0000-000000000003','Carol')
-on conflict (id) do nothing;
+on conflict (id) do update set display_name = excluded.display_name;
 
 insert into app.households (id, name, owner_profile_id) values
   ('11111111-1111-1111-1111-111111111111','The Pantry',
