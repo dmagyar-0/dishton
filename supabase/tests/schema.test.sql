@@ -248,6 +248,10 @@ with assertions(label, ok) as (
    exists(select 1 from pg_proc p
           join pg_namespace n on n.oid = p.pronamespace
           where n.nspname='public' and p.proname='app_reserve_ai_budget')),
+  ('function app.reap_stuck_imports exists',
+   exists(select 1 from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname='app' and p.proname='reap_stuck_imports')),
 
   -- View
   ('view app.v_ai_daily_cost exists',

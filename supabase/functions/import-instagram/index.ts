@@ -6,6 +6,7 @@ import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
+import { withTimeout } from '../_shared/timeout.ts';
 import { env } from '../_shared/env.ts';
 import { log, logNimCall } from '../_shared/log.ts';
 
@@ -14,6 +15,8 @@ const Body = z.object({
   household_id: z.string().uuid(),
 });
 
+const INLINE_BUDGET_MS = 30_000;
+
 type OEmbed = {
   title?: string;
   html?: string;
@@ -21,18 +24,24 @@ type OEmbed = {
   author_name?: string;
 };
 
-async function fetchOEmbed(url: string, token: string): Promise<OEmbed | null> {
+function mergeSignal(parent: AbortSignal | undefined, ms: number): AbortSignal {
+  return parent
+    ? AbortSignal.any([parent, AbortSignal.timeout(ms)])
+    : AbortSignal.timeout(ms);
+}
+
+async function fetchOEmbed(url: string, token: string, parent?: AbortSignal): Promise<OEmbed | null> {
   const endpoint =
     `https://graph.facebook.com/v18.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=${token}`;
-  const res = await fetch(endpoint, { signal: AbortSignal.timeout(10_000) });
+  const res = await fetch(endpoint, { signal: mergeSignal(parent, 10_000) });
   if (!res.ok) return null;
   return (await res.json()) as OEmbed;
 }
 
-async function fetchOgFallback(url: string): Promise<OEmbed | null> {
+async function fetchOgFallback(url: string, parent?: AbortSignal): Promise<OEmbed | null> {
   const res = await fetch(url, {
     headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
-    signal: AbortSignal.timeout(10_000),
+    signal: mergeSignal(parent, 10_000),
   });
   if (!res.ok) return null;
   const html = await res.text();
@@ -74,6 +83,10 @@ serve(async (req: Request) => {
       event: 'request.start',
     });
 
+    // See import-url for the rationale: reap any running rows whose worker
+    // was hard-killed before we count slots, so a wedged user recovers.
+    await caller.client.rpc('reap_stuck_imports');
+
     const { count } = await caller.client
       .from('import_jobs')
       .select('id', { count: 'exact', head: true })
@@ -95,12 +108,27 @@ serve(async (req: Request) => {
     if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
     jobId = job.id as string;
 
-    let oembed: OEmbed | null = null;
-    if (env.IG_OEMBED_TOKEN) {
-      oembed = await fetchOEmbed(body.url, env.IG_OEMBED_TOKEN);
-    }
-    if (!oembed) oembed = await fetchOgFallback(body.url);
-    if (!oembed) {
+    const { oembed, budget } = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
+      let oe: OEmbed | null = null;
+      if (env.IG_OEMBED_TOKEN) {
+        oe = await fetchOEmbed(body.url, env.IG_OEMBED_TOKEN, signal);
+      }
+      if (!oe) oe = await fetchOgFallback(body.url, signal);
+      if (!oe) return { oembed: null, budget: null };
+
+      const caption = `${oe.title ?? ''}\n\n${(oe.html ?? '').replace(/<[^>]+>/g, '')}`;
+      const b = await withRateBudget(1200, () =>
+        callAndValidate({
+          lane: 'text',
+          messages: structuringFromCaption({ caption, sourceUrl: body.url }),
+          estimatedTokens: 1200,
+          signal,
+        }),
+      );
+      return { oembed: oe, budget: b };
+    });
+
+    if (!oembed || !budget) {
       await caller.client
         .from('import_jobs')
         .update({
@@ -111,16 +139,6 @@ serve(async (req: Request) => {
         .eq('id', job.id);
       throw new HttpError(422, 'instagram_unavailable');
     }
-
-    const caption = `${oembed.title ?? ''}\n\n${(oembed.html ?? '').replace(/<[^>]+>/g, '')}`;
-
-    const budget = await withRateBudget(1200, () =>
-      callAndValidate({
-        lane: 'text',
-        messages: structuringFromCaption({ caption, sourceUrl: body.url }),
-        estimatedTokens: 1200,
-      }),
-    );
 
     const ms = Math.round(performance.now() - t0);
 

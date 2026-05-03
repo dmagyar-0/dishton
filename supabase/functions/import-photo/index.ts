@@ -7,7 +7,10 @@ import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
+import { withTimeout } from '../_shared/timeout.ts';
 import { log, logNimCall } from '../_shared/log.ts';
+
+const INLINE_BUDGET_MS = 30_000;
 
 const Body = z.object({
   job_id: z.string().uuid().optional(),
@@ -35,6 +38,10 @@ serve(async (req: Request) => {
       function: 'import-photo',
       event: 'request.start',
     });
+
+    // See import-url for the rationale: reap any running rows whose worker
+    // was hard-killed before we count slots, so a wedged user recovers.
+    await caller.client.rpc('reap_stuck_imports');
 
     const { count } = await caller.client
       .from('import_jobs')
@@ -64,13 +71,17 @@ serve(async (req: Request) => {
       .from('imports')
       .createSignedUrl(body.path, 300);
     if (signErr || !signed?.signedUrl) throw new HttpError(404, 'object_not_found');
+    const signedUrl = signed.signedUrl;
 
-    const budget = await withRateBudget(3500, () =>
-      callAndValidate({
-        lane: 'vision',
-        messages: structuringFromImage({ imageUrl: signed.signedUrl }),
-        estimatedTokens: 3500,
-      }),
+    const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) =>
+      await withRateBudget(3500, () =>
+        callAndValidate({
+          lane: 'vision',
+          messages: structuringFromImage({ imageUrl: signedUrl }),
+          estimatedTokens: 3500,
+          signal,
+        }),
+      ),
     );
 
     const ms = Math.round(performance.now() - t0);
