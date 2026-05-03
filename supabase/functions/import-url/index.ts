@@ -11,6 +11,7 @@ import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
+import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
 import { withTimeout } from '../_shared/timeout.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
@@ -119,13 +120,22 @@ serve(async (req: Request) => {
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
       const html = await fetchHtml(body.url, signal);
       const dom = parseHTML(html);
+      const scraped = extractRecipeJsonLd(dom.document);
       const reader = new Readability(dom.document);
       const article = reader.parse();
       const text = article?.textContent ?? html;
+      log({
+        request_id: requestId,
+        profile_id: caller.profileId,
+        household_id: body.household_id,
+        function: 'import-url',
+        event: 'scrape.jsonld',
+        found: scraped !== null,
+      });
       return await withRateBudget(4000, () =>
         callAndValidate({
           lane: 'text',
-          messages: structuringFromHtml({ html: text, sourceUrl: body.url }),
+          messages: structuringFromHtml({ html: text, sourceUrl: body.url, scraped }),
           estimatedTokens: 4000,
           signal,
         }),
