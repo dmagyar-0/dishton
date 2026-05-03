@@ -340,7 +340,7 @@ forms are accepted (matches the DB CHECK).
 ## Acceptance criteria
 
 - [ ] `Recipe.parse(jsonFromAI)` accepts every fixture in
-      `e2e/fixtures/nim-draft.*.json`.
+      `e2e/fixtures/ai-draft.*.json`.
 - [ ] `convert` is correct on a hand-written truth table covering at minimum
       g↔kg, g↔oz↔lb, ml↔l, ml↔tsp↔tbsp↔cup_us↔fl_oz, °C↔°F.
 - [ ] `scale(recipe, 1)` is deep-equal to `recipe`.

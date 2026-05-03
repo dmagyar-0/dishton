@@ -41,16 +41,16 @@ travels through the system.
               │  │  • import-instagram               │  │
               │  │  • import-photo                   │  │
               │  │  • translate-recipe               │  │
-              │  │  (all hold NVIDIA_API_KEY)        │  │
+              │  │  (all hold ANTHROPIC_API_KEY)     │  │
               │  └─────────────┬─────────────────────┘  │
               │                │ HTTPS (server-side)    │
               └────────────────┼────────────────────────┘
                                ▼
                   ┌─────────────────────────────┐
-                  │ NVIDIA NIM                  │
-                  │ integrate.api.nvidia.com/v1 │
-                  │  • llama-3.3-70b-instruct   │
-                  │  • llama-3.2-90b-vision     │
+                  │ Anthropic API               │
+                  │ api.anthropic.com/v1        │
+                  │  • claude-haiku-4-5         │
+                  │    (text + vision; 200K ctx)│
                   └─────────────────────────────┘
 
       Optional outbound (server-side, from Edge Functions only):
@@ -58,9 +58,9 @@ travels through the system.
         - URL fetch for blog imports → arbitrary HTTPS, with allow-listed UA
 ```
 
-The browser **never** holds the NVIDIA key, never calls NVIDIA directly, and never
-calls third-party blogs. Every outbound request that needs a secret is an Edge
-Function call.
+The browser **never** holds the Anthropic key, never calls Anthropic directly,
+and never calls third-party blogs. Every outbound request that needs a secret
+is an Edge Function call.
 
 ## Process responsibilities
 
@@ -69,8 +69,8 @@ Function call.
 | **React SPA** | UI, routing, optimistic state, view-time unit conversion (pure functions from `src/domain/units`), per-language fetches against Postgres, displaying drafts returned by Edge Functions | AI calls, secrets, server-side fetch, business validation that requires multi-row checks |
 | **Postgres + RLS** | Authoritative recipe data, household membership, follow graph, FTS, `import_jobs` state, translation cache, AI rate budget row | Anything that requires a secret outside the DB; `auth.users` table belongs to GoTrue, never written directly |
 | **Storage** | `recipe-images` (public, served via signed URLs from the SPA), `imports` (private originals; only Edge Functions read) | Long-term archival or backup; rotation handled by Supabase platform |
-| **Edge Functions** | All NVIDIA calls, all third-party fetches (oEmbed, blog HTML), Zod validation of model output, retry/backoff, writing `import_jobs` rows, decrementing `ai_rate_budget` | UI logic, browser-bound state, view-time computations |
-| **NVIDIA NIM** | Text structuring, vision OCR-and-structuring, translation | Storage, persistence, access control |
+| **Edge Functions** | All Anthropic calls, all third-party fetches (oEmbed, blog HTML), Zod validation of model output, retry/backoff, writing `import_jobs` rows, decrementing `ai_rate_budget` | UI logic, browser-bound state, view-time computations |
+| **Anthropic API** | Text structuring, vision OCR-and-structuring, translation (single model: `claude-haiku-4-5`) | Storage, persistence, access control |
 
 ## Data flows
 
@@ -99,7 +99,7 @@ with the process performing the work.
 [Edge]     fetch URL with allow-listed UA, follow ≤ 3 redirects, 5 MB cap
 [Edge]     readability extract → cleaned HTML/text
 [Edge]     check ai_rate_budget; reserve estimated tokens
-[Edge]     call NIM (text model) with structuring prompt + Zod schema
+[Edge]     call Anthropic with structuring prompt + Zod schema
 [Edge]     parse JSON; on parse error, re-prompt once with the error message
 [Edge]     Zod-validate; on hard failure, mark import_jobs.status=needs_review
 [Edge]     return draft Recipe (not yet saved) + import_jobs.id
@@ -116,7 +116,7 @@ with the process performing the work.
 [Browser]  POST /functions/v1/import-photo { jobId, path } ─► [Edge: import-photo]
 [Edge]     create signed read URL for the object (5 min TTL)
 [Edge]     check ai_rate_budget
-[Edge]     call NIM vision model with the signed URL + structuring prompt
+[Edge]     call Anthropic with the signed URL (vision lane) + structuring prompt
 [Edge]     parse + Zod-validate (low-confidence path: status=needs_review)
 [Edge]     return draft
 [Browser]  Edit Draft modal → Save → recipes row created
@@ -165,12 +165,11 @@ Everything else is server-side only.
 | `VITE_FEATURE_PHOTO_IMPORT` | Vercel + local `.env` | SPA | feature gate |
 | `VITE_FEATURE_TRANSLATION_CACHE` | Vercel + local `.env` | SPA | feature gate |
 | `VITE_SENTRY_DSN` | Vercel | SPA | optional, prod only |
-| `NVIDIA_API_KEY` | Supabase Functions secrets | Edge Functions | NIM access |
-| `NIM_TEXT_MODEL` | Supabase Functions secrets | Edge Functions | default `meta/llama-3.3-70b-instruct` |
-| `NIM_VISION_MODEL` | Supabase Functions secrets | Edge Functions | default `meta/llama-3.2-90b-vision-instruct` |
+| `ANTHROPIC_API_KEY` | Supabase Functions secrets | Edge Functions | Anthropic API access |
+| `ANTHROPIC_MODEL` | Supabase Functions secrets | Edge Functions | optional override; default `claude-haiku-4-5` |
 | `IG_OEMBED_TOKEN` | Supabase Functions secrets | Edge: import-instagram | App-scoped Facebook Graph token |
 | `LOG_DRAIN_TOKEN` | Supabase Functions secrets | Edge Functions | structured-log forwarding |
-| `NIM_MOCK_MODE` | local + CI only | Edge Functions | `playwright` to read fixtures instead of calling NIM |
+| `AI_MOCK_MODE` | local + CI only | Edge Functions | `playwright` to read fixtures instead of calling Anthropic |
 
 The full secrets matrix (which environment holds which secret) is in
 [13-ci-cd-and-environments.md](./13-ci-cd-and-environments.md).
@@ -182,7 +181,7 @@ The full secrets matrix (which environment holds which secret) is in
 | SPA | Vercel (static + edge CDN) | `dist/` from `vite build` |
 | Postgres + Auth + Storage | Supabase managed | Migrations applied via `supabase db push` |
 | Edge Functions | Supabase managed | `supabase/functions/*` deployed via `supabase functions deploy` |
-| NVIDIA NIM | NVIDIA | external; we hit `https://integrate.api.nvidia.com/v1` |
+| Anthropic API | Anthropic | external; we hit `https://api.anthropic.com/v1/messages` |
 
 Three environments (`local`, `preview`, `production`) — see
 [13-ci-cd-and-environments.md](./13-ci-cd-and-environments.md). Local uses
@@ -192,7 +191,7 @@ Three environments (`local`, `preview`, `production`) — see
 
 | Service | Purpose | Outage behaviour |
 |---|---|---|
-| NVIDIA NIM | All AI structuring + translation | Imports show "AI temporarily unavailable, edit manually"; manual entry remains available; existing recipes unaffected |
+| Anthropic API | All AI structuring + translation | Imports show "AI temporarily unavailable, edit manually"; manual entry remains available; existing recipes unaffected |
 | Facebook Graph oEmbed | Instagram caption + thumbnail | Instagram tab disabled with banner; URL/photo/manual still work |
 | Vercel | SPA hosting | Site down; existing PWA caches still serve recipe views and edits queue offline (see [11-pwa-and-offline.md](./11-pwa-and-offline.md)) |
 | Supabase | Everything else | Hard outage; we surface a single global error toast |
@@ -214,7 +213,7 @@ Three environments (`local`, `preview`, `production`) — see
       here and throws on missing values during cold start.
 - [ ] `src/lib/supabase.ts` is the only module in `src/**` that constructs a
       Supabase client; all other modules import from it.
-- [ ] No file under `src/**` imports `openai` or references `nvidia.com`.
+- [ ] No file under `src/**` imports `@anthropic-ai/sdk` or references `api.anthropic.com`.
 - [ ] The data-flow descriptions in this doc match the implementations in
       [05-auth-and-households.md](./05-auth-and-households.md),
       [08-import-pipelines.md](./08-import-pipelines.md), and
@@ -233,8 +232,8 @@ grep -q "## Acceptance criteria"    docs/01-architecture.md
 grep -q "## Verification"           docs/01-architecture.md
 ! grep -P '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' docs/01-architecture.md
 # every promised env var is referenced
-for v in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY NVIDIA_API_KEY NIM_TEXT_MODEL \
-         NIM_VISION_MODEL IG_OEMBED_TOKEN; do
+for v in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY ANTHROPIC_API_KEY \
+         ANTHROPIC_MODEL IG_OEMBED_TOKEN; do
   grep -q "$v" docs/01-architecture.md || echo "missing env var: $v"
 done
 ```

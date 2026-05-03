@@ -48,7 +48,7 @@ true):
    reset. Owner: [05-auth-and-households.md](./05-auth-and-households.md).
 2. **Households.** Create household on first run, invite by code, accept
    invite, list members, leave household. Owner: same.
-3. **URL import.** Paste URL → readability extract → NIM → draft review →
+3. **URL import.** Paste URL → readability extract → Anthropic → draft review →
    save. Owner: [08-import-pipelines.md](./08-import-pipelines.md).
 4. **Manual entry.** Always-available recipe form using the canonical
    schema. Owner: [09-recipe-views.md](./09-recipe-views.md).

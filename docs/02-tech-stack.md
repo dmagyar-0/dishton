@@ -53,12 +53,12 @@ listed here, do not add it without updating this doc.
 
 ## Backend (Edge Functions, Deno)
 
-Versions are imported via npm specifiers (`npm:openai@4`) or `https://deno.land`
-URLs. The values below freeze the major.
+Versions are imported via npm specifiers (`npm:@anthropic-ai/sdk@^0.40.0`)
+or `https://deno.land` URLs. The values below freeze the major.
 
 | Import | Version | Rationale |
 |---|---|---|
-| `npm:openai@4` | `^4` | OpenAI-compatible client; works against NIM base URL. |
+| `npm:@anthropic-ai/sdk` | `^0.40.0` | Official Anthropic client; used for `claude-haiku-4-5` (text + vision). |
 | `npm:zod@3` | `^3` | Same schemas as the SPA, imported via shared module. |
 | `https://deno.land/std@0.224.0/...` | `0.224.x` | stdlib for `crypto`, `path`, `bytes`, `testing`. |
 | `npm:@mozilla/readability@0.5` + `npm:linkedom@0.18` | `^0.5` / `^0.18` | Readability extraction inside Deno without a real DOM. |

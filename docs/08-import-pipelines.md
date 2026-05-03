@@ -15,7 +15,7 @@ what AI produced before it hits the canonical store.
 - [01-architecture.md](./01-architecture.md) — Edge Function topology.
 - [04-data-model.md](./04-data-model.md) — `app.import_jobs`, storage buckets.
 - [06-recipe-domain.md](./06-recipe-domain.md) — Recipe Zod schema.
-- [07-ai-integration.md](./07-ai-integration.md) — NIM client and validation.
+- [07-ai-integration.md](./07-ai-integration.md) — Anthropic client and validation.
 
 ## Edge Function map
 
@@ -102,7 +102,7 @@ RPC `app.promote_hero_image`).
 ### URL flow sequence (ASCII)
 
 ```
-Browser                   Edge:import-url             NIM
+Browser                   Edge:import-url             Anthropic
    │  POST /import-url           │                      │
    │ ─────────────────────────►  │                      │
    │                             │ insert job(running)  │
@@ -270,7 +270,7 @@ If `>= 2`, return 409 with body `{ error: 'too_many_imports' }`.
 | Source ≥ 5 MB | 413 | "That source is too large. Use a shorter article." |
 | AI parse failure (twice) | 200 + `needs_review` | "We couldn't parse this automatically. Edit the draft below." |
 | AI schema failure | 200 + `needs_review` | same as above |
-| Rate limit (NIM or own bucket) | 429 | "Importer is busy. Try again in a minute." |
+| Rate limit (Anthropic or own bucket) | 429 | "Importer is busy. Try again in a minute." |
 | Instagram private post | 422 | "This post is private. Use a public post or the photo tab." |
 | Photo too large | 413 | "Image is over 10 MB. Reduce size and try again." |
 | Auth missing/expired | 401 | global session-expired toast |

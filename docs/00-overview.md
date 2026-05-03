@@ -38,9 +38,8 @@ contradict a locked choice.
 | Backend | Supabase (Postgres + Auth + Storage + Realtime + Edge Functions) |
 | Auth methods | Email/password day one; Google OAuth wired but feature-flagged |
 | Sharing model | **Households** (shared, read/write) + **Follows** (read-only) |
-| AI provider | NVIDIA NIM free tier at `https://integrate.api.nvidia.com/v1` (OpenAI-compatible) |
-| AI text model | `meta/llama-3.3-70b-instruct` (or `nvidia/llama-3.1-nemotron-70b-instruct`) |
-| AI vision model | `meta/llama-3.2-90b-vision-instruct` |
+| AI provider | Anthropic API at `https://api.anthropic.com/v1/messages` |
+| AI model (text + vision) | `claude-haiku-4-5` — single multimodal model for both lanes |
 | AI key location | Server-side only, in Supabase Edge Functions |
 | Instagram ingestion | Public oEmbed endpoint (caption + thumbnail). No IG Graph API |
 | Storage strategy | Canonical recipe JSON in Postgres; per-language translations cached in `recipe_translations`; per-user unit conversion at view time |
@@ -61,9 +60,9 @@ contradict a locked choice.
 | **Display unit system** | The user's preferred unit family (metric / imperial). Conversion happens at view time. |
 | **Canonical unit system** | The unit family the recipe was originally stored in. Preserved verbatim. |
 | **Import job** | A row in `import_jobs` tracking one URL/Instagram/photo ingestion through queued → running → done/failed. |
-| **Edge Function** | A Deno function deployed on Supabase that holds the NVIDIA key, calls AI models, and returns structured drafts. |
+| **Edge Function** | A Deno function deployed on Supabase that holds the Anthropic key, calls AI models, and returns structured drafts. |
 | **Editorial Pantry** | The locked visual/typographic system; see `03-design-system.md`. |
-| **Token-bucket** | A single-row Postgres table (`ai_rate_budget`) used as a global throttle for NVIDIA NIM calls. |
+| **Token-bucket** | A single-row Postgres table (`ai_rate_budget`) used as a global throttle for Anthropic calls. |
 
 ## Doc map
 
@@ -76,7 +75,7 @@ docs/
   04-data-model.md            SQL DDL + RLS + indexes + seed
   05-auth-and-households.md   auth, invites, follow flows, screens
   06-recipe-domain.md         canonical Zod schema + unit graph + scaling
-  07-ai-integration.md        NVIDIA NIM client, prompts, validation, retry
+  07-ai-integration.md        Anthropic client, prompts, validation, retry
   08-import-pipelines.md      URL / Instagram / photo / manual end-to-end
   09-recipe-views.md          list / detail / edit / scale / unit / lang
   10-search-and-tags.md       Postgres FTS + tag chips

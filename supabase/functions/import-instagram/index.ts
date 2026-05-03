@@ -1,4 +1,4 @@
-// import-instagram: oEmbed → caption + thumbnail → NIM → draft Recipe.
+// import-instagram: oEmbed → caption + thumbnail → Anthropic → draft Recipe.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
 import { withTimeout } from '../_shared/timeout.ts';
 import { env } from '../_shared/env.ts';
-import { log, logNimCall } from '../_shared/log.ts';
+import { log, logAiCall } from '../_shared/log.ts';
 
 const Body = z.object({
   url: z.string().url(),
@@ -191,14 +191,16 @@ serve(async (req: Request) => {
       })
       .eq('id', job.id);
 
-    logNimCall({
+    logAiCall({
       request_id: requestId,
       function: 'import-instagram',
       lane: 'text',
-      model: '(default)',
+      model: result.model,
       ms,
       tokens_in: result.usage.input,
       tokens_out: result.usage.output,
+      cache_read: result.usage.cache_read,
+      cache_write: result.usage.cache_write,
       ok: true,
     });
 

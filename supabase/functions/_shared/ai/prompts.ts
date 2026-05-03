@@ -1,12 +1,11 @@
 // Typed prompt templates. The Recipe shape is described inline so the model
-// sees the exact field schema — most reliable structured-output pattern on
-// open-weight models.
+// sees the exact field schema — most reliable structured-output pattern.
 //
 // `RECIPE_JSON_SHAPE` is asserted by a parity test (see _test.ts) to mention
 // every field in the Zod Recipe schema; that test catches the case of a new
 // Recipe field being added but not advertised to the model.
 
-import type { NimMessage } from './client.ts';
+import type { AiMessage } from './client.ts';
 
 export const RECIPE_JSON_SHAPE = `
 The JSON object MUST match this TypeScript type exactly:
@@ -54,7 +53,7 @@ export function structuringFromHtml(args: {
   html: string;
   sourceUrl: string;
   hint?: string;
-}): NimMessage[] {
+}): AiMessage[] {
   return [
     {
       role: 'system',
@@ -75,7 +74,7 @@ ${args.html}
 export function structuringFromCaption(args: {
   caption: string;
   sourceUrl: string;
-}): NimMessage[] {
+}): AiMessage[] {
   return [
     {
       role: 'system',
@@ -95,7 +94,7 @@ total_time_min are not stated, set them to null and 1 respectively.`,
   ];
 }
 
-export function structuringFromImage(args: { imageUrl: string }): NimMessage[] {
+export function structuringFromImage(args: { imageUrl: string }): AiMessage[] {
   return [
     {
       role: 'system',
@@ -109,7 +108,7 @@ export function structuringFromImage(args: { imageUrl: string }): NimMessage[] {
           type: 'text',
           text: 'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.',
         },
-        { type: 'image_url', image_url: { url: args.imageUrl } },
+        { type: 'image', source: { type: 'url', url: args.imageUrl } },
       ],
     },
   ];
@@ -118,7 +117,7 @@ export function structuringFromImage(args: { imageUrl: string }): NimMessage[] {
 export function translatePrompt(args: {
   recipeJson: string;
   targetLanguage: string;
-}): NimMessage[] {
+}): AiMessage[] {
   return [
     {
       role: 'system',

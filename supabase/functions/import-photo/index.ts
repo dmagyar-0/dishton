@@ -1,5 +1,5 @@
 // import-photo: read an uploaded image from the `imports` bucket via a
-// short-lived signed URL → NIM vision → draft Recipe.
+// short-lived signed URL → Anthropic vision → draft Recipe.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
 import { withTimeout } from '../_shared/timeout.ts';
-import { log, logNimCall } from '../_shared/log.ts';
+import { log, logAiCall } from '../_shared/log.ts';
 
 const INLINE_BUDGET_MS = 30_000;
 
@@ -131,14 +131,16 @@ serve(async (req: Request) => {
       })
       .eq('id', jobId);
 
-    logNimCall({
+    logAiCall({
       request_id: requestId,
       function: 'import-photo',
       lane: 'vision',
-      model: '(default)',
+      model: result.model,
       ms,
       tokens_in: result.usage.input,
       tokens_out: result.usage.output,
+      cache_read: result.usage.cache_read,
+      cache_write: result.usage.cache_write,
       ok: true,
     });
 

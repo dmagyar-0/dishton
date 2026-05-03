@@ -19,8 +19,8 @@ paging.
   Edge Function, Postgres) so each emits the right signal.
 - [04-data-model.md](./04-data-model.md) — `import_jobs` table whose
   `payload` column carries token counts.
-- [07-ai-integration.md](./07-ai-integration.md) — NVIDIA NIM call sites
-  whose latency and token usage are logged.
+- [07-ai-integration.md](./07-ai-integration.md) — Anthropic call sites
+  whose latency, token usage, and cache hits are logged.
 - [08-import-pipelines.md](./08-import-pipelines.md) — the import flow
   whose breadcrumbs and SLOs are defined here.
 - [13-ci-cd-and-environments.md](./13-ci-cd-and-environments.md) —
@@ -106,11 +106,13 @@ Required fields on every log line:
 | `profile_id` | UUID string or `null` | resolved JWT claim |
 | `household_id` | UUID string or `null` | resolved from request |
 | `function` | string | function name (`import-url`, etc.) |
-| `event` | string | machine-readable event name (e.g. `nim.call.start`) |
+| `event` | string | machine-readable event name (e.g. `ai.call.start`) |
 | `latency_ms` | number or `null` | duration of the bracketed work |
-| `nim_tokens_in` | number or `null` | NIM prompt tokens, when applicable |
-| `nim_tokens_out` | number or `null` | NIM completion tokens, when applicable |
-| `nim_model` | string or `null` | model id used |
+| `ai_tokens_in` | number or `null` | Anthropic prompt tokens, when applicable |
+| `ai_tokens_out` | number or `null` | Anthropic completion tokens, when applicable |
+| `ai_cache_read` | number or `null` | tokens served from prompt cache (Anthropic `cache_read_input_tokens`) |
+| `ai_cache_write` | number or `null` | tokens written to prompt cache (Anthropic `cache_creation_input_tokens`) |
+| `ai_model` | string or `null` | model id used (e.g. `claude-haiku-4-5`) |
 | `error` | object or `null` | `{ name, message, stack }` if `level==='error'` |
 
 `console.log(JSON.stringify(line))` is the transport. Supabase captures
@@ -121,9 +123,9 @@ set in the Supabase Dashboard per project per
 Required events per import function:
 
 - `request.start` (level=`info`, `latency_ms=null`)
-- `nim.call.start` (level=`info`)
-- `nim.call.end` (level=`info`, includes `latency_ms`, `nim_tokens_*`)
-- `nim.parse.failure` (level=`warn`) — emitted when re-prompting is needed
+- `ai.call.start` (level=`info`)
+- `ai.call.end` (level=`info`, includes `latency_ms`, `ai_tokens_*`, `ai_cache_*`)
+- `ai.parse.failure` (level=`warn`) — emitted when re-prompting is needed
 - `rate_budget.deny` (level=`warn`)
 - `request.end` (level=`info`, `latency_ms` for the whole request)
 - `request.error` (level=`error`, `error` populated)
@@ -136,8 +138,9 @@ This keeps Sentry quotas predictable.
 ## AI cost dashboard — `app.v_ai_daily_cost`
 
 A read-only Postgres view aggregates token counts from `import_jobs`. The
-`import_jobs.payload` column already stores per-job NIM token counts (set
-by the Edge Functions per [07-ai-integration.md](./07-ai-integration.md)).
+`import_jobs.payload` column already stores per-job Anthropic token counts
+(set by the Edge Functions per
+[07-ai-integration.md](./07-ai-integration.md)).
 
 Definition (creation lives in a migration owned by
 [04-data-model.md](./04-data-model.md), but the shape is fixed here):
@@ -170,11 +173,11 @@ UI:
   [03-design-system.md](./03-design-system.md); no third-party chart
   library beyond what doc 03 already permits.
 
-Free-tier guard: when the day's `tokens_total` exceeds 90% of the NVIDIA
-NIM free-tier daily budget (recorded in
-[07-ai-integration.md](./07-ai-integration.md)), the panel shows a banner
-linking to the rate-budget docs and the import flow displays a passive
-notice ("AI imports may be slow today").
+Cost guard: when the day's `tokens_total` exceeds 90% of the configured
+daily Anthropic spend budget (the per-minute reservation in
+`app.ai_rate_budget` is for short-window throttling, not daily spend), the
+panel shows a banner linking to the rate-budget docs and the import flow
+displays a passive notice ("AI imports may be slow today").
 
 ## Error budgets and SLOs
 
@@ -211,8 +214,9 @@ runbook step links to the page or query that exposes the answer.
    - If empty, the failure is client-side; jump to Sentry and look for
      exceptions with `category: 'import'` breadcrumbs.
    - If populated, group by `error.name` and pick the most common.
-2. Check `app.v_ai_daily_cost` for today: are we above 90% of the free
-   tier? If so, NIM is rate-limiting; the fix is to wait, not to deploy.
+2. Check `app.v_ai_daily_cost` for today: are we above 90% of the
+   configured daily budget? If so, the rate budget is throttling and/or
+   Anthropic is returning 429s; the fix is to wait, not to deploy.
 3. Run `select * from app.import_jobs order by created_at desc limit 20`
    in the Supabase SQL editor and inspect `error` column.
 
@@ -291,7 +295,7 @@ grep -q "## Verification"           docs/14-observability.md
 ! grep -P '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' docs/14-observability.md
 # core nouns appear
 for n in Sentry "Better Stack" "Logtail" v_ai_daily_cost \
-         request_id profile_id nim_tokens_in nim_tokens_out; do
+         request_id profile_id ai_tokens_in ai_tokens_out; do
   grep -q "$n" docs/14-observability.md || echo "missing concept: $n"
 done
 # SLO numbers appear
