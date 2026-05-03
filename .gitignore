@@ -39,3 +39,7 @@ pnpm-debug.log*
 # Claude Code
 .claude/worktrees/
 .claude/settings.local.json
+
+# Eval harness (developer tool)
+eval/nim/urls.txt
+eval/nim/runs/
