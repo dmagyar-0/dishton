@@ -173,9 +173,12 @@ async function callOnce(args: {
       const errLabel = err.kind === 'http'
         ? `http_${err.status ?? 'unknown'}`
         : err.kind;
+      // Timeout calls actually ran for the full timeoutMs; reporting 0 would
+      // make timing-out models look artificially fast in the latency columns.
+      const latencyMs = err.kind === 'timeout' ? args.timeoutMs : 0;
       return {
         raw: err.body ?? '',
-        latencyMs: 0,
+        latencyMs,
         tokensIn: 0,
         tokensOut: 0,
         schemaOk: false,
