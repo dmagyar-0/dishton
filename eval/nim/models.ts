@@ -23,9 +23,16 @@ export type EvalConfig = z.infer<typeof EvalConfigSchema>;
 
 export const config: EvalConfig = EvalConfigSchema.parse({
   candidates: [
+    // NIM — large open-weight models (current production class)
     { id: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'nemotron-70b', provider: 'nim' },
     { id: 'meta/llama-3.3-70b-instruct', label: 'llama-3.3-70b', provider: 'nim' },
+    { id: 'qwen/qwen2.5-72b-instruct', label: 'qwen2.5-72b', provider: 'nim' },
+    { id: 'mistralai/mixtral-8x22b-instruct-v0.1', label: 'mixtral-8x22b', provider: 'nim' },
+    // NIM — small/fast baseline (latency floor reference)
+    { id: 'meta/llama-3.1-8b-instruct', label: 'llama-3.1-8b', provider: 'nim' },
+    // Anthropic — fast and medium tiers for cross-provider comparison
     { id: 'claude-haiku-4-5-20251001', label: 'haiku-4.5', provider: 'anthropic' },
+    { id: 'claude-sonnet-4-6', label: 'sonnet-4.6', provider: 'anthropic' },
   ],
   concurrency: 2,
   repeat: 1,
