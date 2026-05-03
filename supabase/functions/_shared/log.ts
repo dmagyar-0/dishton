@@ -11,9 +11,11 @@ export type LogFields = {
   event: string;
   level?: LogLevel;
   latency_ms?: number | null;
-  nim_tokens_in?: number | null;
-  nim_tokens_out?: number | null;
-  nim_model?: string | null;
+  ai_tokens_in?: number | null;
+  ai_tokens_out?: number | null;
+  ai_cache_read?: number | null;
+  ai_cache_write?: number | null;
+  ai_model?: string | null;
   error?: { name: string; message: string; stack?: string } | null;
   [key: string]: unknown;
 };
@@ -28,7 +30,7 @@ export function log(fields: LogFields): void {
   console.log(JSON.stringify(line));
 }
 
-export function logNimCall(fields: {
+export function logAiCall(fields: {
   request_id: string;
   function: string;
   lane: 'text' | 'vision';
@@ -36,9 +38,11 @@ export function logNimCall(fields: {
   ms: number;
   tokens_in: number;
   tokens_out: number;
+  cache_read?: number;
+  cache_write?: number;
   ok: boolean;
   reason?: string;
 }): void {
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ kind: 'nim_call', ...fields }));
+  console.log(JSON.stringify({ kind: 'ai_call', ...fields }));
 }

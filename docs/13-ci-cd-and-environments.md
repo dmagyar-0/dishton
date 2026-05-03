@@ -13,7 +13,7 @@ add or rotate secrets without reverse-engineering the system.
 ## Prerequisites
 
 - [00-overview.md](./00-overview.md) — locked tooling (`pnpm`, Node 22.x,
-  Vite, Supabase, NVIDIA NIM).
+  Vite, Supabase, Anthropic API).
 - [01-architecture.md](./01-architecture.md) — what runs where (SPA, Edge
   Functions, Postgres) so the deploy graph mirrors process boundaries.
 - [02-tech-stack.md](./02-tech-stack.md) — exact versions used in CI images.
@@ -123,8 +123,8 @@ Steps:
 1. Resolve the Vercel preview URL for the PR via the Vercel GitHub
    integration's deployment status webhook (read from
    `github.event.deployment_status.target_url`).
-2. Set `NIM_MOCK_MODE=playwright` in the preview environment so the Edge
-   Function reads `e2e/fixtures/nim-draft.json` instead of calling NVIDIA.
+2. Set `AI_MOCK_MODE=playwright` in the preview environment so the Edge
+   Function reads `e2e/fixtures/ai-draft.json` instead of calling Anthropic.
 3. Run `pnpm test:e2e --reporter=github` against the resolved URL.
 4. Upload Playwright traces and videos as artifacts on failure.
 
@@ -149,7 +149,7 @@ Steps (sequential, fail-fast):
    migration list and the Vercel deployment URL.
 
 There is no separate staging environment. PR previews + the locked
-preview-against-NIM-mock pattern cover that role.
+preview-against-AI-mock pattern cover that role.
 
 ## Supabase migration policy
 
@@ -184,7 +184,8 @@ environments need it. Names are exact.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin (Edge Functions only) | yes | yes | yes | Supabase Dashboard env per project; never in Vercel |
 | `SUPABASE_ACCESS_TOKEN` | CLI auth in CI | no | yes | yes | GitHub Actions secret `SUPABASE_ACCESS_TOKEN` |
 | `SUPABASE_PROJECT_REF` | Tells `supabase link` which project | no | yes | yes | GitHub Actions secrets `SUPABASE_PROJECT_REF_PREVIEW`, `SUPABASE_PROJECT_REF_PROD` |
-| `NVIDIA_API_KEY` | NIM auth for Edge Functions | yes | yes | yes | Supabase Dashboard function secrets per project |
+| `ANTHROPIC_API_KEY` | Anthropic API auth for Edge Functions | yes | yes | yes | Supabase Dashboard function secrets per project |
+| `ANTHROPIC_MODEL` | Optional override; defaults to `claude-haiku-4-5` | no | optional | optional | Supabase Dashboard function secrets per project |
 | `SENTRY_DSN_FRONTEND` | SPA error reporting | no (off) | yes | yes | Vercel env |
 | `SENTRY_DSN_FUNCTIONS` | Edge Function error reporting | no (off) | yes | yes | Supabase Dashboard function secrets |
 | `SENTRY_AUTH_TOKEN` | Source-map upload during build | no | yes | yes | GitHub Actions secret |
@@ -285,7 +286,7 @@ for w in ci.yml e2e.yml deploy.yml; do
 done
 # every secret is named
 for s in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
-         SUPABASE_ACCESS_TOKEN NVIDIA_API_KEY SENTRY_DSN_FRONTEND \
+         SUPABASE_ACCESS_TOKEN ANTHROPIC_API_KEY SENTRY_DSN_FRONTEND \
          SENTRY_DSN_FUNCTIONS LOGTAIL_TOKEN VERCEL_TOKEN; do
   grep -q "$s" docs/13-ci-cd-and-environments.md || echo "missing secret: $s"
 done

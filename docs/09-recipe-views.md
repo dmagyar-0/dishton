@@ -201,7 +201,7 @@ Selecting an uncached language:
 2. Posts to `/functions/v1/translate-recipe` with `{ recipe_id, lang }`.
 3. Edge Function checks the cache row: if `source_hash` matches the live
    recipe and language matches, returns the cached payload. Otherwise calls
-   NIM with the translation prompt (see
+   Anthropic with the translation prompt (see
    [07-ai-integration.md](./07-ai-integration.md)), validates against
    Recipe, upserts `recipe_translations`, returns the payload.
 4. SPA invalidates the recipe query and re-renders.
@@ -296,7 +296,7 @@ When `prefers-reduced-motion: reduce`:
 - [ ] `useDisplayedRecipe` is referentially stable across re-renders when
       inputs are unchanged (verified by a render-count test).
 - [ ] Translation toggle hits the cache on the second request to the same
-      language for the same recipe — no NIM call.
+      language for the same recipe — no Anthropic call.
 - [ ] Cooking-mode acquires Wake Lock and releases it on exit and on
       `visibilitychange`.
 - [ ] All keyboard shortcuts work and are listed in the help dialog.

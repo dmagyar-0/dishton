@@ -1,5 +1,5 @@
-// Tests for import-instagram. The function combines oEmbed + NIM; both are
-// mocked via mock_fetch.
+// Tests for import-instagram. The function combines oEmbed + Anthropic;
+// both are mocked via mock_fetch.
 
 import { assert } from 'jsr:@std/assert';
 import { installMockFetch, jsonResponse } from '../_shared/mock_fetch.ts';

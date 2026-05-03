@@ -6,7 +6,7 @@ Define the test pyramid for Dishton so that every change ships with the right
 flavour of automated coverage. The non-negotiable safety net is `src/domain/*`
 (unit conversion, scaling, fraction rounding) — humans cook from this code, so
 those modules are tested exhaustively. Around that core sit component tests for
-UI primitives and recipe screens, Edge Function tests with NVIDIA NIM mocked,
+UI primitives and recipe screens, Edge Function tests with Anthropic mocked,
 a Supabase test harness that asserts schema and RLS, and a tight Playwright
 smoke covering the end-to-end import → view → scale → toggle flow. This doc
 specifies which tooling is used, where each test type lives, the coverage
@@ -23,7 +23,7 @@ targets, and how the suites are wired into CI.
   `pnpm test:db`.
 - [06-recipe-domain.md](./06-recipe-domain.md) — Zod schemas, unit graph, and
   scaling rules under exhaustive Vitest cover.
-- [07-ai-integration.md](./07-ai-integration.md) — NVIDIA NIM client signature
+- [07-ai-integration.md](./07-ai-integration.md) — Anthropic client signature
   that Edge Function tests mock via `MockFetch`.
 
 ## Test pyramid
@@ -32,7 +32,7 @@ targets, and how the suites are wired into CI.
                 ┌──────────────────────┐
                 │  E2E (Playwright)    │   1 smoke flow
                 ├──────────────────────┤
-                │  Edge Function tests │   per function, NIM mocked
+                │  Edge Function tests │   per function, Anthropic mocked
                 │  Supabase harness    │   DDL + RLS assertions
                 ├──────────────────────┤
                 │  Component tests     │   primitives + key screens
@@ -128,7 +128,7 @@ pnpm test:components       # vitest run --project components
 Scope: every Deno function under `/home/user/dishton/supabase/functions/*`.
 Each function has a sibling `*_test.ts` (Deno convention).
 
-NVIDIA NIM and any other outbound `fetch` is mocked via a small `MockFetch`
+Anthropic and any other outbound `fetch` is mocked via a small `MockFetch`
 helper at `supabase/functions/_shared/mock_fetch.ts`. The helper installs a
 typed handler over `globalThis.fetch`, asserts the request URL, headers, and
 JSON body, and returns a canned response. Every test must restore `fetch` via
@@ -136,12 +136,13 @@ JSON body, and returns a canned response. Every test must restore `fetch` via
 
 Required cases per function:
 
-- `import-url`: happy path (HTML fixture → readability → NIM JSON → Zod-valid
-  draft); NIM returns malformed JSON, function re-prompts once; second failure
-  surfaces a typed error to the SPA; rate-budget exhausted returns `429`.
+- `import-url`: happy path (HTML fixture → readability → Anthropic JSON →
+  Zod-valid draft); Anthropic returns malformed JSON, function re-prompts
+  once; second failure surfaces a typed error to the SPA; rate-budget
+  exhausted returns `429`.
 - `import-instagram`: oEmbed 200 happy path; oEmbed 404; private post.
-- `import-photo`: vision-model happy path with a tiny PNG fixture (base64);
-  NIM image-too-large error; profanity-filter rejection.
+- `import-photo`: vision happy path with a tiny PNG fixture (base64);
+  Anthropic image-too-large error; profanity-filter rejection.
 - `translate-recipe`: cache hit short-circuit; cache miss writes
   `recipe_translations`; identical source/target language returns input.
 - `convert-units`: optional helper, asserted to match `src/domain/units/`
@@ -187,8 +188,8 @@ command (see [13-ci-cd-and-environments.md](./13-ci-cd-and-environments.md)).
 
 ## Layer 5 — Playwright smoke E2E
 
-Scope: a single happy-path scenario that exercises the full stack with NVIDIA
-NIM mocked at the Edge Function boundary. Anything more elaborate belongs in
+Scope: a single happy-path scenario that exercises the full stack with the
+Anthropic API mocked at the Edge Function boundary. Anything more elaborate belongs in
 the component or unit layer.
 
 Location: `/home/user/dishton/e2e/`.
@@ -196,7 +197,7 @@ Location: `/home/user/dishton/e2e/`.
 - `e2e/playwright.config.ts` — three browsers? no. Chromium only on CI; add
   `--project=webkit` locally if needed. Base URL points at the Vite preview
   server started by the `webServer` block.
-- `e2e/fixtures/` — recipe HTML fixture, NIM canned response, image fixture.
+- `e2e/fixtures/` — recipe HTML fixture, AI canned response, image fixture.
 - `e2e/smoke.spec.ts` — the scenario.
 
 Required scenario steps (one test, in order):
@@ -206,9 +207,9 @@ Required scenario steps (one test, in order):
    "Test Kitchen".
 3. Navigate to import; paste a fixture URL pointing at the local fixture
    server.
-4. The Edge Function returns the canned NIM draft (test sets the
-   `NIM_MOCK_MODE=playwright` flag so the function reads from
-   `e2e/fixtures/nim-draft.json` instead of calling the real API).
+4. The Edge Function returns the canned AI draft (test sets the
+   `AI_MOCK_MODE=playwright` flag so the function reads from
+   `e2e/fixtures/ai-draft.json` instead of calling the real API).
 5. Approve the draft; confirm the recipe detail page renders the title,
    ingredients, and steps.
 6. Move the scale slider to "4 servings"; assert at least one ingredient
@@ -259,8 +260,8 @@ The summary:
 - `ci.yml` also runs `pnpm test:edge` (Deno installed via the official action)
   and `pnpm test:db` after starting the local Supabase stack.
 - `e2e.yml` runs `pnpm test:e2e` against a Vercel preview deployment of the
-  PR branch. NIM is mocked via the same `NIM_MOCK_MODE=playwright` flag so
-  the preview never calls the live NVIDIA API during tests.
+  PR branch. Anthropic is mocked via the same `AI_MOCK_MODE=playwright`
+  flag so the preview never calls the live Anthropic API during tests.
 - A failing test at any layer blocks merge to `main`.
 
 ## Files this doc governs
@@ -290,15 +291,15 @@ The summary:
 - [ ] `RecipeDetail.test.tsx`, `RecipeList.test.tsx`, and
       `RecipeImportPanel.test.tsx` exist with the cases listed above.
 - [ ] Each Edge Function has a sibling `*_test.ts` exercising happy path,
-      one NIM failure mode, and one rate-limit case via `MockFetch`.
+      one Anthropic failure mode, and one rate-limit case via `MockFetch`.
 - [ ] `pnpm test:db` runs DDL and RLS assertions against a local Supabase
       stack and exits non-zero on any failure.
-- [ ] `e2e/smoke.spec.ts` covers signup → household → URL import (NIM
+- [ ] `e2e/smoke.spec.ts` covers signup → household → URL import (Anthropic
       mocked) → recipe view → scale to 4 servings → unit toggle → language
       toggle and passes against a fresh local stack.
 - [ ] `pnpm test` runs all five layers sequentially.
-- [ ] No test calls the live NVIDIA NIM API. CI greps for
-      `integrate.api.nvidia.com` outside of `supabase/functions/**` and
+- [ ] No test calls the live Anthropic API. CI greps for
+      `api.anthropic.com` outside of `supabase/functions/**` and
       `docs/**` and fails if found in test files.
 - [ ] No emoji anywhere in this doc.
 

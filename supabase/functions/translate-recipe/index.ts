@@ -1,5 +1,5 @@
-// translate-recipe: cache lookup; on miss, call NIM with the translation
-// prompt, validate, upsert recipe_translations, return the payload.
+// translate-recipe: cache lookup; on miss, call Anthropic with the
+// translation prompt, validate, upsert recipe_translations, return payload.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { translatePrompt } from '../_shared/ai/prompts.ts';
-import { log, logNimCall } from '../_shared/log.ts';
+import { log, logAiCall } from '../_shared/log.ts';
 
 const Body = z.object({
   recipe_id: z.string().uuid(),
@@ -100,7 +100,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 3. miss → NIM
+    // 3. miss → Anthropic
     const budget = await withRateBudget(2500, () =>
       callAndValidate({
         lane: 'text',
@@ -138,14 +138,16 @@ serve(async (req: Request) => {
         source_hash: sourceHash,
       });
 
-    logNimCall({
+    logAiCall({
       request_id: requestId,
       function: 'translate-recipe',
       lane: 'text',
-      model: '(default)',
+      model: result.model,
       ms,
       tokens_in: result.usage.input,
       tokens_out: result.usage.output,
+      cache_read: result.usage.cache_read,
+      cache_write: result.usage.cache_write,
       ok: true,
     });
 

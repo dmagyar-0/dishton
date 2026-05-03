@@ -1,4 +1,4 @@
-// import-url: paste a blog/article URL → readability extract → NIM →
+// import-url: paste a blog/article URL → readability extract → Anthropic →
 // validated draft Recipe + import_jobs row.
 //
 // Never writes to app.recipes; the SPA does that on Save via app.save_recipe.
@@ -12,7 +12,7 @@ import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
 import { withTimeout } from '../_shared/timeout.ts';
-import { log, logNimCall } from '../_shared/log.ts';
+import { log, logAiCall } from '../_shared/log.ts';
 
 const Body = z.object({
   url: z.string().url(),
@@ -165,7 +165,7 @@ serve(async (req: Request) => {
         })
         .eq('id', job.id);
 
-      logNimCall({
+      logAiCall({
         request_id: requestId,
         function: 'import-url',
         lane: 'text',
@@ -199,14 +199,16 @@ serve(async (req: Request) => {
       })
       .eq('id', job.id);
 
-    logNimCall({
+    logAiCall({
       request_id: requestId,
       function: 'import-url',
       lane: 'text',
-      model: '(default)',
+      model: result.model,
       ms,
       tokens_in: result.usage.input,
       tokens_out: result.usage.output,
+      cache_read: result.usage.cache_read,
+      cache_write: result.usage.cache_write,
       ok: true,
     });
 

@@ -1,11 +1,11 @@
-// Bridges NIM output to the canonical Recipe schema, with one re-prompt on
+// Bridges AI output to the canonical Recipe schema, with one re-prompt on
 // JSON parse failure. Schema failures do not retry — they hit needs_review.
 
 import { Recipe, type Recipe as RecipeType } from '../domain/recipe.ts';
-import { nimChat, type NimCallOpts, type NimResult } from './client.ts';
+import { aiChat, type AiCallOpts, type AiResult } from './client.ts';
 
 export type ValidationResult =
-  | { ok: true; recipe: RecipeType; usage: NimResult['usage']; raw: string }
+  | { ok: true; recipe: RecipeType; usage: AiResult['usage']; model: string; raw: string }
   | { ok: false; reason: 'parse' | 'schema' | 'rate_limit' | 'upstream'; raw: string };
 
 function tryParseJson(text: string):
@@ -19,14 +19,15 @@ function tryParseJson(text: string):
   }
 }
 
-export async function callAndValidate(opts: NimCallOpts): Promise<ValidationResult> {
-  const first = await nimChat(opts);
+export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResult> {
+  const first = await aiChat(opts);
   let parsed = tryParseJson(first.content);
   let raw = first.content;
-  let usage = { ...first.usage };
+  let usage: AiResult['usage'] = { ...first.usage };
+  const model = first.model;
 
   if (!parsed.ok) {
-    const retry = await nimChat({
+    const retry = await aiChat({
       ...opts,
       messages: [
         ...opts.messages,
@@ -42,6 +43,8 @@ Return ONLY a single JSON object that matches the schema. No commentary.`,
     usage = {
       input: usage.input + retry.usage.input,
       output: usage.output + retry.usage.output,
+      cache_read: (usage.cache_read ?? 0) + (retry.usage.cache_read ?? 0) || undefined,
+      cache_write: (usage.cache_write ?? 0) + (retry.usage.cache_write ?? 0) || undefined,
     };
     parsed = tryParseJson(retry.content);
     if (!parsed.ok) {
@@ -53,5 +56,5 @@ Return ONLY a single JSON object that matches the schema. No commentary.`,
   if (!safe.success) {
     return { ok: false, reason: 'schema', raw: JSON.stringify(parsed.value) };
   }
-  return { ok: true, recipe: safe.data, usage, raw };
+  return { ok: true, recipe: safe.data, usage, model, raw };
 }

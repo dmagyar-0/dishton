@@ -2,17 +2,16 @@
 // during cold start so deploy-time misconfigurations surface immediately.
 
 const REQUIRED = [
-  'NVIDIA_API_KEY',
-  'NIM_TEXT_MODEL',
-  'NIM_VISION_MODEL',
+  'ANTHROPIC_API_KEY',
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
 ] as const;
 
 const OPTIONAL = [
+  'ANTHROPIC_MODEL',
   'IG_OEMBED_TOKEN',
   'LOG_DRAIN_TOKEN',
-  'NIM_MOCK_MODE',
+  'AI_MOCK_MODE',
   'SENTRY_DSN_FUNCTIONS',
 ] as const;
 

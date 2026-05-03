@@ -192,10 +192,10 @@ integration test that proves the stream is done.
 - **Stream 2b — AI integration.**
   - Consumes: `06`.
   - Owns: `docs/07-ai-integration.md`,
-    `/home/user/dishton/supabase/functions/_shared/nim.ts`,
-    `/home/user/dishton/supabase/functions/_shared/prompts/`.
-  - Done test: `pnpm test:edge` passes for shared NIM client tests with
-    `MockFetch`.
+    `/home/user/dishton/supabase/functions/_shared/ai/client.ts`,
+    `/home/user/dishton/supabase/functions/_shared/ai/prompts.ts`.
+  - Done test: `pnpm test:edge` passes for shared Anthropic client tests
+    with `MockFetch`.
 
 ### Tier 3 — Imports (1 stream)
 

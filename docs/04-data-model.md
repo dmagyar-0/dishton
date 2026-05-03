@@ -213,7 +213,7 @@ create table app.import_jobs (
 create index on app.import_jobs (profile_id, created_at desc);
 create index on app.import_jobs (status) where status in ('queued','running');
 
--- single-row token bucket for NIM rate budget
+-- single-row token bucket for Anthropic rate budget
 create table app.ai_rate_budget (
   id boolean primary key default true check (id),
   window_started_at timestamptz not null default now(),
