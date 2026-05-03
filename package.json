@@ -21,6 +21,8 @@
     "test:edge": "deno test -A --config supabase/functions/deno.json supabase/functions",
     "test:db": "deno run -A supabase/tests/run.ts",
     "test:e2e": "playwright test",
+    "eval:nim": "deno run --env-file=.env --config eval/nim/deno.json --allow-net --allow-read --allow-env --allow-write eval/nim/run.ts eval/nim/urls.txt",
+    "test:eval": "deno test --config eval/nim/deno.json -A eval/nim",
     "db:reset": "supabase db reset",
     "fn:serve": "supabase functions serve --no-verify-jwt",
     "fn:deploy": "supabase functions deploy"
