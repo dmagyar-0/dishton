@@ -22,6 +22,17 @@ type CliArgs = {
   dryRun: boolean;
 };
 
+function parsePositiveInt(flag: string, raw: string | undefined): number {
+  if (raw === undefined) {
+    throw new Error(`${flag} requires a positive integer argument`);
+  }
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new Error(`${flag} requires a positive integer (got "${raw}")`);
+  }
+  return n;
+}
+
 function parseArgs(argv: string[]): CliArgs {
   let urlsFile: string | null = null;
   let repeat: number | null = null;
@@ -31,9 +42,9 @@ function parseArgs(argv: string[]): CliArgs {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     if (a === '--repeat') {
-      repeat = parseInt(argv[++i] ?? '', 10);
+      repeat = parsePositiveInt('--repeat', argv[++i]);
     } else if (a === '--concurrency') {
-      concurrency = parseInt(argv[++i] ?? '', 10);
+      concurrency = parsePositiveInt('--concurrency', argv[++i]);
     } else if (a === '--out') {
       out = argv[++i] ?? null;
     } else if (a === '--dry-run') {
