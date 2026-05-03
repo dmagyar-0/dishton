@@ -5,8 +5,8 @@ Deno.test('report: percentile p50 of [1,2,3] is 2', () => {
   assertEquals(percentile([1, 2, 3], 50), 2);
 });
 
-Deno.test('report: percentile p95 of [10,20,30,40,50,60,70,80,90,100] is 100', () => {
-  assertEquals(percentile([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], 95), 100);
+Deno.test('report: percentile p95 of [10..100] linearly interpolates to 95.5', () => {
+  assertEquals(percentile([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], 95), 95.5);
 });
 
 Deno.test('report: percentile of empty list is null', () => {

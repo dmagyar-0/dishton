@@ -49,18 +49,11 @@ export type ModelAggregate = {
 export function percentile(values: number[], p: number): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
-  // Use the inclusive method: rank = 1 + (p/100) * (n - 1)
-  // This gives position in 1-based indexing
-  const rank = 1 + (p / 100) * (sorted.length - 1);
-  const lo = Math.floor(rank) - 1; // Convert to 0-based index
-  const hi = Math.ceil(rank) - 1;
+  const rank = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
   if (lo === hi) return sorted[lo]!;
-  // For high percentiles (p >= 90), round to upper value
-  if (p >= 90) {
-    return sorted[hi]!;
-  }
-  // Linear interpolation for lower percentiles
-  const frac = rank - Math.floor(rank);
+  const frac = rank - lo;
   return sorted[lo]! * (1 - frac) + sorted[hi]! * frac;
 }
 
