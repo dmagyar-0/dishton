@@ -4,6 +4,7 @@
 import { config as defaultConfig, type EvalConfig } from './models.ts';
 import { fetchAndExtract, FetchError } from './fetch.ts';
 import { callNim, NimError } from './client.ts';
+import { callAnthropic, AnthropicError } from './anthropic.ts';
 import {
   type ModelOutcome,
   renderConsole,
@@ -117,8 +118,8 @@ function validateRaw(raw: string): { schemaOk: true } | { schemaOk: false; error
 }
 
 async function callOnce(args: {
-  apiKey: string;
-  model: { id: string; label?: string; temperature?: number; maxTokens?: number };
+  apiKeys: { nim?: string; anthropic?: string };
+  model: { id: string; label?: string; provider: 'nim' | 'anthropic'; temperature?: number; maxTokens?: number };
   url: string;
   cleanedText: string;
   timeoutMs: number;
@@ -131,14 +132,24 @@ async function callOnce(args: {
   error?: string;
 }> {
   try {
-    const r = await callNim({
-      apiKey: args.apiKey,
-      model: args.model.id,
-      messages: structuringFromHtml({ html: args.cleanedText, sourceUrl: args.url }),
-      temperature: args.model.temperature,
-      maxTokens: args.model.maxTokens,
-      timeoutMs: args.timeoutMs,
-    });
+    const messages = structuringFromHtml({ html: args.cleanedText, sourceUrl: args.url });
+    const r = args.model.provider === 'anthropic'
+      ? await callAnthropic({
+          apiKey: args.apiKeys.anthropic!,
+          model: args.model.id,
+          messages,
+          temperature: args.model.temperature,
+          maxTokens: args.model.maxTokens,
+          timeoutMs: args.timeoutMs,
+        })
+      : await callNim({
+          apiKey: args.apiKeys.nim!,
+          model: args.model.id,
+          messages,
+          temperature: args.model.temperature,
+          maxTokens: args.model.maxTokens,
+          timeoutMs: args.timeoutMs,
+        });
     const v = validateRaw(r.raw);
     if (v.schemaOk) {
       return {
@@ -158,7 +169,7 @@ async function callOnce(args: {
       error: v.error,
     };
   } catch (err) {
-    if (err instanceof NimError) {
+    if (err instanceof NimError || err instanceof AnthropicError) {
       const errLabel = err.kind === 'http'
         ? `http_${err.status ?? 'unknown'}`
         : err.kind;
@@ -176,8 +187,8 @@ async function callOnce(args: {
 }
 
 async function evaluateUrl(args: {
-  apiKey: string;
-  model: { id: string; label?: string; temperature?: number; maxTokens?: number };
+  apiKeys: { nim?: string; anthropic?: string };
+  model: { id: string; label?: string; provider: 'nim' | 'anthropic'; temperature?: number; maxTokens?: number };
   url: string;
   cleanedText: string;
   timeoutMs: number;
@@ -193,7 +204,7 @@ async function evaluateUrl(args: {
   }[] = [];
   for (let i = 0; i < args.repeat; i++) {
     calls.push(await callOnce({
-      apiKey: args.apiKey,
+      apiKeys: args.apiKeys,
       model: args.model,
       url: args.url,
       cleanedText: args.cleanedText,
@@ -247,11 +258,8 @@ async function main(): Promise<number> {
     return 2;
   }
 
-  const apiKey = Deno.env.get('NVIDIA_API_KEY');
-  if (!apiKey) {
-    console.error('error: NVIDIA_API_KEY is not set');
-    return 2;
-  }
+  // We'll read URL list and config first, then validate env keys based on
+  // which providers the candidate list actually uses.
 
   let urls: string[];
   try {
@@ -266,6 +274,26 @@ async function main(): Promise<number> {
   }
 
   const cfg = applyOverrides(defaultConfig, args);
+
+  const usesNim = cfg.candidates.some((c) => c.provider === 'nim');
+  const usesAnthropic = cfg.candidates.some((c) => c.provider === 'anthropic');
+  const apiKeys: { nim?: string; anthropic?: string } = {};
+  if (usesNim) {
+    const k = Deno.env.get('NVIDIA_API_KEY');
+    if (!k) {
+      console.error('error: NVIDIA_API_KEY is not set (required by at least one candidate)');
+      return 2;
+    }
+    apiKeys.nim = k;
+  }
+  if (usesAnthropic) {
+    const k = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!k) {
+      console.error('error: ANTHROPIC_API_KEY is not set (required by at least one candidate)');
+      return 2;
+    }
+    apiKeys.anthropic = k;
+  }
 
   if (args.dryRun) {
     console.log('dry-run OK');
@@ -306,7 +334,7 @@ async function main(): Promise<number> {
     console.error(`evaluating model: ${cand.label ?? cand.id}`);
     const outcomes = await withConcurrency(fetched, cfg.concurrency, async (f) => {
       const o = await evaluateUrl({
-        apiKey,
+        apiKeys,
         model: cand,
         url: f.url,
         cleanedText: f.text,

@@ -6,6 +6,7 @@ import { z } from 'zod';
 export const CandidateSchema = z.object({
   id: z.string().min(1),
   label: z.string().optional(),
+  provider: z.enum(['nim', 'anthropic']).default('nim'),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().int().positive().optional(),
 });
@@ -22,8 +23,9 @@ export type EvalConfig = z.infer<typeof EvalConfigSchema>;
 
 export const config: EvalConfig = EvalConfigSchema.parse({
   candidates: [
-    { id: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'nemotron-70b' },
-    { id: 'meta/llama-3.3-70b-instruct', label: 'llama-3.3-70b' },
+    { id: 'nvidia/llama-3.1-nemotron-70b-instruct', label: 'nemotron-70b', provider: 'nim' },
+    { id: 'meta/llama-3.3-70b-instruct', label: 'llama-3.3-70b', provider: 'nim' },
+    { id: 'claude-haiku-4-5-20251001', label: 'haiku-4.5', provider: 'anthropic' },
   ],
   concurrency: 2,
   repeat: 1,
