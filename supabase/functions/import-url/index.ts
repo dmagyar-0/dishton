@@ -11,6 +11,7 @@ import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
+import { withTimeout } from '../_shared/timeout.ts';
 import { log, logNimCall } from '../_shared/log.ts';
 
 const Body = z.object({
@@ -20,13 +21,17 @@ const Body = z.object({
 
 const MAX_BYTES = 5_000_000;
 const MAX_REDIRECTS = 3;
+const INLINE_BUDGET_MS = 30_000;
 
-async function fetchHtml(url: string): Promise<string> {
+async function fetchHtml(url: string, parent?: AbortSignal): Promise<string> {
+  const signal = parent
+    ? AbortSignal.any([parent, AbortSignal.timeout(15_000)])
+    : AbortSignal.timeout(15_000);
   const res = await fetch(url, {
     method: 'GET',
     redirect: 'follow',
     headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
-    signal: AbortSignal.timeout(15_000),
+    signal,
   });
   if (!res.ok) throw new HttpError(502, 'fetch_failed', { status: res.status });
   if (res.redirected) {
@@ -83,6 +88,12 @@ serve(async (req: Request) => {
       event: 'request.start',
     });
 
+    // Reap rows whose worker was hard-killed (no DB heartbeat exists, so a
+    // crashed run leaves status='running' until something flips it). Run
+    // this BEFORE the cap check so a wedged user (2/2 stuck) self-recovers
+    // on their next attempt.
+    await caller.client.rpc('reap_stuck_imports');
+
     // Concurrency check
     const { count } = await caller.client
       .from('import_jobs')
@@ -105,19 +116,21 @@ serve(async (req: Request) => {
     if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
     jobId = job.id as string;
 
-    const html = await fetchHtml(body.url);
-    const dom = parseHTML(html);
-    const reader = new Readability(dom.document);
-    const article = reader.parse();
-    const text = article?.textContent ?? html;
-
-    const budget = await withRateBudget(4000, () =>
-      callAndValidate({
-        lane: 'text',
-        messages: structuringFromHtml({ html: text, sourceUrl: body.url }),
-        estimatedTokens: 4000,
-      }),
-    );
+    const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
+      const html = await fetchHtml(body.url, signal);
+      const dom = parseHTML(html);
+      const reader = new Readability(dom.document);
+      const article = reader.parse();
+      const text = article?.textContent ?? html;
+      return await withRateBudget(4000, () =>
+        callAndValidate({
+          lane: 'text',
+          messages: structuringFromHtml({ html: text, sourceUrl: body.url }),
+          estimatedTokens: 4000,
+          signal,
+        }),
+      );
+    });
 
     if (budget.status === 'rate_limit') {
       await caller.client
