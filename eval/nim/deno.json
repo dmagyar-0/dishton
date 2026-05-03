@@ -6,5 +6,5 @@
     "linkedom": "npm:linkedom@0.18"
   },
   "lock": false,
-  "nodeModulesDir": false
+  "nodeModulesDir": "none"
 }
