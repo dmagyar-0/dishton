@@ -6,6 +6,10 @@
 // Recipe field being added but not advertised to the model.
 
 import type { AiMessage } from './client.ts';
+import type { ScrapedRecipe } from '../scrape/recipe-jsonld.ts';
+
+const HTML_CAP_WITH_SCRAPED = 16_000;
+const HTML_CAP_WITHOUT_SCRAPED = 32_000;
 
 export const RECIPE_JSON_SHAPE = `
 The JSON object MUST match this TypeScript type exactly:
@@ -53,7 +57,10 @@ export function structuringFromHtml(args: {
   html: string;
   sourceUrl: string;
   hint?: string;
+  scraped?: ScrapedRecipe | null;
 }): AiMessage[] {
+  const cap = args.scraped ? HTML_CAP_WITH_SCRAPED : HTML_CAP_WITHOUT_SCRAPED;
+  const html = args.html.length > cap ? args.html.slice(0, cap) : args.html;
   return [
     {
       role: 'system',
@@ -62,13 +69,26 @@ export function structuringFromHtml(args: {
     {
       role: 'user',
       content: `Source URL: ${args.sourceUrl}
-${args.hint ? `Hint: ${args.hint}\n` : ''}
+${args.hint ? `Hint: ${args.hint}\n` : ''}${args.scraped ? formatScraped(args.scraped) : ''}
 HTML (already cleaned by Readability):
 """
-${args.html}
+${html}
 """`,
     },
   ];
+}
+
+function formatScraped(s: ScrapedRecipe): string {
+  return `Structured recipe data was extracted from the page's schema.org JSON-LD. \
+Treat this as the PRIMARY source of truth. Use the HTML below only for fields \
+not present here, or to disambiguate.
+
+Structured data (JSON):
+"""
+${JSON.stringify(s, null, 2)}
+"""
+
+`;
 }
 
 export function structuringFromCaption(args: {
