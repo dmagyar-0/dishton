@@ -4,7 +4,7 @@
 
 import { assert, assertEquals, assertStringIncludes } from 'jsr:@std/assert';
 import { Recipe } from '../domain/recipe.ts';
-import { RECIPE_JSON_SHAPE } from './prompts.ts';
+import { RECIPE_JSON_SHAPE, structuringFromImage } from './prompts.ts';
 
 const RECIPE_FIELDS = [
   'title',
@@ -66,4 +66,46 @@ Deno.test('Recipe.parse accepts a sample structuring response', () => {
   const out = Recipe.safeParse(sample);
   assert(out.success, JSON.stringify(out));
   if (out.success) assertEquals(out.data.title, 'Tomato Tarte Tatin');
+});
+
+function getUserText(messages: ReturnType<typeof structuringFromImage>): string {
+  const user = messages.find((m) => m.role === 'user');
+  assert(user, 'expected a user message');
+  const content = user.content;
+  assert(Array.isArray(content), 'expected user content to be an array');
+  const textPart = content.find((c) => c.type === 'text');
+  assert(textPart && textPart.type === 'text', 'expected a text part');
+  return textPart.text;
+}
+
+Deno.test('structuringFromImage without comment matches the original instruction', () => {
+  const messages = structuringFromImage({ imageUrl: 'https://example.test/x.jpg' });
+  const text = getUserText(messages);
+  assertEquals(
+    text,
+    'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.',
+  );
+});
+
+Deno.test('structuringFromImage with comment appends a fenced user note', () => {
+  const messages = structuringFromImage({
+    imageUrl: 'https://example.test/x.jpg',
+    comment: 'the title is in Italian',
+  });
+  const text = getUserText(messages);
+  assertStringIncludes(text, 'User note:');
+  assertStringIncludes(text, '"""\nthe title is in Italian\n"""');
+  assertStringIncludes(text, 'Apply it ONLY if it is clearly relevant');
+});
+
+Deno.test('structuringFromImage with whitespace-only comment behaves as if absent', () => {
+  const messages = structuringFromImage({
+    imageUrl: 'https://example.test/x.jpg',
+    comment: '   \n  ',
+  });
+  const text = getUserText(messages);
+  assertEquals(
+    text,
+    'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.',
+  );
 });
