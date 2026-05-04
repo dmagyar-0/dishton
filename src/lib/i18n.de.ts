@@ -40,10 +40,10 @@ export default {
   },
   import: {
     tab_url: 'URL',
-    tab_instagram: 'Instagram',
     tab_photo: 'Foto',
     tab_manual: 'Manuell',
     url_placeholder: 'https://example.com/recipe',
+    supported_sources_label: 'Rezept-Blogs und Instagram-Posts',
     submit: 'Importieren',
     preparing: 'Mise en place',
     progress_label: 'Rezept wird importiert',
@@ -88,5 +88,7 @@ export default {
     source_too_large: 'Diese Seite ist zu groß für den Import. Versuche eine kürzere Rezept-URL.',
     parse_failed: 'Wir konnten kein Rezept aus dieser Seite extrahieren.',
     schema_failed: 'Der Seite fehlen einige Rezeptdetails, die wir brauchen.',
+    instagram_unavailable:
+      'Instagram hat diesen Post nicht freigegeben. Versuche einen öffentlichen Post oder gib das Rezept manuell ein.',
   },
 } as const;
