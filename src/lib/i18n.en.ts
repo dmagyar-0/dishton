@@ -70,6 +70,12 @@ export default {
     },
     step_plate: { label: 'Plating the draft', short: 'Plate', hint: 'Arranging it just so…' },
     long_wait_hint: 'Long recipe — still simmering. This can take up to a minute.',
+    photo_pick_label: 'Choose a photo',
+    photo_hint: 'JPEG or PNG, up to 10 MB',
+    photo_comment_label: 'Notes for the AI (optional)',
+    photo_comment_placeholder:
+      'e.g. ignore the handwriting in the margin, focus on the recipe in the centre',
+    photo_comment_hint: "If your note isn't relevant to the image, the AI will ignore it.",
   },
   errors: {
     rate_limit: 'Importer is busy. Try again in a minute.',
@@ -86,5 +92,9 @@ export default {
     schema_failed: 'The page is missing some recipe details we need.',
     instagram_unavailable:
       "Instagram couldn't share that post. Try a public post or paste the recipe manually.",
+    photo_too_large: 'That photo is over the 10 MB limit. Try a smaller image.',
+    photo_wrong_type: 'Pick a JPEG or PNG image.',
+    photo_upload_failed: "We couldn't upload that photo. Try again in a moment.",
+    object_not_found: "We couldn't find the uploaded photo. Try again.",
   },
 } as const;

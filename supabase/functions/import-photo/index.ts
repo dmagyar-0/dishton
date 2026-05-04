@@ -16,6 +16,7 @@ const Body = z.object({
   job_id: z.string().uuid().optional(),
   household_id: z.string().uuid(),
   path: z.string().min(1),
+  comment: z.string().trim().max(500).optional(),
 });
 
 serve(async (req: Request) => {
@@ -50,6 +51,8 @@ serve(async (req: Request) => {
       .eq('status', 'running');
     if ((count ?? 0) >= 2) throw new HttpError(409, 'too_many_imports');
 
+    const trimmedComment = body.comment?.trim() || undefined;
+
     jobId = body.job_id ?? null;
     if (!jobId) {
       const { data: job, error: jobErr } = await caller.client
@@ -59,7 +62,9 @@ serve(async (req: Request) => {
           household_id: body.household_id,
           kind: 'photo',
           status: 'running',
-          payload: { path: body.path },
+          payload: trimmedComment
+            ? { path: body.path, comment: trimmedComment }
+            : { path: body.path },
         })
         .select('id')
         .single();
@@ -77,7 +82,7 @@ serve(async (req: Request) => {
       await withRateBudget(3500, () =>
         callAndValidate({
           lane: 'vision',
-          messages: structuringFromImage({ imageUrl: signedUrl }),
+          messages: structuringFromImage({ imageUrl: signedUrl, comment: trimmedComment }),
           estimatedTokens: 3500,
           signal,
         }),
@@ -104,7 +109,12 @@ serve(async (req: Request) => {
         .from('import_jobs')
         .update({
           status: 'needs_review',
-          payload: { path: body.path, raw_model_output: result.raw, reason: result.reason },
+          payload: {
+            path: body.path,
+            ...(trimmedComment ? { comment: trimmedComment } : {}),
+            raw_model_output: result.raw,
+            reason: result.reason,
+          },
           completed_at: new Date().toISOString(),
         })
         .eq('id', jobId);
@@ -123,6 +133,7 @@ serve(async (req: Request) => {
         status: 'done',
         payload: {
           path: body.path,
+          ...(trimmedComment ? { comment: trimmedComment } : {}),
           tokens_in: result.usage.input,
           tokens_out: result.usage.output,
           latency_ms: ms,

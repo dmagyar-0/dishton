@@ -1,5 +1,11 @@
 import { useFeatureFlag } from '@/feature-flags';
-import { type ImportUrlInput, ImportUrlSchema, detectImportSource } from '@/lib/forms/import';
+import {
+  type ImportPhotoInput,
+  ImportPhotoSchema,
+  type ImportUrlInput,
+  ImportUrlSchema,
+  detectImportSource,
+} from '@/lib/forms/import';
 import { supabase } from '@/lib/supabase';
 import {
   bcImportInputValidated,
@@ -11,6 +17,7 @@ import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives/Tabs';
+import { Textarea } from '@/ui/primitives/Textarea';
 import { useToast } from '@/ui/primitives/Toast';
 import { ImportProgress } from '@/ui/recipe/ImportProgress';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,6 +30,8 @@ import { useTranslation } from 'react-i18next';
 import { requireHousehold } from '../../_guards';
 
 const IMPORT_URL_TIMEOUT_MS = 120_000;
+const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+const PHOTO_ACCEPTED_TYPES = ['image/jpeg', 'image/png'] as const;
 
 const KNOWN_ERROR_KEYS = [
   'rate_limit',
@@ -36,6 +45,7 @@ const KNOWN_ERROR_KEYS = [
   'internal',
   'network',
   'timeout',
+  'object_not_found',
 ] as const;
 type ErrorKey = (typeof KNOWN_ERROR_KEYS)[number];
 
@@ -211,8 +221,183 @@ function UrlTab({ householdId }: { householdId: string }) {
 }
 
 function PhotoTab({ householdId }: { householdId: string }) {
-  void householdId;
-  return <Card className="mt-4 p-6 text-ink-soft">Photo import — pick a JPEG up to 10 MB.</Card>;
+  const { t } = useTranslation();
+  const { push } = useToast();
+  const [draft, setDraft] = useState<unknown>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ImportPhotoInput>({
+    resolver: zodResolver(ImportPhotoSchema),
+    defaultValues: { comment: '' },
+  });
+
+  function pickFile(next: File | null): void {
+    setDraft(null);
+    setFileError(null);
+    if (!next) {
+      setFile(null);
+      return;
+    }
+    if (!(PHOTO_ACCEPTED_TYPES as readonly string[]).includes(next.type)) {
+      setFile(null);
+      setFileError(t('errors.photo_wrong_type'));
+      return;
+    }
+    if (next.size > PHOTO_MAX_BYTES) {
+      setFile(null);
+      setFileError(t('errors.photo_too_large'));
+      return;
+    }
+    setFile(next);
+  }
+
+  return (
+    <Card className="mt-4 p-6">
+      <form
+        className="space-y-3"
+        onSubmit={handleSubmit(async (values) => {
+          if (!file) {
+            setFileError(t('errors.photo_wrong_type'));
+            return;
+          }
+          setDraft(null);
+          bcImportStart('photo');
+          const trimmedComment = values.comment?.trim() ?? '';
+          bcImportInputValidated({
+            file_size: file.size,
+            comment_length: trimmedComment.length,
+          });
+
+          const { data: userData, error: userErr } = await supabase.auth.getUser();
+          if (userErr || !userData.user) {
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t('errors.internal'),
+            });
+            return;
+          }
+          const ext = file.type === 'image/png' ? 'png' : 'jpg';
+          const path = `${userData.user.id}/${crypto.randomUUID()}.${ext}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from('imports')
+            .upload(path, file, { contentType: file.type, upsert: false });
+          if (uploadErr) {
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t('errors.photo_upload_failed'),
+            });
+            return;
+          }
+
+          const t0 = performance.now();
+          bcImportRequestSent('import-photo', '');
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), IMPORT_URL_TIMEOUT_MS);
+          let invokeError: unknown = null;
+          let data: unknown = null;
+          try {
+            const result = await supabase.functions.invoke('import-photo', {
+              body: {
+                household_id: householdId,
+                path,
+                ...(trimmedComment ? { comment: trimmedComment } : {}),
+              },
+              signal: ac.signal,
+            });
+            invokeError = result.error;
+            data = result.data;
+          } catch (e) {
+            invokeError = e;
+          } finally {
+            clearTimeout(timer);
+          }
+          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 200);
+          if (invokeError) {
+            const code = await readErrorCode(invokeError);
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t(`errors.${code}`),
+            });
+            return;
+          }
+          const payload = data as { needs_review?: boolean; reason?: string } | null;
+          if (payload?.needs_review) {
+            push({
+              variant: 'error',
+              title: t('import.needs_review_title'),
+              description: t('import.needs_review_body'),
+            });
+            setDraft(data);
+            return;
+          }
+          push({
+            variant: 'success',
+            title: t('import.success_title'),
+            description: t('import.success_body'),
+          });
+          setDraft(data);
+          reset({ comment: '' });
+          setFile(null);
+        })}
+      >
+        <div className="space-y-1">
+          <label className="block font-body text-sm text-ink-soft">
+            {t('import.photo_pick_label')}
+          </label>
+          <input
+            type="file"
+            accept={PHOTO_ACCEPTED_TYPES.join(',')}
+            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-ink file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-saffron file:px-3 file:py-2 file:text-ink file:font-body hover:file:cursor-pointer disabled:opacity-60"
+            disabled={isSubmitting}
+          />
+          <p className="text-xs text-ink-muted">{t('import.photo_hint')}</p>
+          {fileError && <p className="text-pomegranate text-sm">{fileError}</p>}
+        </div>
+        <div className="space-y-1">
+          <label className="block font-body text-sm text-ink-soft" htmlFor="photo-comment">
+            {t('import.photo_comment_label')}
+          </label>
+          <Textarea
+            id="photo-comment"
+            rows={3}
+            placeholder={t('import.photo_comment_placeholder')}
+            disabled={isSubmitting}
+            {...register('comment')}
+          />
+          <p className="text-xs text-ink-muted">{t('import.photo_comment_hint')}</p>
+          {errors.comment && <p className="text-pomegranate text-sm">{errors.comment.message}</p>}
+        </div>
+        <Button type="submit" loading={isSubmitting} disabled={isSubmitting || !file}>
+          {t('import.submit')}
+        </Button>
+      </form>
+      <ImportProgress active={isSubmitting} />
+      <AnimatePresence>
+        {draft != null && !isSubmitting && (
+          <motion.pre
+            key="photo-draft-preview"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.32, ease: [0.2, 0.7, 0.1, 1.05] }}
+            className="mt-4 text-xs bg-paper border border-cream-line p-3 rounded-[var(--radius-md)] overflow-auto font-mono text-ink-soft"
+          >
+            {JSON.stringify(draft, null, 2)}
+          </motion.pre>
+        )}
+      </AnimatePresence>
+    </Card>
+  );
 }
 
 function ManualTab() {

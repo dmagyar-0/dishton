@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ImportUrlSchema, detectImportSource } from './import';
+import { ImportPhotoSchema, ImportUrlSchema, detectImportSource } from './import';
 
 describe('ImportUrlSchema', () => {
   it('accepts a valid URL', () => {
@@ -31,5 +31,20 @@ describe('detectImportSource', () => {
   });
   it('returns url for malformed input', () => {
     expect(detectImportSource('not-a-url')).toBe('url');
+  });
+});
+
+describe('ImportPhotoSchema', () => {
+  it('accepts an empty object (comment is optional)', () => {
+    expect(() => ImportPhotoSchema.parse({})).not.toThrow();
+  });
+  it('accepts a literal empty string', () => {
+    expect(() => ImportPhotoSchema.parse({ comment: '' })).not.toThrow();
+  });
+  it('accepts a short comment', () => {
+    expect(() => ImportPhotoSchema.parse({ comment: 'hint' })).not.toThrow();
+  });
+  it('rejects a comment over 500 chars', () => {
+    expect(() => ImportPhotoSchema.parse({ comment: 'x'.repeat(501) })).toThrow();
   });
 });

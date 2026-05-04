@@ -16,3 +16,8 @@ export function detectImportSource(rawUrl: string): ImportSource {
   }
   return host === 'instagram.com' || host.endsWith('.instagram.com') ? 'instagram' : 'url';
 }
+
+export const ImportPhotoSchema = z.object({
+  comment: z.string().trim().max(500).optional().or(z.literal('')),
+});
+export type ImportPhotoInput = z.infer<typeof ImportPhotoSchema>;
