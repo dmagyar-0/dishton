@@ -5,10 +5,14 @@ export const ImportUrlSchema = z.object({
 });
 export type ImportUrlInput = z.infer<typeof ImportUrlSchema>;
 
-export const ImportInstagramSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .refine((u) => u.includes('instagram.com'), 'must be an instagram URL'),
-});
-export type ImportInstagramInput = z.infer<typeof ImportInstagramSchema>;
+export type ImportSource = 'url' | 'instagram';
+
+export function detectImportSource(rawUrl: string): ImportSource {
+  let host: string;
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase();
+  } catch {
+    return 'url';
+  }
+  return host === 'instagram.com' || host.endsWith('.instagram.com') ? 'instagram' : 'url';
+}

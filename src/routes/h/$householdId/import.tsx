@@ -1,5 +1,5 @@
 import { useFeatureFlag } from '@/feature-flags';
-import { type ImportUrlInput, ImportUrlSchema } from '@/lib/forms/import';
+import { type ImportUrlInput, ImportUrlSchema, detectImportSource } from '@/lib/forms/import';
 import { supabase } from '@/lib/supabase';
 import {
   bcImportInputValidated,
@@ -15,6 +15,7 @@ import { useToast } from '@/ui/primitives/Toast';
 import { ImportProgress } from '@/ui/recipe/ImportProgress';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createFileRoute } from '@tanstack/react-router';
+import { Globe, Instagram } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -31,6 +32,7 @@ const KNOWN_ERROR_KEYS = [
   'source_too_large',
   'parse_failed',
   'schema_failed',
+  'instagram_unavailable',
   'internal',
   'network',
   'timeout',
@@ -65,7 +67,6 @@ export const Route = createFileRoute('/h/$householdId/import')({
 function ImportPage() {
   const { householdId } = Route.useParams();
   const { t } = useTranslation();
-  const igEnabled = useFeatureFlag('instagram_import');
   const photoEnabled = useFeatureFlag('photo_import');
 
   return (
@@ -74,18 +75,12 @@ function ImportPage() {
       <Tabs defaultValue="url">
         <TabsList>
           <TabsTrigger value="url">{t('import.tab_url')}</TabsTrigger>
-          {igEnabled && <TabsTrigger value="instagram">{t('import.tab_instagram')}</TabsTrigger>}
           {photoEnabled && <TabsTrigger value="photo">{t('import.tab_photo')}</TabsTrigger>}
           <TabsTrigger value="manual">{t('import.tab_manual')}</TabsTrigger>
         </TabsList>
         <TabsContent value="url">
           <UrlTab householdId={householdId} />
         </TabsContent>
-        {igEnabled && (
-          <TabsContent value="instagram">
-            <InstagramTab householdId={householdId} />
-          </TabsContent>
-        )}
         {photoEnabled && (
           <TabsContent value="photo">
             <PhotoTab householdId={householdId} />
@@ -99,10 +94,16 @@ function ImportPage() {
   );
 }
 
+type DraftResponse = {
+  needs_review?: boolean;
+  reason?: string;
+  thumbnail_url?: string | null;
+};
+
 function UrlTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
   const { push } = useToast();
-  const [draft, setDraft] = useState<unknown>(null);
+  const [draft, setDraft] = useState<DraftResponse | null>(null);
   const {
     register,
     handleSubmit,
@@ -115,10 +116,12 @@ function UrlTab({ householdId }: { householdId: string }) {
         className="space-y-3"
         onSubmit={handleSubmit(async (values) => {
           setDraft(null);
-          bcImportStart('url');
-          bcImportInputValidated({ url_length: values.url.length });
+          const source = detectImportSource(values.url);
+          const fnName = source === 'instagram' ? 'import-instagram' : 'import-url';
+          bcImportStart(source);
+          bcImportInputValidated({ url_length: values.url.length, source });
           const t0 = performance.now();
-          bcImportRequestSent('import-url', '');
+          bcImportRequestSent(fnName, '');
           // Cap the wait so a hung NIM call (3 × 30 s server-side retry) can't
           // leave the form spinning indefinitely with no user feedback.
           const ac = new AbortController();
@@ -126,7 +129,7 @@ function UrlTab({ householdId }: { householdId: string }) {
           let invokeError: unknown = null;
           let data: unknown = null;
           try {
-            const result = await supabase.functions.invoke('import-url', {
+            const result = await supabase.functions.invoke(fnName, {
               body: { url: values.url, household_id: householdId },
               signal: ac.signal,
             });
@@ -147,14 +150,14 @@ function UrlTab({ householdId }: { householdId: string }) {
             });
             return;
           }
-          const payload = data as { needs_review?: boolean; reason?: string } | null;
+          const payload = data as DraftResponse | null;
           if (payload?.needs_review) {
             push({
               variant: 'error',
               title: t('import.needs_review_title'),
               description: t('import.needs_review_body'),
             });
-            setDraft(data);
+            setDraft(payload);
             return;
           }
           push({
@@ -162,11 +165,19 @@ function UrlTab({ householdId }: { householdId: string }) {
             title: t('import.success_title'),
             description: t('import.success_body'),
           });
-          setDraft(data);
+          setDraft(payload);
         })}
       >
         <Input placeholder={t('import.url_placeholder')} {...register('url')} />
         {errors.url && <p className="text-pomegranate text-sm">{errors.url.message}</p>}
+        <div
+          className="flex items-center gap-2 text-ink-soft text-xs"
+          aria-label={t('import.supported_sources_label')}
+        >
+          <span>{t('import.supported_sources_label')}</span>
+          <Globe className="size-4" aria-hidden="true" />
+          <Instagram className="size-4" aria-hidden="true" />
+        </div>
         <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
           {t('import.submit')}
         </Button>
@@ -174,26 +185,28 @@ function UrlTab({ householdId }: { householdId: string }) {
       <ImportProgress active={isSubmitting} />
       <AnimatePresence>
         {draft != null && !isSubmitting && (
-          <motion.pre
+          <motion.div
             key="draft-preview"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.32, ease: [0.2, 0.7, 0.1, 1.05] }}
-            className="mt-4 text-xs bg-paper border border-cream-line p-3 rounded-[var(--radius-md)] overflow-auto font-mono text-ink-soft"
+            className="mt-4 space-y-3"
           >
-            {JSON.stringify(draft, null, 2)}
-          </motion.pre>
+            {draft.thumbnail_url && (
+              <img
+                src={draft.thumbnail_url}
+                alt=""
+                className="max-h-48 w-auto rounded-[var(--radius-md)] border border-cream-line"
+              />
+            )}
+            <pre className="text-xs bg-paper border border-cream-line p-3 rounded-[var(--radius-md)] overflow-auto font-mono text-ink-soft">
+              {JSON.stringify(draft, null, 2)}
+            </pre>
+          </motion.div>
         )}
       </AnimatePresence>
     </Card>
-  );
-}
-
-function InstagramTab({ householdId }: { householdId: string }) {
-  void householdId;
-  return (
-    <Card className="mt-4 p-6 text-ink-soft">Instagram import — paste a public post URL.</Card>
   );
 }
 

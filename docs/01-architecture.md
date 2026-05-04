@@ -161,7 +161,6 @@ Everything else is server-side only.
 | `VITE_SUPABASE_URL` | Vercel + local `.env` | SPA | Project URL |
 | `VITE_SUPABASE_ANON_KEY` | Vercel + local `.env` | SPA | Anon key, RLS-gated |
 | `VITE_FEATURE_GOOGLE_AUTH` | Vercel + local `.env` | SPA | `false` until v1 |
-| `VITE_FEATURE_INSTAGRAM_IMPORT` | Vercel + local `.env` | SPA | feature gate |
 | `VITE_FEATURE_PHOTO_IMPORT` | Vercel + local `.env` | SPA | feature gate |
 | `VITE_FEATURE_TRANSLATION_CACHE` | Vercel + local `.env` | SPA | feature gate |
 | `VITE_SENTRY_DSN` | Vercel | SPA | optional, prod only |
