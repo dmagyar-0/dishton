@@ -4,10 +4,16 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env } from './env.ts';
 
+// Caller-scoped client opts into the `app` schema explicitly. Type the schema
+// generic so `ReturnType<typeof resolveCaller>` lines up with the runtime
+// client; otherwise PostgREST writes that target `app.*` look like writes
+// against `public.*` to the type checker.
+export type AppClient = ReturnType<typeof createClient<any, 'app'>>;
+
 export type CallerContext = {
   profileId: string;
   jwt: string;
-  client: ReturnType<typeof createClient>;
+  client: AppClient;
 };
 
 export async function resolveCaller(req: Request): Promise<CallerContext> {
@@ -16,7 +22,7 @@ export async function resolveCaller(req: Request): Promise<CallerContext> {
     throw new HttpError(401, 'missing_authorization');
   }
   const jwt = auth.slice(7);
-  const client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  const client = createClient<any, 'app'>(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
     db: { schema: 'app' },
     global: { headers: { Authorization: auth } },

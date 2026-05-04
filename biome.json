@@ -12,6 +12,7 @@
       "node_modules",
       "supabase/functions/_shared/domain",
       "supabase/functions/**",
+      "eval/**",
       ".vercel",
       ".claude",
       "docs",
