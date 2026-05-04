@@ -21,9 +21,9 @@ import { Textarea } from '@/ui/primitives/Textarea';
 import { useToast } from '@/ui/primitives/Toast';
 import { ImportProgress } from '@/ui/recipe/ImportProgress';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createFileRoute } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Globe, Instagram } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -105,15 +105,17 @@ function ImportPage() {
 }
 
 type DraftResponse = {
+  job_id?: string;
+  draft?: unknown | null;
   needs_review?: boolean;
   reason?: string;
-  thumbnail_url?: string | null;
 };
 
 function UrlTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
   const { push } = useToast();
-  const [draft, setDraft] = useState<DraftResponse | null>(null);
+  const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
   const {
     register,
     handleSubmit,
@@ -125,7 +127,6 @@ function UrlTab({ householdId }: { householdId: string }) {
       <form
         className="space-y-3"
         onSubmit={handleSubmit(async (values) => {
-          setDraft(null);
           const source = detectImportSource(values.url);
           const fnName = source === 'instagram' ? 'import-instagram' : 'import-url';
           bcImportStart(source);
@@ -161,21 +162,36 @@ function UrlTab({ householdId }: { householdId: string }) {
             return;
           }
           const payload = data as DraftResponse | null;
-          if (payload?.needs_review) {
+          if (payload?.needs_review || !payload?.draft) {
             push({
               variant: 'error',
               title: t('import.needs_review_title'),
               description: t('import.needs_review_body'),
             });
-            setDraft(payload);
             return;
           }
+          const { data: newId, error: saveErr } = await supabase.rpc('save_recipe', {
+            p_household: householdId,
+            p_draft: payload.draft as never,
+          });
+          if (saveErr || !newId) {
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t('errors.internal'),
+            });
+            return;
+          }
+          await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
           push({
             variant: 'success',
             title: t('import.success_title'),
             description: t('import.success_body'),
           });
-          setDraft(payload);
+          await navigate({
+            to: '/h/$householdId/r/$recipeId',
+            params: { householdId, recipeId: newId },
+          });
         })}
       >
         <Input placeholder={t('import.url_placeholder')} {...register('url')} />
@@ -193,29 +209,6 @@ function UrlTab({ householdId }: { householdId: string }) {
         </Button>
       </form>
       <ImportProgress active={isSubmitting} />
-      <AnimatePresence>
-        {draft != null && !isSubmitting && (
-          <motion.div
-            key="draft-preview"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.32, ease: [0.2, 0.7, 0.1, 1.05] }}
-            className="mt-4 space-y-3"
-          >
-            {draft.thumbnail_url && (
-              <img
-                src={draft.thumbnail_url}
-                alt=""
-                className="max-h-48 w-auto rounded-[var(--radius-md)] border border-cream-line"
-              />
-            )}
-            <pre className="text-xs bg-paper border border-cream-line p-3 rounded-[var(--radius-md)] overflow-auto font-mono text-ink-soft">
-              {JSON.stringify(draft, null, 2)}
-            </pre>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </Card>
   );
 }
@@ -223,7 +216,8 @@ function UrlTab({ householdId }: { householdId: string }) {
 function PhotoTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
   const { push } = useToast();
-  const [draft, setDraft] = useState<unknown>(null);
+  const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const {
@@ -237,7 +231,6 @@ function PhotoTab({ householdId }: { householdId: string }) {
   });
 
   function pickFile(next: File | null): void {
-    setDraft(null);
     setFileError(null);
     if (!next) {
       setFile(null);
@@ -265,7 +258,6 @@ function PhotoTab({ householdId }: { householdId: string }) {
             setFileError(t('errors.photo_wrong_type'));
             return;
           }
-          setDraft(null);
           bcImportStart('photo');
           const trimmedComment = values.comment?.trim() ?? '';
           bcImportInputValidated({
@@ -329,24 +321,39 @@ function PhotoTab({ householdId }: { householdId: string }) {
             });
             return;
           }
-          const payload = data as { needs_review?: boolean; reason?: string } | null;
-          if (payload?.needs_review) {
+          const payload = data as DraftResponse | null;
+          if (payload?.needs_review || !payload?.draft) {
             push({
               variant: 'error',
               title: t('import.needs_review_title'),
               description: t('import.needs_review_body'),
             });
-            setDraft(data);
             return;
           }
+          const { data: newId, error: saveErr } = await supabase.rpc('save_recipe', {
+            p_household: householdId,
+            p_draft: payload.draft as never,
+          });
+          if (saveErr || !newId) {
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t('errors.internal'),
+            });
+            return;
+          }
+          await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
           push({
             variant: 'success',
             title: t('import.success_title'),
             description: t('import.success_body'),
           });
-          setDraft(data);
           reset({ comment: '' });
           setFile(null);
+          await navigate({
+            to: '/h/$householdId/r/$recipeId',
+            params: { householdId, recipeId: newId },
+          });
         })}
       >
         <div className="space-y-1">
@@ -382,20 +389,6 @@ function PhotoTab({ householdId }: { householdId: string }) {
         </Button>
       </form>
       <ImportProgress active={isSubmitting} />
-      <AnimatePresence>
-        {draft != null && !isSubmitting && (
-          <motion.pre
-            key="photo-draft-preview"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.32, ease: [0.2, 0.7, 0.1, 1.05] }}
-            className="mt-4 text-xs bg-paper border border-cream-line p-3 rounded-[var(--radius-md)] overflow-auto font-mono text-ink-soft"
-          >
-            {JSON.stringify(draft, null, 2)}
-          </motion.pre>
-        )}
-      </AnimatePresence>
     </Card>
   );
 }

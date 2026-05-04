@@ -47,8 +47,8 @@ export default {
     submit: 'Import',
     preparing: 'Mise en place',
     progress_label: 'Importing recipe',
-    success_title: 'Recipe drafted',
-    success_body: 'A draft is ready. Review it below before saving.',
+    success_title: 'Recipe added',
+    success_body: "It's in your pantry now.",
     error_title: "Couldn't finish import",
     needs_review_title: 'Needs a second look',
     needs_review_body:

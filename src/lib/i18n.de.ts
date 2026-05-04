@@ -47,8 +47,8 @@ export default {
     submit: 'Importieren',
     preparing: 'Mise en place',
     progress_label: 'Rezept wird importiert',
-    success_title: 'Entwurf bereit',
-    success_body: 'Schau dir den Entwurf unten an, bevor du speicherst.',
+    success_title: 'Rezept gespeichert',
+    success_body: 'Es ist jetzt in deiner Speisekammer.',
     error_title: 'Import fehlgeschlagen',
     needs_review_title: 'Zweiter Blick nötig',
     needs_review_body:
