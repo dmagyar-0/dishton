@@ -22,6 +22,7 @@
     "test:db": "deno run -A supabase/tests/run.ts",
     "test:e2e": "playwright test",
     "eval:nim": "deno run --env-file=.env --config eval/nim/deno.json --allow-net --allow-read --allow-env --allow-write eval/nim/run.ts eval/nim/urls.txt",
+    "prompt:show": "deno run --config eval/nim/deno.json --allow-net --allow-read --allow-env eval/nim/show-prompt.ts",
     "test:eval": "deno test --config eval/nim/deno.json -A eval/nim",
     "db:reset": "supabase db reset",
     "fn:serve": "supabase functions serve --no-verify-jwt",
