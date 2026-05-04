@@ -40,10 +40,10 @@ export default {
   },
   import: {
     tab_url: 'URL',
-    tab_instagram: 'Instagram',
     tab_photo: 'Photo',
     tab_manual: 'Manual',
     url_placeholder: 'https://example.com/recipe',
+    supported_sources_label: 'Recipe blogs and Instagram posts',
     submit: 'Import',
     preparing: 'Mise en place',
     progress_label: 'Importing recipe',
@@ -90,6 +90,8 @@ export default {
     source_too_large: 'That page is too big to import. Try a shorter recipe URL.',
     parse_failed: "We couldn't parse a recipe out of that page.",
     schema_failed: 'The page is missing some recipe details we need.',
+    instagram_unavailable:
+      "Instagram couldn't share that post. Try a public post or paste the recipe manually.",
     photo_too_large: 'That photo is over the 10 MB limit. Try a smaller image.',
     photo_wrong_type: 'Pick a JPEG or PNG image.',
     photo_upload_failed: "We couldn't upload that photo. Try again in a moment.",

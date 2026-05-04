@@ -40,10 +40,10 @@ export default {
   },
   import: {
     tab_url: 'URL',
-    tab_instagram: 'Instagram',
     tab_photo: 'Foto',
     tab_manual: 'Manuell',
     url_placeholder: 'https://example.com/recipe',
+    supported_sources_label: 'Rezept-Blogs und Instagram-Posts',
     submit: 'Importieren',
     preparing: 'Mise en place',
     progress_label: 'Rezept wird importiert',
@@ -74,6 +74,12 @@ export default {
       hint: 'Wir richten alles hübsch an…',
     },
     long_wait_hint: 'Langes Rezept — köchelt noch. Das kann bis zu einer Minute dauern.',
+    photo_pick_label: 'Foto auswählen',
+    photo_hint: 'JPEG oder PNG, bis zu 10 MB',
+    photo_comment_label: 'Hinweis für die KI (optional)',
+    photo_comment_placeholder:
+      'z. B. Handschrift am Rand ignorieren, das Rezept in der Mitte verwenden',
+    photo_comment_hint: 'Wenn dein Hinweis nicht zum Bild passt, ignoriert die KI ihn.',
   },
   errors: {
     rate_limit: 'Importer ist ausgelastet. Bitte in einer Minute erneut versuchen.',
@@ -88,5 +94,12 @@ export default {
     source_too_large: 'Diese Seite ist zu groß für den Import. Versuche eine kürzere Rezept-URL.',
     parse_failed: 'Wir konnten kein Rezept aus dieser Seite extrahieren.',
     schema_failed: 'Der Seite fehlen einige Rezeptdetails, die wir brauchen.',
+    instagram_unavailable:
+      'Instagram hat diesen Post nicht freigegeben. Versuche einen öffentlichen Post oder gib das Rezept manuell ein.',
+    photo_too_large: 'Dieses Foto überschreitet das Limit von 10 MB. Versuche ein kleineres Bild.',
+    photo_wrong_type: 'Bitte ein JPEG- oder PNG-Bild auswählen.',
+    photo_upload_failed:
+      'Wir konnten dieses Foto nicht hochladen. Bitte gleich noch einmal versuchen.',
+    object_not_found: 'Wir konnten das hochgeladene Foto nicht finden. Bitte erneut versuchen.',
   },
 } as const;
