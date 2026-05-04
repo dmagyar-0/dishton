@@ -94,6 +94,13 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then
     create role service_role nologin bypassrls;
   end if;
+  -- 20260430121000_expose_schemas sets `pgrst.db_schemas` as a GUC on the
+  -- `authenticator` role; create it here so the migration applies cleanly
+  -- against the stub. Hosted Supabase ships with this role; vanilla Postgres
+  -- doesn't.
+  if not exists (select 1 from pg_roles where rolname = 'authenticator') then
+    create role authenticator noinherit nologin;
+  end if;
 end $$;
 
 grant usage on schema auth, storage to anon, authenticated, service_role;
