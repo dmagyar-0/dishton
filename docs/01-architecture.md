@@ -97,7 +97,7 @@ with the process performing the work.
 [Browser]  POST /functions/v1/import-url { url }         ─► [Edge: import-url]
 [Edge]     insert import_jobs(status=running, kind=url)
 [Edge]     fetch URL with allow-listed UA, follow ≤ 3 redirects, 5 MB cap
-[Edge]     readability extract → cleaned HTML/text
+[Edge]     extract schema.org JSON-LD; lightStripHtml(html) for the model
 [Edge]     check ai_rate_budget; reserve estimated tokens
 [Edge]     call Anthropic with structuring prompt + Zod schema
 [Edge]     parse JSON; on parse error, re-prompt once with the error message

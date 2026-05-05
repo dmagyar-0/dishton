@@ -27,7 +27,7 @@ Deno.test('report: aggregate computes per-model metrics', () => {
       {
         url: 'https://x/1',
         sourceExcerpt: 'src',
-        readabilityUsed: true,
+        jsonldFound: true,
         outcomes: [
           { url: 'https://x/1', model: 'a', schemaOk: true, latencyMs: 100, tokensIn: 1000, tokensOut: 200, raw: '{}' },
           { url: 'https://x/1', model: 'b', schemaOk: false, latencyMs: 200, tokensIn: 1000, tokensOut: 50, raw: 'oops', error: 'parse' },
@@ -36,7 +36,7 @@ Deno.test('report: aggregate computes per-model metrics', () => {
       {
         url: 'https://x/2',
         sourceExcerpt: 'src',
-        readabilityUsed: true,
+        jsonldFound: true,
         outcomes: [
           { url: 'https://x/2', model: 'a', schemaOk: true, latencyMs: 300, tokensIn: 1000, tokensOut: 200, raw: '{}' },
           { url: 'https://x/2', model: 'b', schemaOk: true, latencyMs: 400, tokensIn: 1000, tokensOut: 200, raw: '{}' },
@@ -69,7 +69,7 @@ Deno.test('report: writeMarkdown emits required sections and TBD placeholders', 
       {
         url: 'https://example.com/r',
         sourceExcerpt: 'cleaned source text excerpt',
-        readabilityUsed: true,
+        jsonldFound: true,
         outcomes: [
           {
             url: 'https://example.com/r',

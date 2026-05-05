@@ -2,7 +2,6 @@
   "imports": {
     "zod": "npm:zod@^3",
     "@std/assert": "jsr:@std/assert@^1",
-    "@mozilla/readability": "npm:@mozilla/readability@0.5",
     "linkedom": "npm:linkedom@0.18"
   },
   "lock": false,

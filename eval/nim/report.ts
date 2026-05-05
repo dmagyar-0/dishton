@@ -17,7 +17,7 @@ export type ModelOutcome = {
 export type UrlBundle = {
   url: string;
   sourceExcerpt: string;
-  readabilityUsed: boolean;
+  jsonldFound: boolean;
   outcomes: ModelOutcome[];
 };
 
@@ -170,7 +170,7 @@ export async function writeMarkdown(
     md.push(`### URL ${i + 1} — ${u.url}`);
     md.push('');
     md.push(
-      `**Source excerpt** (first 2000 chars of cleaned text${u.readabilityUsed ? '' : ', Readability fell back to raw HTML'}):`,
+      `**Source excerpt** (first 2000 chars of stripped HTML${u.jsonldFound ? '; JSON-LD also passed as Hint' : '; no JSON-LD on page'}):`,
     );
     md.push('');
     md.push('```');

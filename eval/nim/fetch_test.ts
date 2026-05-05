@@ -1,36 +1,48 @@
-import { assertEquals } from '@std/assert';
+import { assertEquals, assertStringIncludes } from '@std/assert';
 import { extractFromHtml } from './fetch.ts';
 
-const SAMPLE_ARTICLE_HTML = `
+const SAMPLE_HTML = `
 <!DOCTYPE html>
-<html><head><title>Test Recipe</title></head>
+<html><head><title>Test Recipe</title><script>var x = 1;</script></head>
 <body>
   <article>
     <h1>Chocolate Cake</h1>
-    <p>This is the most important paragraph of the article. It contains
-    enough text for Readability to consider it the main content of the page,
-    not navigation chrome. We need at least a few hundred characters here so
-    Readability does not bail out on a sparse page. The cake is delicious.
-    Mix flour, sugar, cocoa, eggs, and milk. Bake for 30 minutes at 180C.
-    Serves 8 people.</p>
-    <p>Cool before serving. The cake stores well in an airtight container
-    for up to three days at room temperature.</p>
+    <p>Mix flour, sugar, cocoa, eggs, milk. Bake 30 min at 180C.</p>
   </article>
 </body></html>
 `;
 
-const EMPTY_HTML = `<!DOCTYPE html><html><body></body></html>`;
+const HTML_WITH_RECIPE_JSONLD = `
+<!DOCTYPE html><html><head>
+<script type="application/ld+json">${
+  JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Recipe',
+    name: 'Quick Pasta',
+    recipeIngredient: ['200 g pasta'],
+    recipeInstructions: ['Boil water.'],
+  })
+}</script>
+</head><body><article><h1>Quick Pasta</h1><p>Boil water.</p></article></body></html>
+`;
 
-Deno.test('fetch: extractFromHtml returns Readability text on a normal page', () => {
-  const r = extractFromHtml(SAMPLE_ARTICLE_HTML, SAMPLE_ARTICLE_HTML.length);
-  assertEquals(r.readabilityUsed, true);
-  assertEquals(r.text.includes('Chocolate Cake'), true);
-  assertEquals(r.text.includes('Bake for 30 minutes'), true);
-  assertEquals(r.bytes, SAMPLE_ARTICLE_HTML.length);
+Deno.test('fetch: extractFromHtml strips noise tags', () => {
+  const r = extractFromHtml(SAMPLE_HTML, SAMPLE_HTML.length);
+  assertStringIncludes(r.text, 'Chocolate Cake');
+  assertStringIncludes(r.text, 'Bake 30 min');
+  assertEquals(r.text.includes('var x'), false);
+  assertEquals(r.text.includes('<script'), false);
+  assertEquals(r.text.includes('<title'), false);
+  assertEquals(r.bytes, SAMPLE_HTML.length);
+  assertEquals(r.scraped, null);
 });
 
-Deno.test('fetch: extractFromHtml falls back to raw HTML when Readability is empty', () => {
-  const r = extractFromHtml(EMPTY_HTML, EMPTY_HTML.length);
-  assertEquals(r.readabilityUsed, false);
-  assertEquals(r.text, EMPTY_HTML);
+Deno.test('fetch: extractFromHtml extracts JSON-LD before stripping', () => {
+  const r = extractFromHtml(HTML_WITH_RECIPE_JSONLD, HTML_WITH_RECIPE_JSONLD.length);
+  // JSON-LD content must survive even though <script> blocks are stripped from text.
+  assertEquals(r.scraped?.name, 'Quick Pasta');
+  assertEquals(r.scraped?.ingredients, ['200 g pasta']);
+  // Stripped HTML still has the article body but not the script tag.
+  assertStringIncludes(r.text, 'Quick Pasta');
+  assertEquals(r.text.includes('application/ld+json'), false);
 });

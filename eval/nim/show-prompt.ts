@@ -3,22 +3,21 @@
 // when iterating on the prompt: change `prompts.ts`, run this, eyeball the
 // rendered messages without burning model tokens.
 //
-// Mirrors supabase/functions/import-url/index.ts: same byte cap, same UA, same
-// 15s fetch timeout, same Readability fallback, same JSON-LD extraction. The
-// cap on HTML/text length is applied inside structuringFromHtml itself.
+// Mirrors supabase/functions/import-url/index.ts: same byte cap, same UA,
+// same 15s fetch timeout, same JSON-LD extraction, same lightStripHtml.
+// The 80K-char cap on the stripped HTML is applied inside structuringFromHtml.
 //
 // Usage:
-//   pnpm prompt:show <url> [--json] [--no-jsonld] [--raw-html]
+//   pnpm prompt:show <url> [--json] [--no-jsonld]
 //
 // Flags:
 //   --json       emit the messages array as JSON (default: pretty)
 //   --no-jsonld  skip extractRecipeJsonLd (simulates a page without JSON-LD)
-//   --raw-html   skip Readability (feed raw HTML, like production fallback)
 
-import { Readability } from '@mozilla/readability';
 import { parseHTML } from 'linkedom';
 import { structuringFromHtml } from '../../supabase/functions/_shared/ai/prompts.ts';
 import { extractRecipeJsonLd } from '../../supabase/functions/_shared/scrape/recipe-jsonld.ts';
+import { lightStripHtml } from '../../supabase/functions/_shared/scrape/strip-html.ts';
 
 const MAX_BYTES = 5_000_000;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -28,26 +27,23 @@ type Args = {
   url: string;
   json: boolean;
   skipJsonLd: boolean;
-  rawHtml: boolean;
 };
 
 function parseArgs(argv: string[]): Args {
   let url: string | null = null;
   let json = false;
   let skipJsonLd = false;
-  let rawHtml = false;
   for (const a of argv) {
     if (a === '--json') json = true;
     else if (a === '--no-jsonld') skipJsonLd = true;
-    else if (a === '--raw-html') rawHtml = true;
     else if (a.startsWith('--')) throw new Error(`unknown flag: ${a}`);
     else if (url === null) url = a;
     else throw new Error(`unexpected positional arg: ${a}`);
   }
   if (url === null) {
-    throw new Error('usage: show-prompt.ts <url> [--json] [--no-jsonld] [--raw-html]');
+    throw new Error('usage: show-prompt.ts <url> [--json] [--no-jsonld]');
   }
-  return { url, json, skipJsonLd, rawHtml };
+  return { url, json, skipJsonLd };
 }
 
 async function fetchHtml(url: string): Promise<{ html: string; bytes: number }> {
@@ -107,20 +103,10 @@ async function main(): Promise<number> {
   const fetchMs = Math.round(performance.now() - t0);
 
   const dom = parseHTML(html);
-  const scraped = args.skipJsonLd ? null : extractRecipeJsonLd((dom as any).document);
-
-  let text: string;
-  let readabilityUsed: boolean;
-  if (args.rawHtml) {
-    text = html;
-    readabilityUsed = false;
-  } else {
-    const reader = new Readability((dom as any).document);
-    const article = reader.parse();
-    const parsed = article?.textContent ?? '';
-    text = parsed.length > 0 ? parsed : html;
-    readabilityUsed = parsed.length > 0;
-  }
+  const scraped = args.skipJsonLd
+    ? null
+    : extractRecipeJsonLd((dom as any).document);
+  const text = lightStripHtml(html);
 
   const messages = structuringFromHtml({
     html: text,
@@ -128,7 +114,6 @@ async function main(): Promise<number> {
     scraped,
   });
 
-  // System messages are content strings, user messages may be string or array.
   const systemContent = messages[0]!.content as string;
   const userContent = messages[1]!.content as string;
 
@@ -138,9 +123,8 @@ async function main(): Promise<number> {
       meta: {
         fetched_bytes: bytes,
         fetch_ms: fetchMs,
-        readability_used: readabilityUsed,
         jsonld_found: scraped !== null,
-        text_input_chars: text.length,
+        stripped_chars: text.length,
         prompt_user_chars: userContent.length,
         prompt_system_chars: systemContent.length,
       },
@@ -154,9 +138,8 @@ async function main(): Promise<number> {
   console.log(bar);
   console.log(`URL                : ${args.url}`);
   console.log(`Fetched            : ${bytes} bytes in ${fetchMs}ms`);
-  console.log(`Readability used   : ${readabilityUsed}`);
   console.log(`JSON-LD found      : ${scraped !== null}`);
-  console.log(`Text fed to prompt : ${text.length} chars (cap applied inside structuringFromHtml)`);
+  console.log(`Stripped HTML      : ${text.length} chars (cap applied inside structuringFromHtml)`);
   console.log(`User message size  : ${userContent.length} chars`);
   console.log(`System message size: ${systemContent.length} chars`);
   if (scraped) {
