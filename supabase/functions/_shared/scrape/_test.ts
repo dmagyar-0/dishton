@@ -1,8 +1,10 @@
-// Unit tests for the JSON-LD recipe extractor. Run via `pnpm test:edge`.
+// Unit tests for the JSON-LD recipe extractor and lightStripHtml.
+// Run via `pnpm test:edge`.
 
-import { assert, assertEquals } from 'jsr:@std/assert';
+import { assert, assertEquals, assertStringIncludes } from 'jsr:@std/assert';
 import { parseHTML } from 'npm:linkedom@0.18';
 import { extractRecipeJsonLd, type ScrapeDoc } from './recipe-jsonld.ts';
+import { lightStripHtml } from './strip-html.ts';
 
 // linkedom's exported types expose parseHTML as returning Window without a
 // statically-typed `.document`; in production the property is real. Cast
@@ -210,4 +212,78 @@ Deno.test('extracts author name from string and Person object', () => {
 Deno.test('returns numeric recipeYield as string', () => {
   const doc = docFromJsonLd({ '@type': 'Recipe', name: 'x', recipeYield: 6 });
   assertEquals(extractRecipeJsonLd(doc)?.yield, '6');
+});
+
+// ----- lightStripHtml -----
+
+Deno.test('lightStripHtml removes script blocks', () => {
+  const out = lightStripHtml('<p>keep</p><script>var x = 1;</script><p>also keep</p>');
+  assertStringIncludes(out, 'keep');
+  assertStringIncludes(out, 'also keep');
+  assertEquals(out.includes('var x'), false);
+  assertEquals(out.includes('<script>'), false);
+});
+
+Deno.test('lightStripHtml removes style/svg/noscript/iframe/picture/template/head blocks', () => {
+  const html = `
+    <head><title>t</title><style>.x{color:red}</style></head>
+    <body>
+      <noscript>js disabled</noscript>
+      <svg><path d="M0 0"/></svg>
+      <iframe src="https://ads"></iframe>
+      <picture><source srcset="x.webp"/><img src="x.jpg"/></picture>
+      <template>tpl</template>
+      <p>content</p>
+    </body>
+  `;
+  const out = lightStripHtml(html);
+  assertStringIncludes(out, 'content');
+  assertEquals(out.includes('color:red'), false);
+  assertEquals(out.includes('<svg'), false);
+  assertEquals(out.includes('<iframe'), false);
+  assertEquals(out.includes('<picture'), false);
+  assertEquals(out.includes('<template'), false);
+  assertEquals(out.includes('<title'), false);
+  assertEquals(out.includes('js disabled'), false);
+});
+
+Deno.test('lightStripHtml removes self-closing link/meta/base/source tags', () => {
+  const html = '<link rel="x" href="y"/><meta name="a" content="b"><base href="/"/><p>hi</p>';
+  const out = lightStripHtml(html);
+  assertEquals(out, '<p>hi</p>');
+});
+
+Deno.test('lightStripHtml removes HTML comments', () => {
+  const html = '<p>before</p><!-- secret --><p>after</p>';
+  const out = lightStripHtml(html);
+  assertEquals(out.includes('secret'), false);
+  assertStringIncludes(out, 'before');
+  assertStringIncludes(out, 'after');
+});
+
+Deno.test('lightStripHtml collapses whitespace runs into single spaces', () => {
+  const html = '<p>a</p>\n\n\n<p>b</p>     <p>c</p>\t\t';
+  const out = lightStripHtml(html);
+  assertEquals(out, '<p>a</p> <p>b</p> <p>c</p>');
+});
+
+Deno.test('lightStripHtml preserves <input>, <form>, <table>, attributes', () => {
+  const html = '<form><input type="checkbox" id="x"/><div class="font-bold">salt</div></form>';
+  const out = lightStripHtml(html);
+  assertStringIncludes(out, '<input');
+  assertStringIncludes(out, 'type="checkbox"');
+  assertStringIncludes(out, 'class="font-bold"');
+  assertStringIncludes(out, 'salt');
+});
+
+Deno.test('lightStripHtml handles script with newlines and complex attrs', () => {
+  const html = `<p>ok</p><script
+    type="application/ld+json"
+    data-foo="x">
+      var s = "</wrong>";
+  </script><p>after</p>`;
+  const out = lightStripHtml(html);
+  assertStringIncludes(out, 'ok');
+  assertStringIncludes(out, 'after');
+  assertEquals(out.includes('var s'), false);
 });

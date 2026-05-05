@@ -8,8 +8,9 @@
 import type { AiMessage } from './client.ts';
 import type { ScrapedRecipe } from '../scrape/recipe-jsonld.ts';
 
-const HTML_CAP_WITH_SCRAPED = 16_000;
-const HTML_CAP_WITHOUT_SCRAPED = 32_000;
+// HTML feed cap. Sized to fit ~20K input tokens at Haiku 4.5 prices, which
+// covers every recipe page we've sampled after lightStripHtml runs.
+const HTML_MAX_CHARS = 80_000;
 
 export const RECIPE_JSON_SHAPE = `
 The JSON object MUST match this TypeScript type exactly:
@@ -51,7 +52,46 @@ Rules:
 - Preserve the source language verbatim; do NOT translate.
 - Canonical unit keys: g, kg, oz, lb, ml, l, tsp, tbsp, cup_us, cup_metric,
   fl_oz, count, C, F, min, h.
+- Translate non-English unit words to canonical keys: Hungarian ek/tk/mk →
+  tbsp/tsp/quarter-tsp (set quantity=0.25, unit=tsp for mk); German EL/TL →
+  tbsp/tsp; French "c. à s."/"c. à c." → tbsp/tsp; Italian
+  cucchiaio/cucchiaino → tbsp/tsp; Spanish cucharada/cucharadita → tbsp/tsp.
+  Piece-words (Hungarian: db, fej, gerezd, csokor, szelet, adag; German:
+  Stück; French: pièce, gousse, botte) → unit="count".
+- "tags" must come from terms actually present in the source (page chrome,
+  category tags, recipe-card keywords). Do NOT invent tags from the title
+  or your own knowledge. Empty array if none are found.
+- "hero_image_path" stores a remote image URL when available; null if none.
+- Split each logical action into its own step. A "preheat oven … bake 30
+  min … cool" sequence is three steps, not one.
 `.trim();
+
+function compactScraped(s: ScrapedRecipe): Record<string, unknown> {
+  // Drop null fields and empty arrays so the model isn't told an empty list
+  // is the "primary source of truth". On sites where Recipe JSON-LD is
+  // present but recipeIngredient/recipeInstructions are empty (we've seen
+  // this in production on streetkitchen.hu), this keeps the useful hint
+  // fields (name, image, yield, total_time_min, keywords) visible while
+  // not actively misleading the model about the ingredient list.
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(s)) {
+    if (v === null) continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+function formatScraped(s: ScrapedRecipe): string {
+  const compact = compactScraped(s);
+  if (Object.keys(compact).length === 0) return '';
+  return `Hint — schema.org JSON-LD found on the page (a starting point; the HTML below is the ground truth, especially for ingredients and instructions):
+"""
+${JSON.stringify(compact, null, 2)}
+"""
+
+`;
+}
 
 export function structuringFromHtml(args: {
   html: string;
@@ -59,8 +99,9 @@ export function structuringFromHtml(args: {
   hint?: string;
   scraped?: ScrapedRecipe | null;
 }): AiMessage[] {
-  const cap = args.scraped ? HTML_CAP_WITH_SCRAPED : HTML_CAP_WITHOUT_SCRAPED;
-  const html = args.html.length > cap ? args.html.slice(0, cap) : args.html;
+  const html = args.html.length > HTML_MAX_CHARS
+    ? args.html.slice(0, HTML_MAX_CHARS)
+    : args.html;
   return [
     {
       role: 'system',
@@ -70,25 +111,12 @@ export function structuringFromHtml(args: {
       role: 'user',
       content: `Source URL: ${args.sourceUrl}
 ${args.hint ? `Hint: ${args.hint}\n` : ''}${args.scraped ? formatScraped(args.scraped) : ''}
-HTML (already cleaned by Readability):
+HTML (lightly stripped — scripts, styles, head, svg, iframes, comments removed; structure preserved):
 """
 ${html}
 """`,
     },
   ];
-}
-
-function formatScraped(s: ScrapedRecipe): string {
-  return `Structured recipe data was extracted from the page's schema.org JSON-LD. \
-Treat this as the PRIMARY source of truth. Use the HTML below only for fields \
-not present here, or to disambiguate.
-
-Structured data (JSON):
-"""
-${JSON.stringify(s, null, 2)}
-"""
-
-`;
 }
 
 export function structuringFromCaption(args: {

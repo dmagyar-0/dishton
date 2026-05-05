@@ -1,9 +1,14 @@
-// URL fetch + Readability extract. Mirrors the byte cap, timeout, UA, and
-// fallback behavior of supabase/functions/import-url/index.ts so the eval
-// feeds models the same input production does.
+// URL fetch + lightStripHtml extract. Mirrors the byte cap, timeout, UA, and
+// stripping behavior of supabase/functions/import-url/index.ts so the eval
+// feeds models the same input production does. Imports the production
+// strip-html and recipe-jsonld utilities directly to avoid drift.
 
-import { Readability } from '@mozilla/readability';
 import { parseHTML } from 'linkedom';
+import { lightStripHtml } from '../../supabase/functions/_shared/scrape/strip-html.ts';
+import {
+  extractRecipeJsonLd,
+  type ScrapedRecipe,
+} from '../../supabase/functions/_shared/scrape/recipe-jsonld.ts';
 
 const MAX_BYTES = 5_000_000;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -12,7 +17,7 @@ const USER_AGENT = 'DishtonBot/0.1 (+https://dishton.app)';
 export type ExtractResult = {
   text: string;
   bytes: number;
-  readabilityUsed: boolean;
+  scraped: ScrapedRecipe | null;
 };
 
 export class FetchError extends Error {
@@ -75,14 +80,11 @@ export async function fetchAndExtract(
 }
 
 export function extractFromHtml(html: string, bytes: number): ExtractResult {
+  // JSON-LD must come from the raw HTML — lightStripHtml drops <script>.
   const dom = parseHTML(html);
-  const reader = new Readability((dom as any).document);
-  const article = reader.parse();
-  const text = article?.textContent?.trim() ?? '';
-  if (text.length > 0) {
-    return { text, bytes, readabilityUsed: true };
-  }
-  return { text: html, bytes, readabilityUsed: false };
+  const scraped = extractRecipeJsonLd((dom as any).document);
+  const text = lightStripHtml(html);
+  return { text, bytes, scraped };
 }
 
 function concat(chunks: Uint8Array[]): Uint8Array {

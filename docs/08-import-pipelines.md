@@ -56,17 +56,17 @@ UI in charge of authoritative writes.
             User-Agent "DishtonBot/0.1 (+https://dishton.app)"
             reject non-2xx, non-text/html (image MIME shortcut to import-photo
             disallowed; user must use the photo tab)
-[Edge]    Readability extraction:
-            const dom = parseHTML(html, { url });
-            const article = new Readability(dom.window.document).parse();
-            // article.textContent + article.title used as the prompt body
+[Edge]    JSON-LD scrape + light HTML strip:
+            const dom = parseHTML(html);
+            const scraped = extractRecipeJsonLd(dom.document);  // Recipe @type only
+            const stripped = lightStripHtml(html);              // drops script/style/head/svg
 [Edge]    estimatedTokens = 4000
           withRateBudget(4000, () =>
             callAndValidate({
               lane: 'text',
-              messages: structuringFromHtml({ html: article.textContent,
+              messages: structuringFromHtml({ html: stripped,
                                              sourceUrl: url,
-                                             hint: 'Extract the main recipe.' }),
+                                             scraped }),
               estimatedTokens: 4000,
             }))
 [Edge]    on rate_limit → respond 429 with body
@@ -82,8 +82,15 @@ UI in charge of authoritative writes.
           recipe_tags inside a single transaction (rpc app.save_recipe(json))
 ```
 
-`linkedom` provides a Deno-compatible DOM. `@mozilla/readability` works
-unchanged.
+`linkedom` provides a Deno-compatible DOM, used for JSON-LD extraction.
+The HTML body that's passed to the model goes through `lightStripHtml` —
+a string-level strip of `<script>`, `<style>`, `<head>`, `<svg>`,
+`<noscript>`, `<picture>`, `<iframe>`, `<template>`, self-closing
+`<link>/<meta>/<base>/<source>`, and HTML comments. We deliberately do
+NOT use Mozilla Readability: it scores DOM nodes and prunes anything
+that looks like form/sidebar/related-content, which kills the structured
+ingredient grids on JS-framework recipe sites (we lost a 19-ingredient
+recipe to a 1-ingredient skeleton on streetkitchen.hu before the switch).
 
 ### Hero image extraction
 
@@ -107,7 +114,7 @@ Browser                   Edge:import-url             Anthropic
    │ ─────────────────────────►  │                      │
    │                             │ insert job(running)  │
    │                             │ fetch URL ──HTML──►  │
-   │                             │ readability          │
+   │                             │ JSON-LD + strip      │
    │                             │ reserve budget       │
    │                             │ POST /chat ────────► │
    │                             │ ◄─── JSON ────────── │

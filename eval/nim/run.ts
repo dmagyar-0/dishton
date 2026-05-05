@@ -13,6 +13,7 @@ import {
   writeMarkdown,
 } from './report.ts';
 import { structuringFromHtml } from '../../supabase/functions/_shared/ai/prompts.ts';
+import type { ScrapedRecipe } from '../../supabase/functions/_shared/scrape/recipe-jsonld.ts';
 import { Recipe } from '../../src/domain/recipe.ts';
 
 type CliArgs = {
@@ -122,6 +123,7 @@ async function callOnce(args: {
   model: { id: string; label?: string; provider: 'nim' | 'anthropic'; temperature?: number; maxTokens?: number };
   url: string;
   cleanedText: string;
+  scraped: ScrapedRecipe | null;
   timeoutMs: number;
 }): Promise<{
   raw: string;
@@ -132,7 +134,11 @@ async function callOnce(args: {
   error?: string;
 }> {
   try {
-    const messages = structuringFromHtml({ html: args.cleanedText, sourceUrl: args.url });
+    const messages = structuringFromHtml({
+      html: args.cleanedText,
+      sourceUrl: args.url,
+      scraped: args.scraped,
+    });
     const r = args.model.provider === 'anthropic'
       ? await callAnthropic({
           apiKey: args.apiKeys.anthropic!,
@@ -194,6 +200,7 @@ async function evaluateUrl(args: {
   model: { id: string; label?: string; provider: 'nim' | 'anthropic'; temperature?: number; maxTokens?: number };
   url: string;
   cleanedText: string;
+  scraped: ScrapedRecipe | null;
   timeoutMs: number;
   repeat: number;
 }): Promise<ModelOutcome> {
@@ -211,6 +218,7 @@ async function evaluateUrl(args: {
       model: args.model,
       url: args.url,
       cleanedText: args.cleanedText,
+      scraped: args.scraped,
       timeoutMs: args.timeoutMs,
     }));
   }
@@ -310,13 +318,19 @@ async function main(): Promise<number> {
   const startedAt = new Date();
 
   // Phase 1: fetch all URLs once
-  const fetched: { url: string; text: string; readabilityUsed: boolean }[] = [];
+  const fetched: {
+    url: string;
+    text: string;
+    scraped: ScrapedRecipe | null;
+  }[] = [];
   const skipped: { url: string; reason: string }[] = [];
   for (const url of urls) {
     try {
       const r = await fetchAndExtract(url);
-      fetched.push({ url, text: r.text, readabilityUsed: r.readabilityUsed });
-      console.error(`fetched: ${url} (${r.bytes} bytes, readability=${r.readabilityUsed})`);
+      fetched.push({ url, text: r.text, scraped: r.scraped });
+      console.error(
+        `fetched: ${url} (${r.bytes} bytes, jsonld=${r.scraped !== null})`,
+      );
     } catch (e) {
       const reason = e instanceof FetchError ? e.reason : 'network';
       skipped.push({ url, reason });
@@ -328,7 +342,7 @@ async function main(): Promise<number> {
   const bundles: UrlBundle[] = fetched.map((f) => ({
     url: f.url,
     sourceExcerpt: f.text.slice(0, 2000),
-    readabilityUsed: f.readabilityUsed,
+    jsonldFound: f.scraped !== null,
     outcomes: [],
   }));
   const indexByUrl = new Map(bundles.map((b, i) => [b.url, i]));
@@ -341,6 +355,7 @@ async function main(): Promise<number> {
         model: cand,
         url: f.url,
         cleanedText: f.text,
+        scraped: f.scraped,
         timeoutMs: cfg.timeoutMs,
         repeat: cfg.repeat,
       });

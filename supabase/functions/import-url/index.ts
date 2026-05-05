@@ -1,10 +1,9 @@
-// import-url: paste a blog/article URL → readability extract → Anthropic →
-// validated draft Recipe + import_jobs row.
+// import-url: paste a blog/article URL → JSON-LD scrape + lightStripHtml →
+// Anthropic → validated draft Recipe + import_jobs row.
 //
 // Never writes to app.recipes; the SPA does that on Save via app.save_recipe.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { Readability } from 'npm:@mozilla/readability@0.5';
 import { parseHTML } from 'npm:linkedom@0.18';
 import { z } from 'zod';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
@@ -12,6 +11,7 @@ import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
 import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
+import { lightStripHtml } from '../_shared/scrape/strip-html.ts';
 import { withTimeout } from '../_shared/timeout.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
@@ -119,11 +119,11 @@ serve(async (req: Request) => {
 
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
       const html = await fetchHtml(body.url, signal);
+      // JSON-LD extraction must run on the raw HTML (lightStripHtml drops
+      // <script> blocks, including the application/ld+json ones).
       const dom = parseHTML(html);
       const scraped = extractRecipeJsonLd(dom.document);
-      const reader = new Readability(dom.document);
-      const article = reader.parse();
-      const text = article?.textContent ?? html;
+      const stripped = lightStripHtml(html);
       log({
         request_id: requestId,
         profile_id: caller.profileId,
@@ -135,7 +135,7 @@ serve(async (req: Request) => {
       return await withRateBudget(4000, () =>
         callAndValidate({
           lane: 'text',
-          messages: structuringFromHtml({ html: text, sourceUrl: body.url, scraped }),
+          messages: structuringFromHtml({ html: stripped, sourceUrl: body.url, scraped }),
           estimatedTokens: 4000,
           signal,
         }),

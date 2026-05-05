@@ -136,7 +136,7 @@ JSON body, and returns a canned response. Every test must restore `fetch` via
 
 Required cases per function:
 
-- `import-url`: happy path (HTML fixture → readability → Anthropic JSON →
+- `import-url`: happy path (HTML fixture → JSON-LD + lightStripHtml → Anthropic JSON →
   Zod-valid draft); Anthropic returns malformed JSON, function re-prompts
   once; second failure surfaces a typed error to the SPA; rate-budget
   exhausted returns `429`.
