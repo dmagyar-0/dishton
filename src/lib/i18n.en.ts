@@ -27,6 +27,12 @@ export default {
     create: 'Create',
     redeem: 'Join',
   },
+  profile: {
+    language_label: 'Recipe language',
+    language_hint: 'New imports are translated into this language. Saved recipes are unaffected.',
+    language_saved: 'Language updated',
+    language_save_failed: "Couldn't save your language preference",
+  },
   recipe: {
     empty_title: 'Your pantry is empty',
     empty_action: 'Import a recipe',

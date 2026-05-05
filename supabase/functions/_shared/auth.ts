@@ -32,6 +32,22 @@ export async function resolveCaller(req: Request): Promise<CallerContext> {
   return { profileId: data.user.id, jwt, client };
 }
 
+// Read the caller's preferred language from app.profiles. Used by the import
+// Edge Functions to thread the structuring prompt's targetLanguage. Falls back
+// to 'en' on any miss — matches the column default and keeps a missing/loading
+// profile from blocking imports.
+export async function getCallerPreferredLanguage(
+  client: AppClient,
+  profileId: string,
+): Promise<string> {
+  const { data } = await client
+    .from('profiles')
+    .select('preferred_language')
+    .eq('id', profileId)
+    .maybeSingle();
+  return (data?.preferred_language as string | undefined) ?? 'en';
+}
+
 export class HttpError extends Error {
   constructor(public status: number, public code: string, public extra?: Record<string, unknown>) {
     super(`${status} ${code}`);
