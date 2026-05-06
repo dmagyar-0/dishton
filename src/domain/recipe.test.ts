@@ -55,6 +55,14 @@ describe('Ingredient', () => {
     const out = Ingredient.parse(base);
     expect(out.scalable).toBe(true);
     expect(out.non_scalable_qty).toBeNull();
+    expect(out.section).toBeNull();
+  });
+  it('round-trips an explicit section', () => {
+    const out = Ingredient.parse({ ...base, section: 'For the sauce' });
+    expect(out.section).toBe('For the sauce');
+  });
+  it('rejects an empty section string', () => {
+    expect(() => Ingredient.parse({ ...base, section: '' })).toThrow();
   });
   it('rejects empty raw_text', () => {
     expect(() => Ingredient.parse({ ...base, raw_text: '' })).toThrow();

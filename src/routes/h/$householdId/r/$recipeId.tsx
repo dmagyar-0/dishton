@@ -69,6 +69,18 @@ function RecipeDetailPage() {
     };
   }, [q.data, search.scale, search.servings, displayUnits]);
 
+  const ingredientGroups = useMemo(() => {
+    if (!displayed) return [];
+    type Item = (typeof displayed.ingredients)[number];
+    const groups: { section: string | null; items: Item[] }[] = [];
+    for (const ing of displayed.ingredients) {
+      const last = groups[groups.length - 1];
+      if (last && last.section === ing.section) last.items.push(ing);
+      else groups.push({ section: ing.section ?? null, items: [ing] });
+    }
+    return groups;
+  }, [displayed]);
+
   if (q.isLoading) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
@@ -129,27 +141,39 @@ function RecipeDetailPage() {
 
           <Card className="p-5">
             <h2 className="font-display text-xl mb-3">Ingredients</h2>
-            <ul className="space-y-2.5">
-              {displayed.ingredients.map((ing) => (
-                <li
-                  key={ing.id}
-                  className="grid grid-cols-[3rem_2.5rem_1fr] items-baseline gap-x-3"
-                >
-                  <span className="font-mono text-base tabular-nums text-saffron text-right">
-                    {ing.displayValue != null ? formatNumber(ing.displayValue) : ''}
-                  </span>
-                  <span className="font-mono text-xs tabular-nums text-ink-soft">
-                    {ing.displayUnit ? formatUnit(ing.displayUnit) : ''}
-                  </span>
-                  <span className="text-ink leading-snug">
-                    {ing.ingredient_name ?? ing.raw_text}
-                    {ing.notes && (
-                      <span className="ml-2 text-xs italic text-ink-soft">{ing.notes}</span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {ingredientGroups.map((group, gi) => (
+              <div key={group.items[0]?.id ?? gi} className={gi === 0 ? '' : 'mt-6'}>
+                {group.section && (
+                  <div className="mb-3 flex items-baseline gap-3">
+                    <h3 className="font-display italic text-base text-saffron-ink leading-none">
+                      {group.section}
+                    </h3>
+                    <span aria-hidden className="h-px flex-1 -translate-y-[0.35em] bg-saffron/40" />
+                  </div>
+                )}
+                <ul className="space-y-2.5">
+                  {group.items.map((ing) => (
+                    <li
+                      key={ing.id}
+                      className="grid grid-cols-[3rem_2.5rem_1fr] items-baseline gap-x-3"
+                    >
+                      <span className="font-mono text-base tabular-nums text-saffron text-right">
+                        {ing.displayValue != null ? formatNumber(ing.displayValue) : ''}
+                      </span>
+                      <span className="font-mono text-xs tabular-nums text-ink-soft">
+                        {ing.displayUnit ? formatUnit(ing.displayUnit) : ''}
+                      </span>
+                      <span className="text-ink leading-snug">
+                        {ing.ingredient_name ?? ing.raw_text}
+                        {ing.notes && (
+                          <span className="ml-2 text-xs italic text-ink-soft">{ing.notes}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </Card>
         </aside>
 

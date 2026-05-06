@@ -53,6 +53,7 @@ export type FullRecipe = {
     unit: string | null;
     ingredient_name: string | null;
     notes: string | null;
+    section: string | null;
   }[];
   steps: { id: string; position: number; body: string; duration_min: number | null }[];
   tags: string[];

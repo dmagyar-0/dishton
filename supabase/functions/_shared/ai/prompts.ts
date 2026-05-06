@@ -35,7 +35,8 @@ The JSON object MUST match this TypeScript type exactly:
       "ingredient_name": string | null,
       "notes": string | null,
       "scalable": boolean,
-      "non_scalable_qty": "to_taste"|"pinch"|"dash"|"splash"|"handful"|"optional"|null
+      "non_scalable_qty": "to_taste"|"pinch"|"dash"|"splash"|"handful"|"optional"|null,
+      "section": string | null
     }
   ],
   "steps": [
@@ -65,6 +66,11 @@ Rules:
   min … cool" sequence is three steps, not one.
 - "position" is 0-indexed and contiguous: the first ingredient/step is 0,
   the second is 1, and so on.
+- If the source groups ingredients under sub-headings (e.g. "For the meat",
+  "For the side", "For the sauce", "Streusel", "Glaze"), set "section" to
+  that heading verbatim and apply it to every ingredient that belongs to
+  it. The heading itself must NOT appear as its own ingredient row. If the
+  source is a single flat list, set "section" to null on every ingredient.
 `.trim();
 
 // Language handling for the structuring step. When `targetLanguage` is set
@@ -76,7 +82,7 @@ export function languageDirective(targetLanguage: string | undefined): string {
   if (!targetLanguage) {
     return 'Preserve the source language verbatim; do NOT translate. Set source_language to the BCP-47 code of the source.';
   }
-  return `Translate the human-readable strings into ${targetLanguage}: title, description, ingredient.raw_text, ingredient.ingredient_name, ingredient.notes, step.body, tags. Do NOT translate quantity, unit, position, source_type, source_url, servings, total_time_min, scalable, non_scalable_qty, canonical_unit_system. Set source_language to "${targetLanguage}".`;
+  return `Translate the human-readable strings into ${targetLanguage}: title, description, ingredient.raw_text, ingredient.ingredient_name, ingredient.notes, ingredient.section, step.body, tags. Do NOT translate quantity, unit, position, source_type, source_url, servings, total_time_min, scalable, non_scalable_qty, canonical_unit_system. Set source_language to "${targetLanguage}".`;
 }
 
 function compactScraped(s: ScrapedRecipe): Record<string, unknown> {
@@ -198,7 +204,7 @@ export function translatePrompt(args: {
   return [
     {
       role: 'system',
-      content: `You translate a Dishton Recipe JSON into ${args.targetLanguage}. Only translate human-readable strings: title, description, ingredient.raw_text, ingredient.ingredient_name, ingredient.notes, step.body, tags. Do NOT change quantity, unit, position, source_type, source_url, source_language, servings, total_time_min, scalable, non_scalable_qty, canonical_unit_system. Preserve the JSON shape exactly. Output ONLY the JSON object.`,
+      content: `You translate a Dishton Recipe JSON into ${args.targetLanguage}. Only translate human-readable strings: title, description, ingredient.raw_text, ingredient.ingredient_name, ingredient.notes, ingredient.section, step.body, tags. Do NOT change quantity, unit, position, source_type, source_url, source_language, servings, total_time_min, scalable, non_scalable_qty, canonical_unit_system. Preserve the JSON shape exactly. Output ONLY the JSON object.`,
     },
     { role: 'user', content: args.recipeJson },
   ];
