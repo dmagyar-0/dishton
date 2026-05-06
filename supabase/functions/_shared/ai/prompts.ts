@@ -49,7 +49,6 @@ Rules:
   non_scalable_qty to the matching token; scalable=false.
 - "cup" defaults to "cup_us" (240 ml). For European-language sources, use
   "cup_metric" (250 ml).
-- Preserve the source language verbatim; do NOT translate.
 - Canonical unit keys: g, kg, oz, lb, ml, l, tsp, tbsp, cup_us, cup_metric,
   fl_oz, count, C, F, min, h.
 - Translate non-English unit words to canonical keys: Hungarian ek/tk/mk →
@@ -65,6 +64,18 @@ Rules:
 - Split each logical action into its own step. A "preheat oven … bake 30
   min … cool" sequence is three steps, not one.
 `.trim();
+
+// Language handling for the structuring step. When `targetLanguage` is set
+// (the importer's profile preferred_language), the model translates the
+// human-readable strings as it parses, so the recipe lands in the user's
+// language without a second round-trip through translate-recipe. The list of
+// translatable fields is kept in sync with `translatePrompt` below.
+export function languageDirective(targetLanguage: string | undefined): string {
+  if (!targetLanguage) {
+    return 'Preserve the source language verbatim; do NOT translate. Set source_language to the BCP-47 code of the source.';
+  }
+  return `Translate the human-readable strings into ${targetLanguage}: title, description, ingredient.raw_text, ingredient.ingredient_name, ingredient.notes, step.body, tags. Do NOT translate quantity, unit, position, source_type, source_url, servings, total_time_min, scalable, non_scalable_qty, canonical_unit_system. Set source_language to "${targetLanguage}".`;
+}
 
 function compactScraped(s: ScrapedRecipe): Record<string, unknown> {
   // Drop null fields and empty arrays so the model isn't told an empty list
@@ -98,6 +109,7 @@ export function structuringFromHtml(args: {
   sourceUrl: string;
   hint?: string;
   scraped?: ScrapedRecipe | null;
+  targetLanguage?: string;
 }): AiMessage[] {
   const html = args.html.length > HTML_MAX_CHARS
     ? args.html.slice(0, HTML_MAX_CHARS)
@@ -105,7 +117,7 @@ export function structuringFromHtml(args: {
   return [
     {
       role: 'system',
-      content: `You convert recipe HTML into a strict JSON object. ${RECIPE_JSON_SHAPE}`,
+      content: `You convert recipe HTML into a strict JSON object. ${RECIPE_JSON_SHAPE}\n${languageDirective(args.targetLanguage)}`,
     },
     {
       role: 'user',
@@ -122,11 +134,12 @@ ${html}
 export function structuringFromCaption(args: {
   caption: string;
   sourceUrl: string;
+  targetLanguage?: string;
 }): AiMessage[] {
   return [
     {
       role: 'system',
-      content: `You convert an Instagram recipe caption into strict JSON. ${RECIPE_JSON_SHAPE}`,
+      content: `You convert an Instagram recipe caption into strict JSON. ${RECIPE_JSON_SHAPE}\n${languageDirective(args.targetLanguage)}`,
     },
     {
       role: 'user',
@@ -145,6 +158,7 @@ total_time_min are not stated, set them to null and 1 respectively.`,
 export function structuringFromImage(args: {
   imageUrl: string;
   comment?: string;
+  targetLanguage?: string;
 }): AiMessage[] {
   const note = args.comment?.trim();
   const baseInstruction =
@@ -163,7 +177,7 @@ ${note}
     {
       role: 'system',
       content:
-        `You read recipes from photographs (handwriting, cookbook scans, screenshots) and output strict JSON. ${RECIPE_JSON_SHAPE}`,
+        `You read recipes from photographs (handwriting, cookbook scans, screenshots) and output strict JSON. ${RECIPE_JSON_SHAPE}\n${languageDirective(args.targetLanguage)}`,
     },
     {
       role: 'user',

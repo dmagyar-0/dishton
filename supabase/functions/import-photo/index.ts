@@ -3,7 +3,13 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
-import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
+import {
+  HttpError,
+  corsHeaders,
+  getCallerPreferredLanguage,
+  jsonResponse,
+  resolveCaller,
+} from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
@@ -78,11 +84,17 @@ serve(async (req: Request) => {
     if (signErr || !signed?.signedUrl) throw new HttpError(404, 'object_not_found');
     const signedUrl = signed.signedUrl;
 
+    const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
+
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) =>
       await withRateBudget(3500, () =>
         callAndValidate({
           lane: 'vision',
-          messages: structuringFromImage({ imageUrl: signedUrl, comment: trimmedComment }),
+          messages: structuringFromImage({
+            imageUrl: signedUrl,
+            comment: trimmedComment,
+            targetLanguage,
+          }),
           estimatedTokens: 3500,
           signal,
         }),

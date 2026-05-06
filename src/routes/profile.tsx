@@ -1,7 +1,9 @@
+import { normaliseBcp47 } from '@/domain/language';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/ui/primitives/Button';
-import { Card } from '@/ui/primitives/Card';
+import { supabase } from '@/lib/supabase';
+import { Button, Card, Select, useToast } from '@/ui/primitives';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from './_guards';
 
@@ -10,10 +12,44 @@ export const Route = createFileRoute('/profile')({
   component: ProfilePage,
 });
 
+// Curated set of languages we offer in the picker. Labels are in their own
+// language so the choice is recognisable regardless of UI locale.
+const LANGUAGE_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
+  { code: 'en', label: 'English' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'fr', label: 'Français' },
+  { code: 'es', label: 'Español' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'hu', label: 'Magyar' },
+];
+
 function ProfilePage() {
   const { t } = useTranslation();
   const auth = useAuth();
   const nav = useNavigate();
+  const { push } = useToast();
+  const [saving, setSaving] = useState(false);
+  const currentLanguage = auth.profile?.preferred_language ?? 'en';
+
+  async function onLanguageChange(value: string): Promise<void> {
+    const profile = auth.profile;
+    if (!profile) return;
+    const next = normaliseBcp47(value) ?? 'en';
+    if (next === profile.preferred_language) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ preferred_language: next })
+      .eq('id', profile.id);
+    setSaving(false);
+    if (error) {
+      push({ variant: 'error', title: t('profile.language_save_failed') });
+      return;
+    }
+    useAuth.getState().setProfile({ ...profile, preferred_language: next });
+    push({ variant: 'success', title: t('profile.language_saved') });
+  }
+
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="font-display text-3xl mb-6">{t('nav.profile')}</h1>
@@ -35,6 +71,24 @@ function ProfilePage() {
         >
           Sign out
         </Button>
+      </Card>
+      <Card className="p-6 mt-4 space-y-2">
+        <label htmlFor="preferred-language" className="text-ink-soft text-sm block">
+          {t('profile.language_label')}
+        </label>
+        <Select
+          id="preferred-language"
+          value={currentLanguage}
+          disabled={saving || !auth.profile}
+          onChange={(e) => void onLanguageChange(e.currentTarget.value)}
+        >
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <option key={opt.code} value={opt.code}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+        <p className="text-ink-soft text-sm">{t('profile.language_hint')}</p>
       </Card>
     </main>
   );

@@ -27,6 +27,13 @@ export default {
     create: 'Anlegen',
     redeem: 'Beitreten',
   },
+  profile: {
+    language_label: 'Rezeptsprache',
+    language_hint:
+      'Neue Importe werden in diese Sprache übersetzt. Gespeicherte Rezepte bleiben unverändert.',
+    language_saved: 'Sprache aktualisiert',
+    language_save_failed: 'Sprache konnte nicht gespeichert werden',
+  },
   recipe: {
     empty_title: 'Deine Speisekammer ist leer',
     empty_action: 'Rezept importieren',

@@ -6,7 +6,13 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { parseHTML } from 'npm:linkedom@0.18';
 import { z } from 'zod';
-import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
+import {
+  HttpError,
+  corsHeaders,
+  getCallerPreferredLanguage,
+  jsonResponse,
+  resolveCaller,
+} from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
@@ -117,6 +123,8 @@ serve(async (req: Request) => {
     if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
     jobId = job.id as string;
 
+    const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
+
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
       const html = await fetchHtml(body.url, signal);
       // JSON-LD extraction must run on the raw HTML (lightStripHtml drops
@@ -135,7 +143,12 @@ serve(async (req: Request) => {
       return await withRateBudget(4000, () =>
         callAndValidate({
           lane: 'text',
-          messages: structuringFromHtml({ html: stripped, sourceUrl: body.url, scraped }),
+          messages: structuringFromHtml({
+            html: stripped,
+            sourceUrl: body.url,
+            scraped,
+            targetLanguage,
+          }),
           estimatedTokens: 4000,
           signal,
         }),

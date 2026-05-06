@@ -4,7 +4,13 @@
 
 import { assert, assertEquals, assertStringIncludes } from 'jsr:@std/assert';
 import { Recipe } from '../domain/recipe.ts';
-import { RECIPE_JSON_SHAPE, structuringFromImage } from './prompts.ts';
+import {
+  RECIPE_JSON_SHAPE,
+  languageDirective,
+  structuringFromCaption,
+  structuringFromHtml,
+  structuringFromImage,
+} from './prompts.ts';
 
 const RECIPE_FIELDS = [
   'title',
@@ -108,4 +114,58 @@ Deno.test('structuringFromImage with whitespace-only comment behaves as if absen
     text,
     'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.',
   );
+});
+
+function systemContent(messages: { role: string; content: unknown }[]): string {
+  const sys = messages.find((m) => m.role === 'system');
+  assert(sys, 'expected a system message');
+  assert(typeof sys.content === 'string', 'expected string system content');
+  return sys.content;
+}
+
+Deno.test('languageDirective without target preserves source language', () => {
+  const directive = languageDirective(undefined);
+  assertStringIncludes(directive, 'Preserve the source language verbatim');
+  assertStringIncludes(directive, 'do NOT translate');
+});
+
+Deno.test('languageDirective with target asks for translation', () => {
+  const directive = languageDirective('de');
+  assertStringIncludes(directive, 'Translate the human-readable strings into de');
+  assertStringIncludes(directive, 'title, description, ingredient.raw_text');
+  assertStringIncludes(directive, 'Set source_language to "de"');
+});
+
+Deno.test('structuringFromHtml threads targetLanguage into the system message', () => {
+  const messages = structuringFromHtml({
+    html: '<html></html>',
+    sourceUrl: 'https://example.test/r',
+    targetLanguage: 'fr',
+  });
+  assertStringIncludes(systemContent(messages), 'Translate the human-readable strings into fr');
+});
+
+Deno.test('structuringFromCaption threads targetLanguage into the system message', () => {
+  const messages = structuringFromCaption({
+    caption: 'recipe',
+    sourceUrl: 'https://example.test/p',
+    targetLanguage: 'es',
+  });
+  assertStringIncludes(systemContent(messages), 'Translate the human-readable strings into es');
+});
+
+Deno.test('structuringFromImage threads targetLanguage into the system message', () => {
+  const messages = structuringFromImage({
+    imageUrl: 'https://example.test/x.jpg',
+    targetLanguage: 'hu',
+  });
+  assertStringIncludes(systemContent(messages), 'Translate the human-readable strings into hu');
+});
+
+Deno.test('structuringFromHtml without targetLanguage keeps the preserve directive', () => {
+  const messages = structuringFromHtml({
+    html: '<html></html>',
+    sourceUrl: 'https://example.test/r',
+  });
+  assertStringIncludes(systemContent(messages), 'Preserve the source language verbatim');
 });

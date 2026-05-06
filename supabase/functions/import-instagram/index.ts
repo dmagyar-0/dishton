@@ -2,7 +2,13 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
-import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
+import {
+  HttpError,
+  corsHeaders,
+  getCallerPreferredLanguage,
+  jsonResponse,
+  resolveCaller,
+} from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
@@ -108,6 +114,8 @@ serve(async (req: Request) => {
     if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
     jobId = job.id as string;
 
+    const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
+
     const { oembed, budget } = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
       let oe: OEmbed | null = null;
       if (env.IG_OEMBED_TOKEN) {
@@ -120,7 +128,7 @@ serve(async (req: Request) => {
       const b = await withRateBudget(1200, () =>
         callAndValidate({
           lane: 'text',
-          messages: structuringFromCaption({ caption, sourceUrl: body.url }),
+          messages: structuringFromCaption({ caption, sourceUrl: body.url, targetLanguage }),
           estimatedTokens: 1200,
           signal,
         }),
