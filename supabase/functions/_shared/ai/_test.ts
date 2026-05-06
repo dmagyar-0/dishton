@@ -3,7 +3,7 @@
 // (which wraps `deno test -A supabase/functions`).
 
 import { assert, assertEquals, assertStringIncludes } from 'jsr:@std/assert';
-import { Recipe } from '../domain/recipe.ts';
+import { Recipe, type Recipe as RecipeType } from '../domain/recipe.ts';
 import {
   RECIPE_JSON_SHAPE,
   languageDirective,
@@ -11,6 +11,7 @@ import {
   structuringFromHtml,
   structuringFromImage,
 } from './prompts.ts';
+import { normalizePositions } from './validate.ts';
 
 const RECIPE_FIELDS = [
   'title',
@@ -168,4 +169,99 @@ Deno.test('structuringFromHtml without targetLanguage keeps the preserve directi
     sourceUrl: 'https://example.test/r',
   });
   assertStringIncludes(systemContent(messages), 'Preserve the source language verbatim');
+});
+
+// normalizePositions: post-Zod fix-up that re-indexes ingredients[].position
+// and steps[].position to 0-based contiguous, by array order. The recipe view
+// renders steps as `position + 1`, so 1-based positions from the model would
+// produce "Step 2, Step 3, ..." without this normalization.
+
+function baseRecipe(): RecipeType {
+  return {
+    title: 'Sample',
+    description: null,
+    source_type: 'url',
+    source_url: 'https://example.test/r',
+    source_language: 'en',
+    canonical_unit_system: 'metric',
+    servings: 4,
+    total_time_min: null,
+    hero_image_path: null,
+    tags: [],
+    ingredients: [],
+    steps: [],
+  };
+}
+
+function ing(position: number, name: string) {
+  return {
+    position,
+    raw_text: name,
+    quantity: null,
+    unit: null,
+    ingredient_name: name,
+    notes: null,
+    scalable: true,
+    non_scalable_qty: null,
+  };
+}
+
+function step(position: number, body: string) {
+  return { position, body, duration_min: null };
+}
+
+Deno.test('normalizePositions rebases 1-based step positions to 0-based', () => {
+  const out = normalizePositions({
+    ...baseRecipe(),
+    steps: [step(1, 'first'), step(2, 'second'), step(3, 'third')],
+  });
+  assertEquals(out.steps.map((s) => s.position), [0, 1, 2]);
+  assertEquals(out.steps.map((s) => s.body), ['first', 'second', 'third']);
+});
+
+Deno.test('normalizePositions rebases 1-based ingredient positions to 0-based', () => {
+  const out = normalizePositions({
+    ...baseRecipe(),
+    ingredients: [ing(1, 'flour'), ing(2, 'water'), ing(3, 'salt')],
+  });
+  assertEquals(out.ingredients.map((i) => i.position), [0, 1, 2]);
+});
+
+Deno.test('normalizePositions leaves already-correct 0-based positions unchanged', () => {
+  const out = normalizePositions({
+    ...baseRecipe(),
+    ingredients: [ing(0, 'a'), ing(1, 'b')],
+    steps: [step(0, 'mix'), step(1, 'bake')],
+  });
+  assertEquals(out.ingredients.map((i) => i.position), [0, 1]);
+  assertEquals(out.steps.map((s) => s.position), [0, 1]);
+});
+
+Deno.test('normalizePositions reindexes positions with gaps using array order', () => {
+  const out = normalizePositions({
+    ...baseRecipe(),
+    steps: [step(0, 'a'), step(2, 'b'), step(5, 'c')],
+  });
+  assertEquals(out.steps.map((s) => s.position), [0, 1, 2]);
+  assertEquals(out.steps.map((s) => s.body), ['a', 'b', 'c']);
+});
+
+Deno.test('normalizePositions handles empty arrays', () => {
+  const out = normalizePositions(baseRecipe());
+  assertEquals(out.ingredients, []);
+  assertEquals(out.steps, []);
+});
+
+Deno.test('normalizePositions preserves non-position step fields', () => {
+  const out = normalizePositions({
+    ...baseRecipe(),
+    steps: [
+      { position: 7, body: 'preheat', duration_min: 5 },
+      { position: 8, body: 'bake', duration_min: 30 },
+    ],
+  });
+  assertEquals(out.steps, [
+    { position: 0, body: 'preheat', duration_min: 5 },
+    { position: 1, body: 'bake', duration_min: 30 },
+  ]);
 });

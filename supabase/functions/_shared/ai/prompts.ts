@@ -63,6 +63,8 @@ Rules:
 - "hero_image_path" stores a remote image URL when available; null if none.
 - Split each logical action into its own step. A "preheat oven … bake 30
   min … cool" sequence is three steps, not one.
+- "position" is 0-indexed and contiguous: the first ingredient/step is 0,
+  the second is 1, and so on.
 `.trim();
 
 // Language handling for the structuring step. When `targetLanguage` is set
