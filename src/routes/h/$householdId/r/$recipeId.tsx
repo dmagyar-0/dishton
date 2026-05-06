@@ -129,15 +129,24 @@ function RecipeDetailPage() {
 
           <Card className="p-5">
             <h2 className="font-display text-xl mb-3">Ingredients</h2>
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               {displayed.ingredients.map((ing) => (
-                <li key={ing.id} className="flex items-baseline gap-2">
-                  <span className="font-mono text-sm tabular-nums">
-                    {ing.displayValue != null && ing.displayUnit
-                      ? `${formatNumber(ing.displayValue)} ${formatUnit(ing.displayUnit)}`
-                      : ''}
+                <li
+                  key={ing.id}
+                  className="grid grid-cols-[3rem_2.5rem_1fr] items-baseline gap-x-3"
+                >
+                  <span className="font-mono text-base tabular-nums text-saffron text-right">
+                    {ing.displayValue != null ? formatNumber(ing.displayValue) : ''}
                   </span>
-                  <span>{ing.ingredient_name ?? ing.raw_text}</span>
+                  <span className="font-mono text-xs tabular-nums text-ink-soft">
+                    {ing.displayUnit ? formatUnit(ing.displayUnit) : ''}
+                  </span>
+                  <span className="text-ink leading-snug">
+                    {ing.ingredient_name ?? ing.raw_text}
+                    {ing.notes && (
+                      <span className="ml-2 text-xs italic text-ink-soft">{ing.notes}</span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
