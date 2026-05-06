@@ -24,6 +24,7 @@ const base: Recipe = {
       notes: null,
       scalable: true,
       non_scalable_qty: null,
+      section: null,
     },
     {
       position: 1,
@@ -34,6 +35,7 @@ const base: Recipe = {
       notes: null,
       scalable: false,
       non_scalable_qty: 'to_taste',
+      section: null,
     },
     {
       position: 2,
@@ -44,6 +46,7 @@ const base: Recipe = {
       notes: null,
       scalable: true,
       non_scalable_qty: null,
+      section: null,
     },
   ],
   steps: [{ position: 0, body: 'Mix.', duration_min: null }],

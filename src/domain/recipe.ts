@@ -41,6 +41,7 @@ export const Ingredient = z.object({
   notes: z.string().nullable(),
   scalable: z.boolean().default(true),
   non_scalable_qty: NonScalableQty.nullable().default(null),
+  section: z.string().min(1).max(200).nullable().default(null),
 });
 export type Ingredient = z.infer<typeof Ingredient>;
 

@@ -34,6 +34,7 @@ const RECIPE_FIELDS = [
   'notes',
   'scalable',
   'non_scalable_qty',
+  'section',
   'duration_min',
   'body',
 ] as const;
@@ -66,13 +67,17 @@ Deno.test('Recipe.parse accepts a sample structuring response', () => {
         notes: null,
         scalable: true,
         non_scalable_qty: null,
+        section: 'For the filling',
       },
     ],
     steps: [{ position: 0, body: 'Preheat.', duration_min: 5 }],
   };
   const out = Recipe.safeParse(sample);
   assert(out.success, JSON.stringify(out));
-  if (out.success) assertEquals(out.data.title, 'Tomato Tarte Tatin');
+  if (out.success) {
+    assertEquals(out.data.title, 'Tomato Tarte Tatin');
+    assertEquals(out.data.ingredients[0].section, 'For the filling');
+  }
 });
 
 function getUserText(messages: ReturnType<typeof structuringFromImage>): string {
@@ -203,6 +208,7 @@ function ing(position: number, name: string) {
     notes: null,
     scalable: true,
     non_scalable_qty: null,
+    section: null,
   };
 }
 
