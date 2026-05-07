@@ -10,7 +10,7 @@ export const TabsList = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<type
   ({ className, ...rest }, ref) => (
     <RadixTabs.List
       ref={ref}
-      className={cn('inline-flex items-center gap-2 border-b border-cream-line', className)}
+      className={cn('flex flex-wrap items-center gap-2 border-b border-cream-line', className)}
       {...rest}
     />
   ),
