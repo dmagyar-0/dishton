@@ -43,6 +43,16 @@ export default {
     ingredients: 'Ingredients',
     steps: 'Steps',
     cooking_mode: 'Start cooking',
+    delete_action: 'Delete recipe',
+    delete_confirm_title: 'Delete this recipe?',
+    delete_confirm_body:
+      'You’re about to remove "{{title}}" from your pantry. This can’t be undone.',
+    delete_confirm: 'Delete',
+    delete_cancel: 'Cancel',
+    delete_success_title: 'Recipe deleted',
+    delete_success_body: '"{{title}}" is gone from your pantry.',
+    delete_failed_title: 'Couldn’t delete',
+    delete_failed_body: 'Something went wrong removing this recipe. Try again in a moment.',
   },
   import: {
     tab_url: 'URL',

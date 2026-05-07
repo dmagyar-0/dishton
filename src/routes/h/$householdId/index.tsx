@@ -4,6 +4,7 @@ import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
 import { Skeleton } from '@/ui/primitives/Skeleton';
+import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { requireHousehold } from '../../_guards';
@@ -50,11 +51,16 @@ function RecipeListPage() {
       {list.data && list.data.length > 0 && (
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {list.data.map((r) => (
-            <li key={r.id}>
+            <li key={r.id} className="group/card relative">
+              <RecipeCardDeleteButton
+                recipeId={r.id}
+                recipeTitle={r.title}
+                householdId={householdId}
+              />
               <Link
                 to="/h/$householdId/r/$recipeId"
                 params={{ householdId, recipeId: r.id }}
-                className="block group"
+                className="block group/link"
               >
                 <Card className="p-0 overflow-hidden h-full">
                   {r.hero_image_path && (
@@ -62,7 +68,7 @@ function RecipeListPage() {
                       <img
                         src={r.hero_image_path}
                         alt=""
-                        className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                        className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
                       />
                     </div>
                   )}
