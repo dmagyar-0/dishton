@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
 export type RecipeListRow = {
@@ -58,6 +58,21 @@ export type FullRecipe = {
   steps: { id: string; position: number; body: string; duration_min: number | null }[];
   tags: string[];
 };
+
+export function useDeleteRecipe(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (recipeId: string) => {
+      const { error } = await supabase.from('recipes').delete().eq('id', recipeId);
+      if (error) throw error;
+      return recipeId;
+    },
+    onSuccess: (recipeId) => {
+      void qc.invalidateQueries({ queryKey: ['recipes', householdId] });
+      qc.removeQueries({ queryKey: ['recipe', recipeId] });
+    },
+  });
+}
 
 export function useRecipe(recipeId: string) {
   return useQuery({

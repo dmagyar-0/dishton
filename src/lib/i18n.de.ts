@@ -44,6 +44,17 @@ export default {
     ingredients: 'Zutaten',
     steps: 'Schritte',
     cooking_mode: 'Kochmodus',
+    delete_action: 'Rezept löschen',
+    delete_confirm_title: 'Dieses Rezept löschen?',
+    delete_confirm_body:
+      'Du entfernst „{{title}}" aus deiner Speisekammer. Das lässt sich nicht rückgängig machen.',
+    delete_confirm: 'Löschen',
+    delete_cancel: 'Abbrechen',
+    delete_success_title: 'Rezept gelöscht',
+    delete_success_body: '„{{title}}" ist aus deiner Speisekammer entfernt.',
+    delete_failed_title: 'Löschen fehlgeschlagen',
+    delete_failed_body:
+      'Beim Entfernen des Rezepts ist etwas schiefgelaufen. Bitte gleich noch einmal versuchen.',
   },
   import: {
     tab_url: 'URL',
