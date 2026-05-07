@@ -130,12 +130,15 @@ function RecipeDetailPage() {
                 nav({
                   to: '.',
                   search: (prev) => ({ ...prev, servings: Math.round(s), scale: undefined }),
+                  resetScroll: false,
                 })
               }
             />
             <UnitToggle
               value={displayUnits}
-              onChange={(u) => nav({ to: '.', search: (prev) => ({ ...prev, units: u }) })}
+              onChange={(u) =>
+                nav({ to: '.', search: (prev) => ({ ...prev, units: u }), resetScroll: false })
+              }
             />
           </Card>
 
