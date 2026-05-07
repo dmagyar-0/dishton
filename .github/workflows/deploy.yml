@@ -58,6 +58,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_RELEASE_SHA: ${{ github.sha }}
           VITE_SENTRY_DSN_FRONTEND: ${{ secrets.SENTRY_DSN_FRONTEND }}
+          VITE_FEATURE_PHOTO_IMPORT: 'true'
 
       - name: Strip source maps from deploy artifact
         run: find .vercel/output -name '*.map' -delete

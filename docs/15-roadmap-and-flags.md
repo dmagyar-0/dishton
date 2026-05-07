@@ -139,7 +139,7 @@ the codebase ships with at MVP.
 | Flag | Transport | Default `local` | Default `preview` | Default `production` (MVP) | Default `production` (v1) | Owner doc | Removed when |
 |---|---|---|---|---|---|---|---|
 | `VITE_FEATURE_GOOGLE_AUTH` | build-time | `false` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Google login is GA in production for 30 days with no rollback |
-| `VITE_FEATURE_PHOTO_IMPORT` | build-time | `true` | `true` | `false` | `true` | [08](./08-import-pipelines.md) | Photo import is on in production for 30 days |
+| `VITE_FEATURE_PHOTO_IMPORT` | build-time | `true` | `true` | `true` | `true` | [08](./08-import-pipelines.md) | Photo import is on in production for 30 days |
 | `VITE_FEATURE_TRANSLATION_CACHE` | build-time | `true` | `true` | `false` | `true` | [06](./06-recipe-domain.md) + [07](./07-ai-integration.md) | Translation toggle is on in production for 30 days |
 | `feature_flags.follows_enabled` | runtime | `true` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Following has been on in production for 30 days |
 | `feature_flags.public_household_pages` | runtime | `false` | `false` | `false` | `false` | [15](./15-roadmap-and-flags.md) (this doc) | v2 ships |
