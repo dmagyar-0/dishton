@@ -148,7 +148,7 @@ function RecipeDetailPage() {
               <div key={group.items[0]?.id ?? gi} className={gi === 0 ? '' : 'mt-6'}>
                 {group.section && (
                   <div className="mb-3 flex items-baseline gap-3">
-                    <h3 className="font-display italic text-base text-saffron-ink leading-none">
+                    <h3 className="font-display italic text-base text-saffron leading-none">
                       {group.section}
                     </h3>
                     <span aria-hidden className="h-px flex-1 -translate-y-[0.35em] bg-saffron/40" />
