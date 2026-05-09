@@ -134,10 +134,18 @@ The current Instagram oEmbed surface lives at the Facebook Graph endpoint
 [01-architecture.md](./01-architecture.md) and source it from
 `IG_OEMBED_TOKEN` (Supabase Functions secret).
 
-If `IG_OEMBED_TOKEN` is unset (e.g. local dev without an FB app), the function
-falls back to plain Open Graph scraping of the public post URL (extract
-`og:description` and `og:image`). The fallback is feature-flagged via the SPA
-so it can be hidden in production if it proves unreliable.
+If `IG_OEMBED_TOKEN` is unset (e.g. prod without an FB app, or local dev), the
+function falls back through a chain of caption-bearing endpoints
+([`fallback.ts`](../supabase/functions/import-instagram/fallback.ts)). Each
+tier uses a realistic browser UA + `Accept-Language` and an 8s timeout:
+
+  1. `https://www.instagram.com/{reel|p|tv}/{id}/embed/captioned/` — IG's own
+     server-rendered embed page; permissive for public posts and inlines
+     `og:title` / `og:description` / `og:image`.
+  2. The original post URL — handles cases where the embed path doesn't apply.
+  3. `https://www.ddinstagram.com{path}` — public mirror used by Discord/Twitter
+     for IG unfurls; a last-resort safety net for when Instagram blocks our
+     datacenter IPs entirely. Third-party, no SLA.
 
 ```
 [Browser] POST /functions/v1/import-instagram { url, household_id }
@@ -146,9 +154,12 @@ so it can be hidden in production if it proves unreliable.
             GET graph.facebook.com/v18.0/instagram_oembed?url=...&access_token=...
             on 200 → caption = response.title + response.html (stripped),
                      thumbnail = response.thumbnail_url
-            on 4xx → fallback to og-scrape
-          else fallback to og-scrape (single GET against the post URL,
-                                       8s timeout, parse <meta og:*>)
+            on 4xx → fallback chain
+          else fallback chain:
+            (a) GET .../embed/captioned/  (browser UA, 8s)
+            (b) GET <post URL>            (browser UA, 8s)
+            (c) GET ddinstagram.com<path> (browser UA, 8s)
+            parse <meta og:*>; first tier with og:title or og:description wins
 [Edge]    estimatedTokens = 1200
           callAndValidate(structuringFromCaption({ caption, sourceUrl: url }))
 [Edge]    download thumbnail to imports/<uid>/<job_id>-hero.jpg if present
