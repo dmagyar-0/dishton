@@ -43,15 +43,19 @@ jobs:
       # Vercel prebuilt deploy: pull project settings, run the build on the
       # runner (so Vercel skips its server-side build), strip source maps
       # from the artifact, then upload it as-is.
+      # Pinned: vercel@53.3.0 declares a dependency on @vercel/koa@0.1.57,
+      # which was never published to npm (registry jumps 0.1.56 → canary),
+      # so `vercel@latest` fails to install. Bump deliberately when a
+      # known-good release is available.
       - name: Pull Vercel project settings
-        run: npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@53.2.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build with Vercel
-        run: npx --yes vercel@latest build --prod --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@53.2.0 build --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -64,7 +68,7 @@ jobs:
         run: find .vercel/output -name '*.map' -delete
 
       - name: Deploy prebuilt to Vercel
-        run: npx --yes vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@53.2.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
