@@ -5,6 +5,7 @@ import { assert, assertEquals } from 'jsr:@std/assert';
 import { installMockFetch } from '../_shared/mock_fetch.ts';
 import {
   captionedEmbedUrl,
+  type FallbackEvent,
   fetchOgFallback,
   mirrorUrl,
   parseInstagramHtml,
@@ -111,9 +112,10 @@ Deno.test('fetchOgFallback: succeeds via /embed/captioned/ when it returns 200',
       ),
     },
   ]);
-  const oe = await fetchOgFallback(REEL_URL);
-  assert(oe);
-  assertEquals(oe.html, 'Tomato tarte recipe');
+  const result = await fetchOgFallback(REEL_URL);
+  assert(result);
+  assertEquals(result.oembed.html, 'Tomato tarte recipe');
+  assertEquals(result.source, 'captioned_embed');
   assertEquals(mock.calls.length, 1);
   assert(mock.calls[0].url.includes('/embed/captioned/'));
   // Sanity: the fetch must use a realistic browser UA, not DishtonBot. Instagram
@@ -139,9 +141,10 @@ Deno.test('fetchOgFallback: falls through embed → direct → mirror when each 
       ),
     },
   ]);
-  const oe = await fetchOgFallback(REEL_URL);
-  assert(oe);
-  assertEquals(oe.html, 'mirror caption');
+  const result = await fetchOgFallback(REEL_URL);
+  assert(result);
+  assertEquals(result.oembed.html, 'mirror caption');
+  assertEquals(result.source, 'mirror');
   assertEquals(mock.calls.length, 3);
   assert(mock.calls[0].url.includes('/embed/captioned/'));
   assert(mock.calls[1].url.startsWith('https://www.instagram.com/reel/DX6MMYWOn3Z/?'));
@@ -155,8 +158,8 @@ Deno.test('fetchOgFallback: returns null when all tiers fail', async () => {
       response: new Response('forbidden', { status: 403 }),
     },
   ]);
-  const oe = await fetchOgFallback(REEL_URL);
-  assertEquals(oe, null);
+  const result = await fetchOgFallback(REEL_URL);
+  assertEquals(result, null);
 });
 
 Deno.test('fetchOgFallback: returns null when responses are 200 but contain no og tags (login wall)', async () => {
@@ -166,6 +169,44 @@ Deno.test('fetchOgFallback: returns null when responses are 200 but contain no o
       response: htmlResponse('<html><body>login required</body></html>'),
     },
   ]);
-  const oe = await fetchOgFallback(REEL_URL);
-  assertEquals(oe, null);
+  const result = await fetchOgFallback(REEL_URL);
+  assertEquals(result, null);
+});
+
+Deno.test('fetchOgFallback: emits a logger event for every tier attempted', async () => {
+  using _mock = installMockFetch([
+    {
+      match: (req) => req.url.includes('/embed/captioned/'),
+      response: new Response('forbidden', { status: 403 }),
+    },
+    {
+      match: (req) => req.url.startsWith('https://www.instagram.com/reel/DX6MMYWOn3Z/?'),
+      response: htmlResponse('<html><body>login required</body></html>'),
+    },
+    {
+      match: (req) => req.url.startsWith('https://www.ddinstagram.com/'),
+      response: htmlResponse(htmlWithOg({ title: 'mirror', description: 'caption' })),
+    },
+  ]);
+  const events: FallbackEvent[] = [];
+  const result = await fetchOgFallback(REEL_URL, undefined, (e) => events.push(e));
+  assert(result);
+  assertEquals(result.source, 'mirror');
+  assertEquals(events.length, 3);
+
+  assertEquals(events[0].tier, 'captioned_embed');
+  assertEquals(events[0].ok, false);
+  assertEquals(events[0].status, 403);
+  assertEquals(events[0].reason, 'non_ok');
+  assert(typeof events[0].ms === 'number');
+
+  assertEquals(events[1].tier, 'direct');
+  assertEquals(events[1].ok, false);
+  assertEquals(events[1].status, 200);
+  assertEquals(events[1].reason, 'no_og');
+
+  assertEquals(events[2].tier, 'mirror');
+  assertEquals(events[2].ok, true);
+  assertEquals(events[2].status, 200);
+  assertEquals(events[2].reason, undefined);
 });

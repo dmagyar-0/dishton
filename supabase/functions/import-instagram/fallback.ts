@@ -16,6 +16,21 @@ export type OEmbed = {
   author_name?: string;
 };
 
+export type FallbackTier = 'captioned_embed' | 'direct' | 'mirror';
+
+export type FallbackEvent = {
+  tier: FallbackTier;
+  url: string;
+  ok: boolean;
+  status?: number;
+  ms: number;
+  reason?: 'fetch_error' | 'non_ok' | 'no_og';
+};
+
+export type FallbackLogger = (event: FallbackEvent) => void;
+
+export type FallbackResult = { oembed: OEmbed; source: FallbackTier };
+
 const PER_FETCH_TIMEOUT_MS = 8_000;
 
 const BROWSER_UA =
@@ -92,8 +107,11 @@ export function mirrorUrl(postUrl: string): string | null {
 
 async function fetchAsHtml(
   url: string,
+  tier: FallbackTier,
   parent?: AbortSignal,
+  logger?: FallbackLogger,
 ): Promise<OEmbed | null> {
+  const t0 = performance.now();
   let res: Response;
   try {
     res = await fetch(url, {
@@ -102,28 +120,46 @@ async function fetchAsHtml(
       signal: mergeSignal(parent, PER_FETCH_TIMEOUT_MS),
     });
   } catch {
+    logger?.({
+      tier,
+      url,
+      ok: false,
+      ms: Math.round(performance.now() - t0),
+      reason: 'fetch_error',
+    });
     return null;
   }
-  if (!res.ok) return null;
+  const ms = Math.round(performance.now() - t0);
+  if (!res.ok) {
+    logger?.({ tier, url, ok: false, status: res.status, ms, reason: 'non_ok' });
+    return null;
+  }
   const html = await res.text();
-  return parseInstagramHtml(html);
+  const parsed = parseInstagramHtml(html);
+  if (!parsed) {
+    logger?.({ tier, url, ok: false, status: res.status, ms, reason: 'no_og' });
+    return null;
+  }
+  logger?.({ tier, url, ok: true, status: res.status, ms });
+  return parsed;
 }
 
 export async function fetchOgFallback(
   url: string,
   parent?: AbortSignal,
-): Promise<OEmbed | null> {
+  logger?: FallbackLogger,
+): Promise<FallbackResult | null> {
   const embed = captionedEmbedUrl(url);
   if (embed) {
-    const oe = await fetchAsHtml(embed, parent);
-    if (oe) return oe;
+    const oe = await fetchAsHtml(embed, 'captioned_embed', parent, logger);
+    if (oe) return { oembed: oe, source: 'captioned_embed' };
   }
-  const direct = await fetchAsHtml(url, parent);
-  if (direct) return direct;
+  const direct = await fetchAsHtml(url, 'direct', parent, logger);
+  if (direct) return { oembed: direct, source: 'direct' };
   const mirror = mirrorUrl(url);
   if (mirror) {
-    const oe = await fetchAsHtml(mirror, parent);
-    if (oe) return oe;
+    const oe = await fetchAsHtml(mirror, 'mirror', parent, logger);
+    if (oe) return { oembed: oe, source: 'mirror' };
   }
   return null;
 }
