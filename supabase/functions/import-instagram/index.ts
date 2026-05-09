@@ -15,6 +15,7 @@ import { structuringFromCaption } from '../_shared/ai/prompts.ts';
 import { withTimeout } from '../_shared/timeout.ts';
 import { env } from '../_shared/env.ts';
 import { log, logAiCall } from '../_shared/log.ts';
+import { fetchOgFallback, type OEmbed } from './fallback.ts';
 
 const Body = z.object({
   url: z.string().url(),
@@ -22,13 +23,6 @@ const Body = z.object({
 });
 
 const INLINE_BUDGET_MS = 30_000;
-
-type OEmbed = {
-  title?: string;
-  html?: string;
-  thumbnail_url?: string;
-  author_name?: string;
-};
 
 function mergeSignal(parent: AbortSignal | undefined, ms: number): AbortSignal {
   return parent
@@ -42,30 +36,6 @@ async function fetchOEmbed(url: string, token: string, parent?: AbortSignal): Pr
   const res = await fetch(endpoint, { signal: mergeSignal(parent, 10_000) });
   if (!res.ok) return null;
   return (await res.json()) as OEmbed;
-}
-
-async function fetchOgFallback(url: string, parent?: AbortSignal): Promise<OEmbed | null> {
-  const res = await fetch(url, {
-    headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
-    signal: mergeSignal(parent, 10_000),
-  });
-  if (!res.ok) return null;
-  const html = await res.text();
-  const og = (key: string): string | undefined => {
-    const m = new RegExp(`<meta[^>]+property=["']og:${key}["'][^>]+content=["']([^"']+)`, 'i').exec(
-      html,
-    );
-    return m?.[1];
-  };
-  const title = og('title');
-  const description = og('description');
-  const image = og('image');
-  if (!description && !title) return null;
-  return {
-    title: title ?? '',
-    html: description ?? '',
-    thumbnail_url: image,
-  };
 }
 
 serve(async (req: Request) => {
