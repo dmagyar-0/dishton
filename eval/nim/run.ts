@@ -2,7 +2,7 @@
 // candidate model with bounded concurrency, writes Markdown report.
 
 import { config as defaultConfig, type EvalConfig } from './models.ts';
-import { fetchAndExtract, FetchError } from './fetch.ts';
+import { fetchAndExtract, fetchInstagramForEval, FetchError } from './fetch.ts';
 import { callNim, NimError } from './client.ts';
 import { callAnthropic, AnthropicError } from './anthropic.ts';
 import {
@@ -12,9 +12,26 @@ import {
   type UrlBundle,
   writeMarkdown,
 } from './report.ts';
-import { structuringFromHtml } from '../../supabase/functions/_shared/ai/prompts.ts';
+import {
+  structuringFromCaption,
+  structuringFromHtml,
+} from '../../supabase/functions/_shared/ai/prompts.ts';
+import { isInstagramUrl } from '../../supabase/functions/_shared/scrape/instagram-caption.ts';
 import type { ScrapedRecipe } from '../../supabase/functions/_shared/scrape/recipe-jsonld.ts';
 import { Recipe } from '../../src/domain/recipe.ts';
+
+type FetchedItem =
+  | {
+    kind: 'html';
+    url: string;
+    text: string;
+    scraped: ScrapedRecipe | null;
+  }
+  | {
+    kind: 'instagram';
+    url: string;
+    caption: string;
+  };
 
 type CliArgs = {
   urlsFile: string;
@@ -122,8 +139,7 @@ async function callOnce(args: {
   apiKeys: { nim?: string; anthropic?: string };
   model: { id: string; label?: string; provider: 'nim' | 'anthropic'; temperature?: number; maxTokens?: number };
   url: string;
-  cleanedText: string;
-  scraped: ScrapedRecipe | null;
+  fetched: FetchedItem;
   timeoutMs: number;
 }): Promise<{
   raw: string;
@@ -134,11 +150,16 @@ async function callOnce(args: {
   error?: string;
 }> {
   try {
-    const messages = structuringFromHtml({
-      html: args.cleanedText,
-      sourceUrl: args.url,
-      scraped: args.scraped,
-    });
+    const messages = args.fetched.kind === 'instagram'
+      ? structuringFromCaption({
+          caption: args.fetched.caption,
+          sourceUrl: args.url,
+        })
+      : structuringFromHtml({
+          html: args.fetched.text,
+          sourceUrl: args.url,
+          scraped: args.fetched.scraped,
+        });
     const r = args.model.provider === 'anthropic'
       ? await callAnthropic({
           apiKey: args.apiKeys.anthropic!,
@@ -198,9 +219,7 @@ async function callOnce(args: {
 async function evaluateUrl(args: {
   apiKeys: { nim?: string; anthropic?: string };
   model: { id: string; label?: string; provider: 'nim' | 'anthropic'; temperature?: number; maxTokens?: number };
-  url: string;
-  cleanedText: string;
-  scraped: ScrapedRecipe | null;
+  fetched: FetchedItem;
   timeoutMs: number;
   repeat: number;
 }): Promise<ModelOutcome> {
@@ -216,9 +235,8 @@ async function evaluateUrl(args: {
     calls.push(await callOnce({
       apiKeys: args.apiKeys,
       model: args.model,
-      url: args.url,
-      cleanedText: args.cleanedText,
-      scraped: args.scraped,
+      url: args.fetched.url,
+      fetched: args.fetched,
       timeoutMs: args.timeoutMs,
     }));
   }
@@ -226,7 +244,7 @@ async function evaluateUrl(args: {
   const latencies = calls.map((c) => c.latencyMs);
   const last = calls[calls.length - 1]!;
   return {
-    url: args.url,
+    url: args.fetched.url,
     model: args.model.id,
     modelLabel: args.model.label,
     schemaOk: allOk,
@@ -317,20 +335,26 @@ async function main(): Promise<number> {
 
   const startedAt = new Date();
 
-  // Phase 1: fetch all URLs once
-  const fetched: {
-    url: string;
-    text: string;
-    scraped: ScrapedRecipe | null;
-  }[] = [];
+  // Phase 1: fetch all URLs once. Instagram URLs go through the caption
+  // pipeline (mirrors production import-instagram); everything else through
+  // the HTML pipeline (mirrors production import-url).
+  const fetched: FetchedItem[] = [];
   const skipped: { url: string; reason: string }[] = [];
   for (const url of urls) {
     try {
-      const r = await fetchAndExtract(url);
-      fetched.push({ url, text: r.text, scraped: r.scraped });
-      console.error(
-        `fetched: ${url} (${r.bytes} bytes, jsonld=${r.scraped !== null})`,
-      );
+      if (isInstagramUrl(url)) {
+        const r = await fetchInstagramForEval(url);
+        fetched.push({ kind: 'instagram', url, caption: r.caption });
+        console.error(
+          `fetched: ${url} (caption ${r.caption.length} chars, source=${r.source})`,
+        );
+      } else {
+        const r = await fetchAndExtract(url);
+        fetched.push({ kind: 'html', url, text: r.text, scraped: r.scraped });
+        console.error(
+          `fetched: ${url} (${r.bytes} bytes, jsonld=${r.scraped !== null})`,
+        );
+      }
     } catch (e) {
       const reason = e instanceof FetchError ? e.reason : 'network';
       skipped.push({ url, reason });
@@ -339,12 +363,23 @@ async function main(): Promise<number> {
   }
 
   // Phase 2: per model (sequential), per URL (concurrent within model)
-  const bundles: UrlBundle[] = fetched.map((f) => ({
-    url: f.url,
-    sourceExcerpt: f.text.slice(0, 2000),
-    jsonldFound: f.scraped !== null,
-    outcomes: [],
-  }));
+  const bundles: UrlBundle[] = fetched.map((f) =>
+    f.kind === 'instagram'
+      ? {
+        url: f.url,
+        sourceExcerpt: f.caption.slice(0, 2000),
+        jsonldFound: false,
+        kind: 'instagram',
+        outcomes: [],
+      }
+      : {
+        url: f.url,
+        sourceExcerpt: f.text.slice(0, 2000),
+        jsonldFound: f.scraped !== null,
+        kind: 'html',
+        outcomes: [],
+      }
+  );
   const indexByUrl = new Map(bundles.map((b, i) => [b.url, i]));
 
   for (const cand of cfg.candidates) {
@@ -353,9 +388,7 @@ async function main(): Promise<number> {
       const o = await evaluateUrl({
         apiKeys,
         model: cand,
-        url: f.url,
-        cleanedText: f.text,
-        scraped: f.scraped,
+        fetched: f,
         timeoutMs: cfg.timeoutMs,
         repeat: cfg.repeat,
       });

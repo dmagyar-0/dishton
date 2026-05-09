@@ -2,6 +2,10 @@
 // stripping behavior of supabase/functions/import-url/index.ts so the eval
 // feeds models the same input production does. Imports the production
 // strip-html and recipe-jsonld utilities directly to avoid drift.
+//
+// For Instagram URLs the harness instead calls fetchInstagramForEval, which
+// delegates to the same _shared/scrape/instagram-caption helper used by the
+// production import-instagram Edge Function.
 
 import { parseHTML } from 'linkedom';
 import { lightStripHtml } from '../../supabase/functions/_shared/scrape/strip-html.ts';
@@ -9,6 +13,7 @@ import {
   extractRecipeJsonLd,
   type ScrapedRecipe,
 } from '../../supabase/functions/_shared/scrape/recipe-jsonld.ts';
+import { fetchInstagramCaption } from '../../supabase/functions/_shared/scrape/instagram-caption.ts';
 
 const MAX_BYTES = 5_000_000;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -20,6 +25,12 @@ export type ExtractResult = {
   scraped: ScrapedRecipe | null;
 };
 
+export type InstagramExtractResult = {
+  caption: string;
+  thumbnailUrl: string | null;
+  source: 'oembed' | 'og';
+};
+
 export class FetchError extends Error {
   constructor(
     public reason:
@@ -28,11 +39,34 @@ export class FetchError extends Error {
       | 'empty_body'
       | 'too_large'
       | 'timeout'
-      | 'network',
+      | 'network'
+      | 'instagram_unavailable',
     public detail?: unknown,
   ) {
     super(`fetch ${reason}`);
   }
+}
+
+export async function fetchInstagramForEval(
+  url: string,
+  signal?: AbortSignal,
+): Promise<InstagramExtractResult> {
+  const token = Deno.env.get('IG_OEMBED_TOKEN') || undefined;
+  let result;
+  try {
+    result = await fetchInstagramCaption(url, { token, signal });
+  } catch (err) {
+    const isAbort = err instanceof DOMException &&
+      (err.name === 'AbortError' || err.name === 'TimeoutError');
+    if (isAbort) throw new FetchError('timeout');
+    throw new FetchError('network', String((err as Error).message ?? err));
+  }
+  if (!result) throw new FetchError('instagram_unavailable');
+  return {
+    caption: result.caption,
+    thumbnailUrl: result.thumbnailUrl,
+    source: result.source,
+  };
 }
 
 export async function fetchAndExtract(

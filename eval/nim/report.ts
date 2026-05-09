@@ -18,6 +18,7 @@ export type UrlBundle = {
   url: string;
   sourceExcerpt: string;
   jsonldFound: boolean;
+  kind?: 'html' | 'instagram';
   outcomes: ModelOutcome[];
 };
 
@@ -169,9 +170,13 @@ export async function writeMarkdown(
     const u = results.urls[i]!;
     md.push(`### URL ${i + 1} — ${u.url}`);
     md.push('');
-    md.push(
-      `**Source excerpt** (first 2000 chars of stripped HTML${u.jsonldFound ? '; JSON-LD also passed as Hint' : '; no JSON-LD on page'}):`,
-    );
+    if (u.kind === 'instagram') {
+      md.push('**Caption** (oEmbed or OG fallback, fed to `structuringFromCaption`):');
+    } else {
+      md.push(
+        `**Source excerpt** (first 2000 chars of stripped HTML${u.jsonldFound ? '; JSON-LD also passed as Hint' : '; no JSON-LD on page'}):`,
+      );
+    }
     md.push('');
     md.push('```');
     md.push(u.sourceExcerpt);
