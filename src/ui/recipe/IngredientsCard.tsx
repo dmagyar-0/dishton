@@ -46,7 +46,7 @@ export function IngredientsCard({ ingredients, className }: IngredientsCardProps
               {group.section && (
                 <h3
                   id={headingId}
-                  className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-saffron-ink mb-2"
+                  className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-saffron mb-2"
                 >
                   {group.section}
                 </h3>
