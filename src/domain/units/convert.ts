@@ -1,5 +1,7 @@
 import { units } from './graph.ts';
 
+const CUP_KEYS = new Set(['cup_us', 'cup_metric']);
+
 export function convert(qty: number, from: string, to: string): number {
   if (from === to) return qty;
   const a = units[from];
@@ -8,7 +10,13 @@ export function convert(qty: number, from: string, to: string): number {
     throw new Error(`unknown unit: ${from} or ${to}`);
   }
   if (a.dimension !== b.dimension) {
-    throw new Error(`incompatible: ${from} (${a.dimension}) -> ${to} (${b.dimension})`);
+    // Cups <-> mass uses a water-density approximation (1 ml = 1 g). All other
+    // cross-dimension conversions remain rejected.
+    const cupToMass = CUP_KEYS.has(from) && b.dimension === 'mass';
+    const massToCup = a.dimension === 'mass' && CUP_KEYS.has(to);
+    if (!cupToMass && !massToCup) {
+      throw new Error(`incompatible: ${from} (${a.dimension}) -> ${to} (${b.dimension})`);
+    }
   }
   if (a.dimension === 'temperature') {
     if (from === 'C' && to === 'F') return (qty * 9) / 5 + 32;
@@ -42,6 +50,13 @@ export function pickDisplayUnit(
   }
   if (dim === 'volume') {
     if (preferred === 'metric') {
+      // Keep tsp and tbsp as-is; cooks are familiar with them in either system.
+      if (fromUnit === 'tsp') return 'tsp';
+      if (fromUnit === 'tbsp') return 'tbsp';
+      // Cups become grams via water-density approximation (1 ml = 1 g).
+      if (CUP_KEYS.has(fromUnit)) {
+        return canonicalValue >= 1000 ? 'kg' : 'g';
+      }
       if (canonicalValue >= 1000) return 'l';
       return 'ml';
     }

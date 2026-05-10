@@ -156,21 +156,22 @@ recorded in the ingredient row; conversion at view time uses whichever is
 stored.
 
 Temperature is the only non-multiplicative unit and is handled by a special
-case in `convert`:
+case in `convert`. A second special case allows `cup_us`/`cup_metric` to
+convert to/from any mass unit using a water-density approximation
+(`1 ml = 1 g`) — this powers the metric "cups → grams" display path.
 
 ```ts
 // src/domain/units/convert.ts (excerpt)
-export function convert(
-  qty: number,
-  from: string,
-  to: string,
-  graph: typeof units = units,
-): number {
+export function convert(qty: number, from: string, to: string): number {
   if (from === to) return qty;
-  const a = graph[from]; const b = graph[to];
+  const a = units[from]; const b = units[to];
   if (!a || !b) throw new Error(`unknown unit: ${from} or ${to}`);
   if (a.dimension !== b.dimension) {
-    throw new Error(`incompatible: ${from} (${a.dimension}) -> ${to} (${b.dimension})`);
+    const cupToMass = CUP_KEYS.has(from) && b.dimension === 'mass';
+    const massToCup = a.dimension === 'mass' && CUP_KEYS.has(to);
+    if (!cupToMass && !massToCup) {
+      throw new Error(`incompatible: ${from} (${a.dimension}) -> ${to} (${b.dimension})`);
+    }
   }
   if (a.dimension === 'temperature') {
     if (from === 'C' && to === 'F') return qty * 9 / 5 + 32;
@@ -193,10 +194,12 @@ Given an ingredient with `unit = X` and a profile preference of
 2. Filter the unit table to `system in ['both', preferredSystem]`.
 3. Choose the first unit whose `toCanonical` is closest to the ingredient's
    canonical value without overshooting "too small" (< 0.1) or "too large"
-   (> 999). For mass: prefer `g` < 1000, else `kg`. For volume: prefer `ml`
-   < 1000, else `l`; if user prefers imperial and ml is < 240, prefer
-   `tbsp`/`tsp`; for ml between 240 and 1000, prefer `cup_us`. Tests assert
-   each branch.
+   (> 999). For mass: prefer `g` < 1000, else `kg`. For volume in metric
+   mode: `tsp` and `tbsp` pass through unchanged (cooks read them in either
+   system), cups (`cup_us`/`cup_metric`) cross over to `g`/`kg` via the
+   water-density approximation, and everything else picks `ml` < 1000 else
+   `l`. In imperial mode: ml < 15 → `tsp`, < 60 → `tbsp`, < 240 → `fl_oz`,
+   < 1000 → `cup_us`, else `quart_us`. Tests assert each branch.
 
 ## Scaling
 

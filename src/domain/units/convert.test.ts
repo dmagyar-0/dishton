@@ -37,6 +37,23 @@ describe('convert', () => {
     expect(() => convert(1, 'g', 'zonk')).toThrow(/unknown/);
     expect(() => convert(1, 'zonk', 'g')).toThrow(/unknown/);
   });
+  it('converts cup_us <-> mass using water-density (1 g/ml)', () => {
+    expect(convert(1, 'cup_us', 'g')).toBe(240);
+    expect(convert(0.5, 'cup_us', 'g')).toBe(120);
+    expect(convert(5, 'cup_us', 'kg')).toBeCloseTo(1.2, 4);
+    expect(convert(240, 'g', 'cup_us')).toBe(1);
+  });
+  it('converts cup_metric <-> mass using water-density (1 g/ml)', () => {
+    expect(convert(1, 'cup_metric', 'g')).toBe(250);
+    expect(convert(4, 'cup_metric', 'kg')).toBe(1);
+    expect(convert(500, 'g', 'cup_metric')).toBe(2);
+  });
+  it('still rejects unrelated volume <-> mass conversions (only cups allowed)', () => {
+    expect(() => convert(1, 'ml', 'g')).toThrow(/incompatible/);
+    expect(() => convert(1, 'tsp', 'g')).toThrow(/incompatible/);
+    expect(() => convert(1, 'tbsp', 'g')).toThrow(/incompatible/);
+    expect(() => convert(1, 'l', 'kg')).toThrow(/incompatible/);
+  });
 
   it('property: convert(qty, A, A) === qty', () => {
     fc.assert(
@@ -116,6 +133,19 @@ describe('pickDisplayUnit', () => {
   it('volume metric prefers ml below 1l', () => {
     expect(pickDisplayUnit('ml', 250, 'metric')).toBe('ml');
     expect(pickDisplayUnit('ml', 1500, 'metric')).toBe('l');
+  });
+  it('volume metric keeps tsp and tbsp as-is', () => {
+    expect(pickDisplayUnit('tsp', 1, 'metric')).toBe('tsp');
+    expect(pickDisplayUnit('tsp', 3, 'metric')).toBe('tsp');
+    expect(pickDisplayUnit('tbsp', 1, 'metric')).toBe('tbsp');
+    expect(pickDisplayUnit('tbsp', 2, 'metric')).toBe('tbsp');
+  });
+  it('volume metric converts cups to g/kg via water-density', () => {
+    expect(pickDisplayUnit('cup_us', 0.5, 'metric')).toBe('g');
+    expect(pickDisplayUnit('cup_us', 1, 'metric')).toBe('g');
+    expect(pickDisplayUnit('cup_us', 5, 'metric')).toBe('kg');
+    expect(pickDisplayUnit('cup_metric', 1, 'metric')).toBe('g');
+    expect(pickDisplayUnit('cup_metric', 5, 'metric')).toBe('kg');
   });
   it('volume imperial picks tsp/tbsp/fl_oz/cup branches', () => {
     expect(pickDisplayUnit('ml', 4, 'imperial')).toBe('tsp');
