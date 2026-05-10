@@ -37,6 +37,15 @@ pnpm dev                            # SPA at http://localhost:5173
 pnpm test                           # full pyramid (unit + components)
 ```
 
+## Deployment
+
+The build expects `VITE_RELEASE_SHA` (the deploy's commit SHA) to be set in
+the build environment. Sentry uses it as the release tag, and the auth
+bootstrap uses it to force-sign-out users whose session was minted under a
+previous build, so every deploy starts a fresh session. Wire it on Vercel
+with `VITE_RELEASE_SHA=$VERCEL_GIT_COMMIT_SHA`. If the var is unset (e.g.
+local dev), the cross-deploy logout is a no-op.
+
 ## Streams (parallelization)
 
 See [`docs/parallelization-guide.md`](docs/parallelization-guide.md) for the
