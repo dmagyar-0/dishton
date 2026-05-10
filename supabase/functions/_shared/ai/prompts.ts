@@ -66,9 +66,11 @@ Rules:
   cucchiaio/cucchiaino → tbsp/tsp; Spanish cucharada/cucharadita → tbsp/tsp.
   Piece-words (Hungarian: db, fej, gerezd, csokor, szelet, adag; German:
   Stück; French: pièce, gousse, botte) → unit="count".
-- "tags" must come from terms actually present in the source (page chrome,
-  category tags, recipe-card keywords). Do NOT invent tags from the title
-  or your own knowledge. Empty array if none are found.
+- "tags" MUST be a subset of the household-defined whitelist supplied in the
+  user message. Pick 0 or more tags from that list that best describe the
+  recipe (course, dietary fit, primary ingredients) — return them exactly as
+  written. Do NOT output any tag outside the whitelist, even if it appears in
+  the source. If the whitelist is empty, return an empty array.
 - "hero_image_path" stores a remote image URL when available; null if none.
 - Split each logical action into its own step. A "preheat oven … bake 30
   min … cool" sequence is three steps, not one.
@@ -120,12 +122,26 @@ ${JSON.stringify(compact, null, 2)}
 `;
 }
 
+// The allowed-tag whitelist is per-household and edited frequently, so
+// embedding it in the system message would invalidate the prompt cache for
+// every household. We render it into the user message instead, which keeps
+// RECIPE_JSON_SHAPE stable across callers.
+export function formatAllowedTags(allowedTags: readonly string[]): string {
+  if (allowedTags.length === 0) {
+    return 'Allowed tags: (none — return tags=[]).\n\n';
+  }
+  return `Allowed tags (return tags as a subset of this list, exactly as written): ${
+    allowedTags.join(', ')
+  }.\n\n`;
+}
+
 export function structuringFromHtml(args: {
   html: string;
   sourceUrl: string;
   hint?: string;
   scraped?: ScrapedRecipe | null;
   targetLanguage?: string;
+  allowedTags: readonly string[];
 }): AiMessage[] {
   const html = args.html.length > HTML_MAX_CHARS
     ? args.html.slice(0, HTML_MAX_CHARS)
@@ -138,7 +154,7 @@ export function structuringFromHtml(args: {
     {
       role: 'user',
       content: `Source URL: ${args.sourceUrl}
-${args.hint ? `Hint: ${args.hint}\n` : ''}${args.scraped ? formatScraped(args.scraped) : ''}
+${formatAllowedTags(args.allowedTags)}${args.hint ? `Hint: ${args.hint}\n` : ''}${args.scraped ? formatScraped(args.scraped) : ''}
 HTML (lightly stripped — scripts, styles, head, svg, iframes, comments removed; structure preserved):
 """
 ${html}
@@ -151,6 +167,7 @@ export function structuringFromCaption(args: {
   caption: string;
   sourceUrl: string;
   targetLanguage?: string;
+  allowedTags: readonly string[];
 }): AiMessage[] {
   return [
     {
@@ -160,7 +177,7 @@ export function structuringFromCaption(args: {
     {
       role: 'user',
       content: `Source URL: ${args.sourceUrl}
-Caption:
+${formatAllowedTags(args.allowedTags)}Caption:
 """
 ${args.caption}
 """
@@ -174,12 +191,16 @@ export function structuringFromImage(args: {
   imageUrl: string;
   comment?: string;
   targetLanguage?: string;
+  allowedTags: readonly string[];
 }): AiMessage[] {
   const note = args.comment?.trim();
   const baseInstruction =
     'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.';
+  const allowedTagsLine = formatAllowedTags(args.allowedTags).trimEnd();
   const userText = note
     ? `${baseInstruction}
+
+${allowedTagsLine}
 
 The user attached this note. Apply it ONLY if it is clearly relevant to the recipe shown in the image; otherwise ignore it completely. Do not let the note invent or override anything not visible in the image.
 
@@ -187,7 +208,7 @@ User note:
 """
 ${note}
 """`
-    : baseInstruction;
+    : `${baseInstruction}\n\n${allowedTagsLine}`;
   return [
     {
       role: 'system',

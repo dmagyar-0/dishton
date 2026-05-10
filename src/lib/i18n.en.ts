@@ -8,6 +8,7 @@ export default {
     following: 'Following',
     import: 'Import',
     profile: 'Profile',
+    household_settings: 'Settings',
   },
   auth: {
     login: 'Sign in',
@@ -26,6 +27,23 @@ export default {
     invite_placeholder: '8 letters and digits',
     create: 'Create',
     redeem: 'Join',
+  },
+  household_settings: {
+    title: 'Household settings',
+    subtitle: 'Tags and preferences shared with everyone in this household.',
+    tags_title: 'Recipe tags',
+    tags_help:
+      'New imports may only use tags from this list, and editors pick from it when tagging by hand. Add or remove to fit your kitchen.',
+    tags_empty: 'No tags yet. Add one below or reset to defaults.',
+    add_tag_placeholder: 'e.g. soup, gluten-free',
+    add: 'Add',
+    remove_tag: 'Remove {{tag}}',
+    reset_defaults: 'Reset to defaults',
+    tag_invalid: 'Tags use lowercase letters, digits, spaces, or hyphens (1-40 chars).',
+    tag_exists: 'That tag is already in the list.',
+    tags_saved: 'Tags updated',
+    tags_save_failed: "Couldn't save tags",
+    read_only_notice: 'Only household owners can edit tags.',
   },
   profile: {
     language_label: 'Recipe language',

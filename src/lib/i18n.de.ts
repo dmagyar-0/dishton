@@ -8,6 +8,7 @@ export default {
     following: 'Folge ich',
     import: 'Import',
     profile: 'Profil',
+    household_settings: 'Einstellungen',
   },
   auth: {
     login: 'Anmelden',
@@ -26,6 +27,24 @@ export default {
     invite_placeholder: '8 Buchstaben und Ziffern',
     create: 'Anlegen',
     redeem: 'Beitreten',
+  },
+  household_settings: {
+    title: 'Haushaltseinstellungen',
+    subtitle: 'Tags und Voreinstellungen, die alle in diesem Haushalt teilen.',
+    tags_title: 'Rezept-Tags',
+    tags_help:
+      'Neue Importe dürfen nur Tags aus dieser Liste verwenden, und beim manuellen Taggen wählen Editor:innen daraus. Füge hinzu oder entferne, was zu eurer Küche passt.',
+    tags_empty: 'Noch keine Tags. Füge unten einen hinzu oder setze auf Standard zurück.',
+    add_tag_placeholder: 'z. B. suppe, glutenfrei',
+    add: 'Hinzufügen',
+    remove_tag: '{{tag}} entfernen',
+    reset_defaults: 'Auf Standard zurücksetzen',
+    tag_invalid:
+      'Tags bestehen aus kleinen Buchstaben, Ziffern, Leer- oder Bindestrichen (1-40 Zeichen).',
+    tag_exists: 'Dieser Tag ist bereits in der Liste.',
+    tags_saved: 'Tags aktualisiert',
+    tags_save_failed: 'Tags konnten nicht gespeichert werden',
+    read_only_notice: 'Nur Haushaltsbesitzer:innen können Tags bearbeiten.',
   },
   profile: {
     language_label: 'Rezeptsprache',

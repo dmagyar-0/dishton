@@ -3,6 +3,7 @@ export * from './scale.ts';
 export * from './fractions.ts';
 export * from './language.ts';
 export * from './translation-key.ts';
+export * from './default-tags.ts';
 export {
   CANONICAL,
   isKnownUnit,

@@ -48,6 +48,25 @@ export async function getCallerPreferredLanguage(
   return (data?.preferred_language as string | undefined) ?? 'en';
 }
 
+// Read the household's allowed tag whitelist. The structuring prompt is
+// constrained to pick tags only from this list — see
+// supabase/functions/_shared/ai/prompts.ts. RLS restricts the row to members
+// of the household, so a non-member call returns no row and we fall back to
+// an empty array (the prompt will then emit no tags rather than break).
+export async function getHouseholdAllowedTags(
+  client: AppClient,
+  householdId: string,
+): Promise<string[]> {
+  const { data } = await client
+    .from('households')
+    .select('allowed_tags')
+    .eq('id', householdId)
+    .maybeSingle();
+  const raw = (data as { allowed_tags?: unknown } | null)?.allowed_tags;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((t): t is string => typeof t === 'string');
+}
+
 export class HttpError extends Error {
   constructor(public status: number, public code: string, public extra?: Record<string, unknown>) {
     super(`${status} ${code}`);

@@ -90,19 +90,22 @@ function getUserText(messages: ReturnType<typeof structuringFromImage>): string 
   return textPart.text;
 }
 
-Deno.test('structuringFromImage without comment matches the original instruction', () => {
-  const messages = structuringFromImage({ imageUrl: 'https://example.test/x.jpg' });
+Deno.test('structuringFromImage without comment includes the base instruction and allowed-tag list', () => {
+  const messages = structuringFromImage({
+    imageUrl: 'https://example.test/x.jpg',
+    allowedTags: ['main', 'dessert'],
+  });
   const text = getUserText(messages);
-  assertEquals(
-    text,
-    'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.',
-  );
+  assertStringIncludes(text, 'Extract the recipe in this image.');
+  assertStringIncludes(text, 'Allowed tags');
+  assertStringIncludes(text, 'main, dessert');
 });
 
 Deno.test('structuringFromImage with comment appends a fenced user note', () => {
   const messages = structuringFromImage({
     imageUrl: 'https://example.test/x.jpg',
     comment: 'the title is in Italian',
+    allowedTags: [],
   });
   const text = getUserText(messages);
   assertStringIncludes(text, 'User note:');
@@ -114,12 +117,12 @@ Deno.test('structuringFromImage with whitespace-only comment behaves as if absen
   const messages = structuringFromImage({
     imageUrl: 'https://example.test/x.jpg',
     comment: '   \n  ',
+    allowedTags: [],
   });
   const text = getUserText(messages);
-  assertEquals(
-    text,
-    'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.',
-  );
+  assertStringIncludes(text, 'Extract the recipe in this image.');
+  // Whitespace-only comments should not surface the user-note block.
+  assert(!text.includes('User note:'), 'expected no user-note section');
 });
 
 function systemContent(messages: { role: string; content: unknown }[]): string {
@@ -147,6 +150,7 @@ Deno.test('structuringFromHtml threads targetLanguage into the system message', 
     html: '<html></html>',
     sourceUrl: 'https://example.test/r',
     targetLanguage: 'fr',
+    allowedTags: [],
   });
   assertStringIncludes(systemContent(messages), 'Translate the human-readable strings into fr');
 });
@@ -156,6 +160,7 @@ Deno.test('structuringFromCaption threads targetLanguage into the system message
     caption: 'recipe',
     sourceUrl: 'https://example.test/p',
     targetLanguage: 'es',
+    allowedTags: [],
   });
   assertStringIncludes(systemContent(messages), 'Translate the human-readable strings into es');
 });
@@ -164,6 +169,7 @@ Deno.test('structuringFromImage threads targetLanguage into the system message',
   const messages = structuringFromImage({
     imageUrl: 'https://example.test/x.jpg',
     targetLanguage: 'hu',
+    allowedTags: [],
   });
   assertStringIncludes(systemContent(messages), 'Translate the human-readable strings into hu');
 });
@@ -172,8 +178,66 @@ Deno.test('structuringFromHtml without targetLanguage keeps the preserve directi
   const messages = structuringFromHtml({
     html: '<html></html>',
     sourceUrl: 'https://example.test/r',
+    allowedTags: [],
   });
   assertStringIncludes(systemContent(messages), 'Preserve the source language verbatim');
+});
+
+// Allowed-tag behaviour: the whitelist must reach the user message (so the
+// system message stays cacheable across households), and the system rule
+// must point the model at it.
+
+function getFirstUserText(messages: { role: string; content: unknown }[]): string {
+  const user = messages.find((m) => m.role === 'user');
+  assert(user, 'expected a user message');
+  if (typeof user.content === 'string') return user.content;
+  assert(Array.isArray(user.content), 'expected string or array user content');
+  const textPart = user.content.find(
+    (c): c is { type: 'text'; text: string } =>
+      typeof c === 'object' && c !== null && (c as { type: string }).type === 'text',
+  );
+  assert(textPart, 'expected a text part in user content');
+  return textPart.text;
+}
+
+Deno.test('RECIPE_JSON_SHAPE points the model at the household whitelist', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'household-defined whitelist');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'subset');
+});
+
+Deno.test('structuringFromHtml renders the allowed-tag list into the user message', () => {
+  const messages = structuringFromHtml({
+    html: '<html></html>',
+    sourceUrl: 'https://example.test/r',
+    allowedTags: ['main', 'dessert', 'mushroom'],
+  });
+  const userText = getFirstUserText(messages);
+  assertStringIncludes(userText, 'Allowed tags');
+  assertStringIncludes(userText, 'main, dessert, mushroom');
+  // Allowed tags must NOT leak into the cached system message.
+  const sys = systemContent(messages);
+  assert(!sys.includes('main, dessert, mushroom'), 'allowed tags must not appear in system');
+});
+
+Deno.test('structuringFromCaption renders the allowed-tag list into the user message', () => {
+  const messages = structuringFromCaption({
+    caption: 'recipe',
+    sourceUrl: 'https://example.test/p',
+    allowedTags: ['vegan', 'beef'],
+  });
+  const userText = getFirstUserText(messages);
+  assertStringIncludes(userText, 'Allowed tags');
+  assertStringIncludes(userText, 'vegan, beef');
+});
+
+Deno.test('empty allowed-tag list instructs the model to return no tags', () => {
+  const messages = structuringFromHtml({
+    html: '<html></html>',
+    sourceUrl: 'https://example.test/r',
+    allowedTags: [],
+  });
+  const userText = getFirstUserText(messages);
+  assertStringIncludes(userText, 'tags=[]');
 });
 
 // normalizePositions: post-Zod fix-up that re-indexes ingredients[].position

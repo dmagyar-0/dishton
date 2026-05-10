@@ -1,71 +1,93 @@
 import { cn } from '@/ui/cn';
 import { Tag } from '@/ui/primitives/Badge';
-import { IconButton } from '@/ui/primitives/IconButton';
-import { Input } from '@/ui/primitives/Input';
 import { X } from 'lucide-react';
-import { useState } from 'react';
 
 export type TagPickerProps = {
   value: string[];
   onChange: (value: string[]) => void;
-  suggestions?: string[];
+  allowedTags: readonly string[];
   className?: string;
 };
 
-const MAX = 40;
+// Strict chip picker. Tags can only be toggled on if they appear in the
+// household-defined allowedTags list — see src/routes/h/$householdId/settings.tsx
+// for where that list is managed. Existing recipes may still carry "off-list"
+// tags from before the whitelist was introduced or from a tag being removed
+// after the recipe was saved; those render as removable-only chips at the top
+// so the user can clear them but never re-add a non-whitelist tag.
+export function TagPicker({ value, onChange, allowedTags, className }: TagPickerProps) {
+  const allowedSet = new Set(allowedTags);
+  const offList = value.filter((t) => !allowedSet.has(t));
+  const selected = new Set(value);
 
-function normalize(raw: string): string | null {
-  const s = raw.trim().toLowerCase();
-  if (s.length === 0 || s.length > MAX) return null;
-  return s;
-}
-
-export function TagPicker({ value, onChange, suggestions = [], className }: TagPickerProps) {
-  const [draft, setDraft] = useState('');
-
-  const submit = (raw: string) => {
-    const n = normalize(raw);
-    if (n === null) return;
-    if (value.includes(n)) return;
-    onChange([...value, n]);
-    setDraft('');
+  const toggle = (tag: string): void => {
+    if (selected.has(tag)) {
+      onChange(value.filter((t) => t !== tag));
+    } else {
+      onChange([...value, tag]);
+    }
   };
 
-  const remove = (tag: string) => onChange(value.filter((t) => t !== tag));
+  const remove = (tag: string): void => {
+    onChange(value.filter((t) => t !== tag));
+  };
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      <div className="flex flex-wrap gap-1.5">
-        {value.map((tag) => (
-          <Tag key={tag} variant="secondary" className="inline-flex items-center gap-1">
-            {tag}
-            <IconButton label={`Remove ${tag}`} className="!size-5" onClick={() => remove(tag)}>
-              <X size={12} strokeWidth={1.5} />
-            </IconButton>
-          </Tag>
-        ))}
-      </div>
-      <Input
-        value={draft}
-        onChange={(e) => setDraft((e.target as HTMLInputElement).value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            submit(draft);
-          } else if (e.key === 'Backspace' && draft === '' && value.length > 0) {
-            const last = value[value.length - 1];
-            if (last) remove(last);
-          }
-        }}
-        placeholder="Add a tag, then press Enter"
-        list="tag-suggestions"
-      />
-      {suggestions.length > 0 && (
-        <datalist id="tag-suggestions">
-          {suggestions.map((s) => (
-            <option key={s} value={s} />
+    <div className={cn('flex flex-col gap-3', className)}>
+      {offList.length > 0 && (
+        <div
+          className="flex flex-wrap gap-1.5"
+          aria-label="Tags from before the household whitelist"
+        >
+          {offList.map((tag) => (
+            <Tag
+              key={`off-${tag}`}
+              variant="outline"
+              className="inline-flex items-center gap-1 opacity-70"
+            >
+              <span className="line-through decoration-ink-muted/60">{tag}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${tag}`}
+                className="ml-0.5 inline-flex size-4 items-center justify-center rounded-full hover:bg-paper-2"
+                onClick={() => remove(tag)}
+              >
+                <X size={12} strokeWidth={1.5} />
+              </button>
+            </Tag>
           ))}
-        </datalist>
+        </div>
+      )}
+
+      {allowedTags.length === 0 ? (
+        <p className="text-sm text-ink-soft">
+          No tags configured for this household yet. Add some in household settings.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Recipe tags">
+          {allowedTags.map((tag) => {
+            const isOn = selected.has(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                aria-pressed={isOn}
+                onClick={() => toggle(tag)}
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-0.5',
+                  'rounded-[var(--radius-pill)] border',
+                  'font-body text-xs font-medium',
+                  'transition-colors duration-[var(--duration-fast)]',
+                  isOn
+                    ? 'bg-sage text-sage-ink border-sage'
+                    : 'bg-transparent text-ink border-cream-line hover:bg-paper-2',
+                )}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

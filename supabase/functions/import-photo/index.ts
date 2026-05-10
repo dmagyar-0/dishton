@@ -7,6 +7,7 @@ import {
   HttpError,
   corsHeaders,
   getCallerPreferredLanguage,
+  getHouseholdAllowedTags,
   jsonResponse,
   resolveCaller,
 } from '../_shared/auth.ts';
@@ -85,6 +86,7 @@ serve(async (req: Request) => {
     const signedUrl = signed.signedUrl;
 
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
+    const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) =>
       await withRateBudget(3500, () =>
@@ -94,6 +96,7 @@ serve(async (req: Request) => {
             imageUrl: signedUrl,
             comment: trimmedComment,
             targetLanguage,
+            allowedTags,
           }),
           estimatedTokens: 3500,
           signal,
