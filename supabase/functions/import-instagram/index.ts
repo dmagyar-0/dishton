@@ -177,7 +177,7 @@ serve(async (req: Request) => {
       }
 
       if (!oe) {
-        const fb = await fetchOgFallback(body.url, signal, fallbackLogger);
+        const fb = await fetchOgFallback(body.url, signal, fallbackLogger, env.SCRAPER_API_KEY);
         if (fb) {
           oe = fb.oembed;
           source = fb.source;
@@ -236,6 +236,7 @@ serve(async (req: Request) => {
         {
           ms,
           oembed_token_present: Boolean(env.IG_OEMBED_TOKEN),
+          scraper_key_present: Boolean(env.SCRAPER_API_KEY),
           oembed_attempt: oembedAttempt
             ? {
                 ok: oembedAttempt.ok,

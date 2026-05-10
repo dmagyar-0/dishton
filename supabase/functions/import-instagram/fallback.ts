@@ -5,8 +5,11 @@
 //   2. The post URL itself with a realistic browser UA — handles edge cases
 //      where the embed path doesn't apply (e.g. user already pasted /share/).
 //   3. A public mirror (ddinstagram.com) that proxies Instagram and rebuilds
-//      OG tags for Discord/Twitter unfurls — last-resort for when Instagram
-//      blocks our datacenter IPs entirely.
+//      OG tags for Discord/Twitter unfurls — works when Instagram blocks our
+//      datacenter IPs entirely.
+//   4. ScraperAPI (only if SCRAPER_API_KEY is set) — rotates residential IPs
+//      to fetch the captioned-embed page. Last-resort for when even the mirror
+//      fails. Free tier ~1000 req/mo, suitable for hobby projects.
 // Each tier uses a short timeout so the chain stays inside the function budget.
 
 export type OEmbed = {
@@ -16,7 +19,7 @@ export type OEmbed = {
   author_name?: string;
 };
 
-export type FallbackTier = 'captioned_embed' | 'direct' | 'mirror';
+export type FallbackTier = 'captioned_embed' | 'direct' | 'mirror' | 'scraper';
 
 export type FallbackEvent = {
   tier: FallbackTier;
@@ -105,6 +108,17 @@ export function mirrorUrl(postUrl: string): string | null {
   return `https://www.ddinstagram.com${u.pathname}`;
 }
 
+// ScraperAPI proxy URL. Wraps the captioned-embed URL because that's the
+// caption-richest variant — fetching it through residential IPs sidesteps the
+// datacenter blocks that affect all three other tiers. Returns null when no
+// API key is configured or the URL isn't an Instagram post we can rewrite.
+export function scraperUrl(postUrl: string, apiKey: string | undefined): string | null {
+  if (!apiKey) return null;
+  const target = captionedEmbedUrl(postUrl);
+  if (!target) return null;
+  return `https://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(target)}`;
+}
+
 async function fetchAsHtml(
   url: string,
   tier: FallbackTier,
@@ -148,6 +162,7 @@ export async function fetchOgFallback(
   url: string,
   parent?: AbortSignal,
   logger?: FallbackLogger,
+  scraperApiKey?: string,
 ): Promise<FallbackResult | null> {
   const embed = captionedEmbedUrl(url);
   if (embed) {
@@ -160,6 +175,11 @@ export async function fetchOgFallback(
   if (mirror) {
     const oe = await fetchAsHtml(mirror, 'mirror', parent, logger);
     if (oe) return { oembed: oe, source: 'mirror' };
+  }
+  const scraper = scraperUrl(url, scraperApiKey);
+  if (scraper) {
+    const oe = await fetchAsHtml(scraper, 'scraper', parent, logger);
+    if (oe) return { oembed: oe, source: 'scraper' };
   }
   return null;
 }
