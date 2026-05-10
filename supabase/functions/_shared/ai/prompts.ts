@@ -48,6 +48,14 @@ Rules:
 - Output ONLY a single JSON object. No prose, no code fences, no commentary.
 - If a quantity is ambiguous (e.g. "a pinch"), set quantity=null and
   non_scalable_qty to the matching token; scalable=false.
+- For range quantities like "1-2 tbsp", "1 - 1.5 cups", or "2-2.5 limes",
+  set quantity to the lower bound as a number (or fraction object) and
+  copy the full range text into notes (e.g. quantity=1, unit="tbsp",
+  notes="1-2 tbsp"). Never emit quantity as a string.
+- "servings" must be a positive integer. If the source does not state
+  servings, default to 1. Never emit servings as null.
+- "total_time_min" is the total recipe time in minutes (integer ≥ 0) or
+  null. If the source does not state a total time, set it to null.
 - "cup" defaults to "cup_us" (240 ml). For European-language sources, use
   "cup_metric" (250 ml).
 - Canonical unit keys: g, kg, oz, lb, ml, l, tsp, tbsp, cup_us, cup_metric,
@@ -157,8 +165,7 @@ Caption:
 ${args.caption}
 """
 
-If the caption contains hashtags or emojis, ignore them. If servings or
-total_time_min are not stated, set them to null and 1 respectively.`,
+If the caption contains hashtags or emojis, ignore them.`,
     },
   ];
 }
