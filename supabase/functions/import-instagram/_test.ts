@@ -9,10 +9,12 @@ import {
   fetchOgFallback,
   mirrorUrl,
   parseInstagramHtml,
+  scraperUrl,
 } from './fallback.ts';
 
 const REEL_URL = 'https://www.instagram.com/reel/DX6MMYWOn3Z/?igsh=abcd';
 const POST_URL = 'https://www.instagram.com/p/ABC123/';
+const SCRAPER_KEY = 'test-scraper-key';
 
 function htmlWithOg(parts: { title?: string; description?: string; image?: string }): string {
   const tags: string[] = [];
@@ -69,6 +71,23 @@ Deno.test('mirrorUrl: maps instagram.com path onto ddinstagram.com', () => {
 
 Deno.test('mirrorUrl: returns null for non-Instagram hosts', () => {
   assertEquals(mirrorUrl('https://tiktok.com/@x/video/1'), null);
+});
+
+Deno.test('scraperUrl: wraps the captioned-embed URL through scraperapi.com', () => {
+  const expectedTarget = 'https://www.instagram.com/reel/DX6MMYWOn3Z/embed/captioned/';
+  assertEquals(
+    scraperUrl(REEL_URL, SCRAPER_KEY),
+    `https://api.scraperapi.com/?api_key=${SCRAPER_KEY}&url=${encodeURIComponent(expectedTarget)}`,
+  );
+});
+
+Deno.test('scraperUrl: returns null when api key is missing', () => {
+  assertEquals(scraperUrl(REEL_URL, undefined), null);
+  assertEquals(scraperUrl(REEL_URL, ''), null);
+});
+
+Deno.test('scraperUrl: returns null for non-Instagram hosts', () => {
+  assertEquals(scraperUrl('https://tiktok.com/@x/video/1', SCRAPER_KEY), null);
 });
 
 Deno.test('parseInstagramHtml: extracts og:title, og:description and og:image', () => {
@@ -160,6 +179,70 @@ Deno.test('fetchOgFallback: returns null when all tiers fail', async () => {
   ]);
   const result = await fetchOgFallback(REEL_URL);
   assertEquals(result, null);
+});
+
+Deno.test('fetchOgFallback: rescues via scraper tier when first three fail and key is set', async () => {
+  using mock = installMockFetch([
+    {
+      match: (req) =>
+        req.url.startsWith('https://www.instagram.com/') && !req.url.includes('scraperapi'),
+      response: new Response('forbidden', { status: 403 }),
+    },
+    {
+      match: (req) => req.url.startsWith('https://www.ddinstagram.com/'),
+      response: new Response('forbidden', { status: 403 }),
+    },
+    {
+      match: (req) => req.url.startsWith('https://api.scraperapi.com/'),
+      response: htmlResponse(
+        htmlWithOg({ title: 'scraper title', description: 'scraper caption' }),
+      ),
+    },
+  ]);
+  const result = await fetchOgFallback(REEL_URL, undefined, undefined, SCRAPER_KEY);
+  assert(result);
+  assertEquals(result.oembed.html, 'scraper caption');
+  assertEquals(result.source, 'scraper');
+  assertEquals(mock.calls.length, 4);
+  assert(mock.calls[3].url.startsWith('https://api.scraperapi.com/'));
+});
+
+Deno.test('fetchOgFallback: skips scraper tier when no api key is provided', async () => {
+  using mock = installMockFetch([
+    {
+      match: () => true,
+      response: new Response('forbidden', { status: 403 }),
+    },
+  ]);
+  const result = await fetchOgFallback(REEL_URL);
+  assertEquals(result, null);
+  // Only embed + direct + mirror — no scraper attempt without a key.
+  assertEquals(mock.calls.length, 3);
+  assert(!mock.calls.some((c) => c.url.includes('scraperapi.com')));
+});
+
+Deno.test('fetchOgFallback: emits a fallback event for the scraper tier', async () => {
+  using _mock = installMockFetch([
+    {
+      match: (req) =>
+        req.url.startsWith('https://www.instagram.com/') && !req.url.includes('scraperapi'),
+      response: new Response('forbidden', { status: 403 }),
+    },
+    {
+      match: (req) => req.url.startsWith('https://www.ddinstagram.com/'),
+      response: new Response('forbidden', { status: 403 }),
+    },
+    {
+      match: (req) => req.url.startsWith('https://api.scraperapi.com/'),
+      response: htmlResponse(htmlWithOg({ title: 's', description: 'c' })),
+    },
+  ]);
+  const events: FallbackEvent[] = [];
+  const result = await fetchOgFallback(REEL_URL, undefined, (e) => events.push(e), SCRAPER_KEY);
+  assert(result);
+  assertEquals(events.length, 4);
+  assertEquals(events[3].tier, 'scraper');
+  assertEquals(events[3].ok, true);
 });
 
 Deno.test('fetchOgFallback: returns null when responses are 200 but contain no og tags (login wall)', async () => {
