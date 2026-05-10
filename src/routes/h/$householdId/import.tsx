@@ -11,6 +11,7 @@ import {
   bcImportInputValidated,
   bcImportRequestSent,
   bcImportResponseReceived,
+  bcImportSaveFailed,
   bcImportStart,
 } from '@/observability/breadcrumbs';
 import { Button } from '@/ui/primitives/Button';
@@ -175,10 +176,28 @@ function UrlTab({ householdId }: { householdId: string }) {
             p_draft: payload.draft as never,
           });
           if (saveErr || !newId) {
+            const detail = saveErr?.message?.trim() || saveErr?.details?.trim() || null;
+            bcImportSaveFailed({
+              code: saveErr?.code ?? null,
+              message: saveErr?.message ?? null,
+              details: saveErr?.details ?? null,
+              hint: saveErr?.hint ?? null,
+            });
             push({
               variant: 'error',
+              persist: detail !== null,
               title: t('import.error_title'),
-              description: t('errors.internal'),
+              description: (
+                <>
+                  <p>{t('errors.internal')}</p>
+                  {detail && (
+                    <p className="mt-1 text-xs opacity-80 break-words">
+                      <span className="font-medium">{t('import.error_detail_label')}:</span>{' '}
+                      {detail}
+                    </p>
+                  )}
+                </>
+              ),
             });
             return;
           }
@@ -335,10 +354,28 @@ function PhotoTab({ householdId }: { householdId: string }) {
             p_draft: payload.draft as never,
           });
           if (saveErr || !newId) {
+            const detail = saveErr?.message?.trim() || saveErr?.details?.trim() || null;
+            bcImportSaveFailed({
+              code: saveErr?.code ?? null,
+              message: saveErr?.message ?? null,
+              details: saveErr?.details ?? null,
+              hint: saveErr?.hint ?? null,
+            });
             push({
               variant: 'error',
+              persist: detail !== null,
               title: t('import.error_title'),
-              description: t('errors.internal'),
+              description: (
+                <>
+                  <p>{t('errors.internal')}</p>
+                  {detail && (
+                    <p className="mt-1 text-xs opacity-80 break-words">
+                      <span className="font-medium">{t('import.error_detail_label')}:</span>{' '}
+                      {detail}
+                    </p>
+                  )}
+                </>
+              ),
             });
             return;
           }
