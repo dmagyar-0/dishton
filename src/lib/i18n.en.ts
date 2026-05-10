@@ -66,6 +66,7 @@ export default {
     success_title: 'Recipe added',
     success_body: "It's in your pantry now.",
     error_title: "Couldn't finish import",
+    error_detail_label: 'Details',
     needs_review_title: 'Needs a second look',
     needs_review_body:
       "We couldn't read this page cleanly. Try another source or paste the recipe manually.",

@@ -62,3 +62,25 @@ export function bcImportDraftSaved(recipeId: string): void {
     data: { recipe_id: recipeId },
   });
 }
+export function bcImportSaveFailed(meta: {
+  code: string | null;
+  message: string | null;
+  details: string | null;
+  hint: string | null;
+}): void {
+  // RPC failures after a successful edge-function response are the dark spot
+  // in our observability — the import looks "successful" server-side, the
+  // user sees a generic toast, and we have nothing to triage. Capture the
+  // PostgREST error envelope verbatim. No recipe content is included.
+  Sentry.addBreadcrumb({
+    category: 'import',
+    message: 'import.save.failed',
+    level: 'error',
+    data: {
+      code: meta.code?.slice(0, 64) ?? null,
+      message: meta.message?.slice(0, 240) ?? null,
+      details: meta.details?.slice(0, 240) ?? null,
+      hint: meta.hint?.slice(0, 240) ?? null,
+    },
+  });
+}

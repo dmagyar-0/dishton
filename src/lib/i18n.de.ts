@@ -68,6 +68,7 @@ export default {
     success_title: 'Rezept gespeichert',
     success_body: 'Es ist jetzt in deiner Speisekammer.',
     error_title: 'Import fehlgeschlagen',
+    error_detail_label: 'Details',
     needs_review_title: 'Zweiter Blick nötig',
     needs_review_body:
       'Wir konnten diese Seite nicht sauber lesen. Versuche eine andere Quelle oder gib das Rezept manuell ein.',
