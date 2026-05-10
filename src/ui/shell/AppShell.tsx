@@ -1,7 +1,7 @@
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
 import { Link, Outlet } from '@tanstack/react-router';
-import { Home, Search, Upload, User, Users } from 'lucide-react';
+import { Home, Search, Settings, Upload, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const NAV_CLASS = cn(
@@ -50,6 +50,14 @@ export function AppShell() {
                 <span className="hidden sm:inline">{t('nav.following')}</span>
               </Link>
             </li>
+            {householdId && (
+              <li>
+                <Link to="/h/$householdId/settings" params={{ householdId }} className={NAV_CLASS}>
+                  <Settings size={16} strokeWidth={1.5} />
+                  <span className="hidden sm:inline">{t('nav.household_settings')}</span>
+                </Link>
+              </li>
+            )}
             <li>
               <Link to="/profile" className={NAV_CLASS}>
                 <User size={16} strokeWidth={1.5} />

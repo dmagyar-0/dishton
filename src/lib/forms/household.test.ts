@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { AddFollowSchema, CreateHouseholdSchema, RedeemInviteSchema } from './household';
+import {
+  AddFollowSchema,
+  AllowedTagSchema,
+  AllowedTagsSchema,
+  CreateHouseholdSchema,
+  RedeemInviteSchema,
+} from './household';
 
 describe('CreateHouseholdSchema', () => {
   it('accepts 1-80 char names', () => {
@@ -30,5 +36,33 @@ describe('AddFollowSchema', () => {
   it('rejects without prefix or wrong length', () => {
     expect(() => AddFollowSchema.parse({ code: 'ABCDE234FGHJ' })).toThrow();
     expect(() => AddFollowSchema.parse({ code: 'f_ABCDE234FGH' })).toThrow();
+  });
+});
+
+describe('AllowedTagSchema', () => {
+  it('accepts lowercase words, digits, spaces and hyphens', () => {
+    expect(() => AllowedTagSchema.parse('main')).not.toThrow();
+    expect(() => AllowedTagSchema.parse('gluten-free')).not.toThrow();
+    expect(() => AllowedTagSchema.parse('quick dinner')).not.toThrow();
+    expect(() => AllowedTagSchema.parse('30-minute')).not.toThrow();
+  });
+  it('rejects uppercase, leading punctuation, special chars, or 41+ chars', () => {
+    expect(() => AllowedTagSchema.parse('Main')).toThrow();
+    expect(() => AllowedTagSchema.parse('-soup')).toThrow();
+    expect(() => AllowedTagSchema.parse(' soup')).toThrow();
+    expect(() => AllowedTagSchema.parse('soup!')).toThrow();
+    expect(() => AllowedTagSchema.parse('a'.repeat(41))).toThrow();
+  });
+});
+
+describe('AllowedTagsSchema', () => {
+  it('accepts a deduplicated tag list', () => {
+    expect(() => AllowedTagsSchema.parse(['main', 'dessert', 'mushroom'])).not.toThrow();
+  });
+  it('rejects duplicates', () => {
+    expect(() => AllowedTagsSchema.parse(['main', 'main'])).toThrow();
+  });
+  it('rejects an entry that fails the per-tag shape', () => {
+    expect(() => AllowedTagsSchema.parse(['Main'])).toThrow();
   });
 });

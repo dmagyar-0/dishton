@@ -10,6 +10,7 @@ import {
   HttpError,
   corsHeaders,
   getCallerPreferredLanguage,
+  getHouseholdAllowedTags,
   jsonResponse,
   resolveCaller,
 } from '../_shared/auth.ts';
@@ -124,6 +125,7 @@ serve(async (req: Request) => {
     jobId = job.id as string;
 
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
+    const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
       const html = await fetchHtml(body.url, signal);
@@ -148,6 +150,7 @@ serve(async (req: Request) => {
             sourceUrl: body.url,
             scraped,
             targetLanguage,
+            allowedTags,
           }),
           estimatedTokens: 4000,
           signal,

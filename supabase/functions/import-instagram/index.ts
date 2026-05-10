@@ -6,6 +6,7 @@ import {
   HttpError,
   corsHeaders,
   getCallerPreferredLanguage,
+  getHouseholdAllowedTags,
   jsonResponse,
   resolveCaller,
 } from '../_shared/auth.ts';
@@ -126,6 +127,7 @@ serve(async (req: Request) => {
     jobId = job.id as string;
 
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
+    const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
     const fallbackEvents: FallbackEvent[] = [];
     const fallbackLogger = (e: FallbackEvent): void => {
@@ -206,7 +208,12 @@ serve(async (req: Request) => {
       const b = await withRateBudget(1200, () =>
         callAndValidate({
           lane: 'text',
-          messages: structuringFromCaption({ caption, sourceUrl: body.url, targetLanguage }),
+          messages: structuringFromCaption({
+            caption,
+            sourceUrl: body.url,
+            targetLanguage,
+            allowedTags,
+          }),
           estimatedTokens: 1200,
           signal,
         }),

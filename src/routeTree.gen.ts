@@ -19,6 +19,7 @@ import { Route as AuthResetRouteImport } from './routes/auth/reset'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as HHouseholdIdIndexRouteImport } from './routes/h/$householdId/index'
+import { Route as HHouseholdIdSettingsRouteImport } from './routes/h/$householdId/settings'
 import { Route as HHouseholdIdImportRouteImport } from './routes/h/$householdId/import'
 import { Route as HHouseholdIdRRecipeIdRouteImport } from './routes/h/$householdId/r/$recipeId'
 
@@ -72,6 +73,11 @@ const HHouseholdIdIndexRoute = HHouseholdIdIndexRouteImport.update({
   path: '/h/$householdId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HHouseholdIdSettingsRoute = HHouseholdIdSettingsRouteImport.update({
+  id: '/h/$householdId/settings',
+  path: '/h/$householdId/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HHouseholdIdImportRoute = HHouseholdIdImportRouteImport.update({
   id: '/h/$householdId/import',
   path: '/h/$householdId/import',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
+  '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId/': typeof HHouseholdIdIndexRoute
   '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/following': typeof FollowingIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
+  '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId': typeof HHouseholdIdIndexRoute
   '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
+  '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId/': typeof HHouseholdIdIndexRoute
   '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/following/'
     | '/onboarding/'
     | '/h/$householdId/import'
+    | '/h/$householdId/settings'
     | '/h/$householdId/'
     | '/h/$householdId/r/$recipeId'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/following'
     | '/onboarding'
     | '/h/$householdId/import'
+    | '/h/$householdId/settings'
     | '/h/$householdId'
     | '/h/$householdId/r/$recipeId'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/following/'
     | '/onboarding/'
     | '/h/$householdId/import'
+    | '/h/$householdId/settings'
     | '/h/$householdId/'
     | '/h/$householdId/r/$recipeId'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   FollowingIndexRoute: typeof FollowingIndexRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
   HHouseholdIdImportRoute: typeof HHouseholdIdImportRoute
+  HHouseholdIdSettingsRoute: typeof HHouseholdIdSettingsRoute
   HHouseholdIdIndexRoute: typeof HHouseholdIdIndexRoute
   HHouseholdIdRRecipeIdRoute: typeof HHouseholdIdRRecipeIdRoute
 }
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HHouseholdIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/h/$householdId/settings': {
+      id: '/h/$householdId/settings'
+      path: '/h/$householdId/settings'
+      fullPath: '/h/$householdId/settings'
+      preLoaderRoute: typeof HHouseholdIdSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/h/$householdId/import': {
       id: '/h/$householdId/import'
       path: '/h/$householdId/import'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   FollowingIndexRoute: FollowingIndexRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
   HHouseholdIdImportRoute: HHouseholdIdImportRoute,
+  HHouseholdIdSettingsRoute: HHouseholdIdSettingsRoute,
   HHouseholdIdIndexRoute: HHouseholdIdIndexRoute,
   HHouseholdIdRRecipeIdRoute: HHouseholdIdRRecipeIdRoute,
 }
