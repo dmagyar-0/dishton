@@ -197,9 +197,12 @@ Given an ingredient with `unit = X` and a profile preference of
    (> 999). For mass: prefer `g` < 1000, else `kg`. For volume in metric
    mode: `tsp` and `tbsp` pass through unchanged (cooks read them in either
    system), cups (`cup_us`/`cup_metric`) cross over to `g`/`kg` via the
-   water-density approximation, and everything else picks `ml` < 1000 else
-   `l`. In imperial mode: ml < 15 → `tsp`, < 60 → `tbsp`, < 240 → `fl_oz`,
-   < 1000 → `cup_us`, else `quart_us`. Tests assert each branch.
+   water-density approximation **only when the amount is at least one cup
+   (≥240 ml)** — smaller cup fractions (e.g. "1/4 cup honey") render as `ml`
+   to match imperial, which would display them as `fl_oz`/`tbsp`/`tsp` rather
+   than as cups. Everything else picks `ml` < 1000 else `l`. In imperial mode:
+   ml < 15 → `tsp`, < 60 → `tbsp`, < 240 → `fl_oz`, < 1000 → `cup_us`, else
+   `quart_us`. Tests assert each branch.
 
 ## Scaling
 

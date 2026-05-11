@@ -53,8 +53,12 @@ export function pickDisplayUnit(
       // Keep tsp and tbsp as-is; cooks are familiar with them in either system.
       if (fromUnit === 'tsp') return 'tsp';
       if (fromUnit === 'tbsp') return 'tbsp';
-      // Cups become grams via water-density approximation (1 ml = 1 g).
-      if (CUP_KEYS.has(fromUnit)) {
+      // Cups become grams via water-density approximation (1 ml = 1 g), but
+      // only when the amount is at least one cup (≥240 ml). Smaller cup
+      // fractions (e.g. "1/4 cup honey" = 60 ml) display as ml in metric to
+      // match the imperial view, which would render them as fl oz / tbsp / tsp
+      // — not as cups.
+      if (CUP_KEYS.has(fromUnit) && canonicalValue >= 240) {
         return canonicalValue >= 1000 ? 'kg' : 'g';
       }
       if (canonicalValue >= 1000) return 'l';
