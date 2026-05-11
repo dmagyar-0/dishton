@@ -1,4 +1,5 @@
 import { useAuth } from '@/lib/auth';
+import { useRecipesAcrossHouseholds } from '@/lib/queries/recipes';
 import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
@@ -34,24 +35,30 @@ function SearchPage() {
   );
 
   const q = params.q ?? '';
+  const searchActive = q.trim().length >= 2;
   const search = useRecipeSearch(q, householdIds);
+  const list = useRecipesAcrossHouseholds(householdIds, !searchActive);
   const tags = usePopularTags(householdIds);
 
+  const source = searchActive ? search.data : list.data;
+  const sourceFetching = searchActive ? search.isFetching : list.isFetching;
+  const sourceLoading = searchActive ? search.isLoading : list.isLoading;
+
   const filtered = useMemo(() => {
-    if (!search.data) return [];
-    if (selected.length === 0) return search.data;
-    return search.data.filter((r) => {
+    if (!source) return [];
+    if (selected.length === 0) return source;
+    return source.filter((r) => {
       const rt = (r.recipe_tags ?? []).map((t: { tag: string }) => t.tag);
       return selected.every((tag: string) => rt.includes(tag));
     });
-  }, [search.data, selected]);
+  }, [source, selected]);
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <h1 className="font-display text-3xl">Search</h1>
       <SearchBar
         value={q}
-        loading={search.isFetching}
+        loading={sourceFetching}
         onChange={(value) =>
           nav({
             search: (prev: SearchParams) => ({ ...prev, q: value === '' ? undefined : value }),
@@ -74,11 +81,15 @@ function SearchPage() {
         />
       )}
 
-      {q.length >= 2 && filtered.length === 0 && !search.isLoading && (
+      {!sourceLoading && filtered.length === 0 && (searchActive || selected.length > 0) && (
         <Card className="p-6">
           <EmptyState
             title="No matches"
-            description={`Nothing matched "${q}". Try a different word or clear the search.`}
+            description={
+              searchActive
+                ? `Nothing matched "${q}"${selected.length > 0 ? ' with the selected tags' : ''}. Try a different word or clear the filters.`
+                : 'No recipes match the selected tags. Try removing a tag.'
+            }
             action={null}
           />
         </Card>
