@@ -205,6 +205,12 @@ Deno.test('RECIPE_JSON_SHAPE points the model at the household whitelist', () =>
   assertStringIncludes(RECIPE_JSON_SHAPE, 'subset');
 });
 
+Deno.test('RECIPE_JSON_SHAPE asks for both Celsius and Fahrenheit on baking-temperature steps', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'Celsius and Fahrenheit');
+  assertStringIncludes(RECIPE_JSON_SHAPE, '180°C (350°F)');
+  assertStringIncludes(RECIPE_JSON_SHAPE, '350°F (180°C)');
+});
+
 Deno.test('structuringFromHtml renders the allowed-tag list into the user message', () => {
   const messages = structuringFromHtml({
     html: '<html></html>',

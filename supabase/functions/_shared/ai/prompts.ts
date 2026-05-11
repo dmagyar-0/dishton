@@ -74,6 +74,14 @@ Rules:
 - "hero_image_path" stores a remote image URL when available; null if none.
 - Split each logical action into its own step. A "preheat oven … bake 30
   min … cool" sequence is three steps, not one.
+- When a step's body mentions an oven or baking temperature, include BOTH
+  Celsius and Fahrenheit in the body, with the source's unit first and the
+  converted value in parentheses (e.g. "Bake at 180°C (350°F) for 30 min"
+  or "Preheat to 350°F (180°C)"). Convert with F = C × 9/5 + 32 (or
+  C = (F − 32) × 5/9) and round to the nearest 5° so the result reads like
+  a typical oven setting. Apply this only to dry-heat cooking temperatures
+  (oven, grill, broiler, air fryer); leave other temperatures (fridge,
+  water, dough, internal doneness) in the source's unit alone.
 - "position" is 0-indexed and contiguous: the first ingredient/step is 0,
   the second is 1, and so on.
 - If the source groups ingredients under sub-headings (e.g. "For the meat",
