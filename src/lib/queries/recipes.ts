@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 
 export type RecipeListRow = {
   id: string;
+  household_id: string;
   title: string;
   description: string | null;
   hero_image_path: string | null;
@@ -19,7 +20,7 @@ export function useRecipeList(householdId: string) {
       const { data, error } = await supabase
         .from('recipes')
         .select(
-          'id, title, description, hero_image_path, total_time_min, source_type, created_at, recipe_tags(tag)',
+          'id, household_id, title, description, hero_image_path, total_time_min, source_type, created_at, recipe_tags(tag)',
         )
         .eq('household_id', householdId)
         .order('created_at', { ascending: false })

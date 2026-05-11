@@ -4,7 +4,7 @@ import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
-import { createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { z } from 'zod';
 import { requireHousehold } from './_guards';
@@ -88,12 +88,18 @@ function SearchPage() {
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((r) => (
             <li key={r.id}>
-              <Card className="p-5">
-                <h2 className="font-display text-xl mb-2">{r.title}</h2>
-                {r.description && (
-                  <p className="text-sm text-ink-soft line-clamp-3">{r.description}</p>
-                )}
-              </Card>
+              <Link
+                to="/h/$householdId/r/$recipeId"
+                params={{ householdId: r.household_id, recipeId: r.id }}
+                className="block"
+              >
+                <Card className="p-5">
+                  <h2 className="font-display text-xl mb-2">{r.title}</h2>
+                  {r.description && (
+                    <p className="text-sm text-ink-soft line-clamp-3">{r.description}</p>
+                  )}
+                </Card>
+              </Link>
             </li>
           ))}
         </ul>
