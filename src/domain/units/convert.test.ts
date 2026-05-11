@@ -140,12 +140,26 @@ describe('pickDisplayUnit', () => {
     expect(pickDisplayUnit('tbsp', 1, 'metric')).toBe('tbsp');
     expect(pickDisplayUnit('tbsp', 2, 'metric')).toBe('tbsp');
   });
-  it('volume metric converts cups to g/kg via water-density', () => {
-    expect(pickDisplayUnit('cup_us', 0.5, 'metric')).toBe('g');
+  it('volume metric converts cups to g/kg via water-density (≥1 cup only)', () => {
     expect(pickDisplayUnit('cup_us', 1, 'metric')).toBe('g');
     expect(pickDisplayUnit('cup_us', 5, 'metric')).toBe('kg');
     expect(pickDisplayUnit('cup_metric', 1, 'metric')).toBe('g');
     expect(pickDisplayUnit('cup_metric', 5, 'metric')).toBe('kg');
+  });
+  it('volume metric keeps fractional cups (<1 cup) in ml, matching imperial fl oz / tbsp', () => {
+    // 1/4 cup honey = 60 ml; imperial renders as fl oz, so metric must render
+    // as ml — not as 60 g — to stay consistent across the unit toggle.
+    expect(pickDisplayUnit('cup_us', 0.25, 'metric')).toBe('ml');
+    expect(pickDisplayUnit('cup_us', 0.5, 'metric')).toBe('ml');
+    expect(pickDisplayUnit('cup_metric', 0.5, 'metric')).toBe('ml');
+  });
+  it('volume metric renders fl_oz / pint_us / quart_us as ml or l (never grams)', () => {
+    expect(pickDisplayUnit('fl_oz', 1, 'metric')).toBe('ml');
+    expect(pickDisplayUnit('fl_oz', 2.03, 'metric')).toBe('ml');
+    expect(pickDisplayUnit('fl_oz', 50, 'metric')).toBe('l');
+    expect(pickDisplayUnit('pint_us', 1, 'metric')).toBe('ml');
+    expect(pickDisplayUnit('quart_us', 1, 'metric')).toBe('ml');
+    expect(pickDisplayUnit('quart_us', 2, 'metric')).toBe('l');
   });
   it('volume imperial picks tsp/tbsp/fl_oz/cup branches', () => {
     expect(pickDisplayUnit('ml', 4, 'imperial')).toBe('tsp');
