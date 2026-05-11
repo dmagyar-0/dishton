@@ -31,6 +31,26 @@ export function useRecipeList(householdId: string) {
   });
 }
 
+export function useRecipesAcrossHouseholds(householdIds: string[], enabled = true) {
+  return useQuery({
+    queryKey: ['recipes-across', householdIds],
+    enabled: enabled && householdIds.length > 0,
+    queryFn: async (): Promise<RecipeListRow[]> => {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select(
+          'id, title, description, hero_image_path, total_time_min, source_type, created_at, recipe_tags(tag)',
+        )
+        .in('household_id', householdIds)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      if (error) throw error;
+      return (data ?? []) as unknown as RecipeListRow[];
+    },
+    staleTime: 60_000,
+  });
+}
+
 export type FullRecipe = {
   recipe: {
     id: string;
