@@ -401,16 +401,16 @@ function InviteRow({
   };
 
   return (
-    <li className="flex items-center gap-3 rounded-[var(--radius-md)] bg-paper px-3 py-2 border border-cream-line">
+    <li className="flex flex-wrap items-center gap-2 sm:gap-3 rounded-[var(--radius-md)] bg-paper px-3 py-2 border border-cream-line">
       <button
         type="button"
         onClick={() => void copyCode()}
-        className="font-display tracking-[0.25em] text-aubergine"
+        className="font-display tracking-[0.2em] sm:tracking-[0.25em] text-aubergine"
         title={t('household_settings.members.copy_code')}
       >
         {invite.code}
       </button>
-      <Badge variant="outline" className="text-xs">
+      <Badge variant="outline" className="text-xs whitespace-nowrap">
         {expiresLabel}
       </Badge>
       <div className="flex-1" />
