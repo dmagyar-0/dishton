@@ -5,7 +5,7 @@ import { Home, Search, Settings, Upload, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const NAV_CLASS = cn(
-  'inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-pill)]',
+  'inline-flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-[var(--radius-pill)]',
   'text-sm text-ink hover:bg-paper-2 transition-colors duration-[var(--duration-fast)]',
 );
 
@@ -17,11 +17,11 @@ export function AppShell() {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 bg-paper/95 backdrop-blur border-b border-cream-line">
-        <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="font-display text-2xl text-aubergine">
+        <nav className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+          <Link to="/" className="font-display text-xl sm:text-2xl text-aubergine shrink-0">
             {t('app.name')}
           </Link>
-          <ul className="flex items-center gap-1">
+          <ul className="flex items-center gap-0 sm:gap-1">
             {householdId && (
               <li>
                 <Link to="/h/$householdId" params={{ householdId }} className={NAV_CLASS}>
