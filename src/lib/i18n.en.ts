@@ -20,6 +20,18 @@ export default {
     google: 'Continue with Google',
     submit_login: 'Sign in',
     submit_signup: 'Create account',
+    update_password: {
+      title: 'Choose a new password',
+      new_password: 'New password',
+      confirm: 'Confirm new password',
+      submit: 'Update password',
+      preparing: 'Preparing reset link…',
+      success: 'Password updated. You can now sign in with your new password.',
+      continue: 'Continue',
+      expired:
+        'This password reset link is invalid or has expired. Request a new one and try again.',
+      request_new: 'Request a new reset link',
+    },
   },
   household: {
     create_title: 'Start a household',

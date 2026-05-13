@@ -33,7 +33,7 @@ function ResetPage() {
             className="space-y-4"
             onSubmit={handleSubmit(async (values) => {
               await supabase.auth.resetPasswordForEmail(values.email, {
-                redirectTo: `${location.origin}/auth/callback?type=recovery`,
+                redirectTo: `${location.origin}/auth/update-password`,
               });
               setSent(true);
             })}

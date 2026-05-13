@@ -13,3 +13,14 @@ export type SignupInput = z.infer<typeof SignupSchema>;
 
 export const ResetSchema = z.object({ email: z.string().email() });
 export type ResetInput = z.infer<typeof ResetSchema>;
+
+export const UpdatePasswordSchema = z
+  .object({
+    password: z.string().min(10),
+    confirm: z.string().min(10),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ['confirm'],
+    message: 'Passwords do not match.',
+  });
+export type UpdatePasswordInput = z.infer<typeof UpdatePasswordSchema>;

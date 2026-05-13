@@ -20,6 +20,17 @@ export default {
     google: 'Mit Google anmelden',
     submit_login: 'Anmelden',
     submit_signup: 'Konto erstellen',
+    update_password: {
+      title: 'Neues Passwort wählen',
+      new_password: 'Neues Passwort',
+      confirm: 'Neues Passwort bestätigen',
+      submit: 'Passwort aktualisieren',
+      preparing: 'Reset-Link wird vorbereitet…',
+      success: 'Passwort aktualisiert. Du kannst dich jetzt damit anmelden.',
+      continue: 'Weiter',
+      expired: 'Dieser Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.',
+      request_new: 'Neuen Reset-Link anfordern',
+    },
   },
   household: {
     create_title: 'Haushalt anlegen',
