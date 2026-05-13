@@ -1,147 +1,97 @@
-import { DEFAULT_HOUSEHOLD_TAGS, normalizeTag } from '@/domain/default-tags';
 import { useAuth } from '@/lib/auth';
-import { useHousehold, useUpdateHouseholdAllowedTags } from '@/lib/queries/households';
-import { Button, Card, IconButton, Input, Tag, useToast } from '@/ui/primitives';
-import { Skeleton } from '@/ui/primitives/Skeleton';
-import { createFileRoute } from '@tanstack/react-router';
-import { X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useHousehold } from '@/lib/queries/households';
+import { GeneralSection } from '@/ui/household/GeneralSection';
+import { MembersSection } from '@/ui/household/MembersSection';
+import { SharingSection } from '@/ui/household/SharingSection';
+import { TagsSection } from '@/ui/household/TagsSection';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { requireHousehold } from '../../_guards';
 
+type SettingsTab = 'general' | 'members' | 'sharing' | 'tags';
+
+const TAB_VALUES: ReadonlyArray<SettingsTab> = ['general', 'members', 'sharing', 'tags'];
+
 export const Route = createFileRoute('/h/$householdId/settings')({
   beforeLoad: requireHousehold,
+  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => {
+    const raw = typeof search.tab === 'string' ? search.tab : '';
+    const tab = (TAB_VALUES as readonly string[]).includes(raw) ? (raw as SettingsTab) : 'general';
+    return { tab };
+  },
   component: SettingsPage,
 });
 
 function SettingsPage() {
   const { householdId } = Route.useParams();
+  const { tab } = Route.useSearch();
+  const nav = useNavigate({ from: '/h/$householdId/settings' });
   const { t } = useTranslation();
-  const { push } = useToast();
+  const user = useAuth((s) => s.user);
   const memberships = useAuth((s) => s.memberships);
   const isOwner = memberships.some((m) => m.household_id === householdId && m.role === 'owner');
 
   const household = useHousehold(householdId);
-  const update = useUpdateHouseholdAllowedTags(householdId);
-
-  const [draft, setDraft] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const tags = household.data?.allowed_tags ?? [];
-  const tagSet = useMemo(() => new Set(tags), [tags]);
-
-  const persist = async (next: string[]): Promise<void> => {
-    try {
-      await update.mutateAsync(next);
-      push({ variant: 'success', title: t('household_settings.tags_saved') });
-    } catch {
-      push({ variant: 'error', title: t('household_settings.tags_save_failed') });
-    }
-  };
-
-  const addTag = async (): Promise<void> => {
-    const normalized = normalizeTag(draft);
-    if (normalized === null) {
-      setError(t('household_settings.tag_invalid'));
-      return;
-    }
-    if (tagSet.has(normalized)) {
-      setError(t('household_settings.tag_exists'));
-      return;
-    }
-    setError(null);
-    setDraft('');
-    await persist([...tags, normalized]);
-  };
-
-  const removeTag = async (tag: string): Promise<void> => {
-    await persist(tags.filter((t) => t !== tag));
-  };
-
-  const resetToDefaults = async (): Promise<void> => {
-    await persist([...DEFAULT_HOUSEHOLD_TAGS]);
-  };
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="font-display text-3xl mb-2">{t('household_settings.title')}</h1>
       <p className="text-ink-soft mb-6">{t('household_settings.subtitle')}</p>
 
-      <Card className="p-6 space-y-4">
-        <div>
-          <h2 className="font-display text-xl mb-1">{t('household_settings.tags_title')}</h2>
-          <p className="text-ink-soft text-sm">{t('household_settings.tags_help')}</p>
-        </div>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if ((TAB_VALUES as readonly string[]).includes(value)) {
+            void nav({
+              search: { tab: value as SettingsTab },
+              replace: true,
+            });
+          }
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="general">{t('household_settings.tabs.general')}</TabsTrigger>
+          <TabsTrigger value="members">{t('household_settings.tabs.members')}</TabsTrigger>
+          <TabsTrigger value="sharing">{t('household_settings.tabs.sharing')}</TabsTrigger>
+          <TabsTrigger value="tags">{t('household_settings.tabs.tags')}</TabsTrigger>
+        </TabsList>
 
-        {household.isLoading && <Skeleton className="h-20" />}
+        <TabsContent value="general">
+          <GeneralSection
+            household={household.data}
+            householdId={householdId}
+            isLoading={household.isLoading}
+            isOwner={isOwner}
+          />
+        </TabsContent>
 
-        {household.data && (
-          <>
-            <div className="flex flex-wrap gap-1.5" aria-label={t('household_settings.tags_title')}>
-              {tags.length === 0 && (
-                <p className="text-ink-soft text-sm">{t('household_settings.tags_empty')}</p>
-              )}
-              {tags.map((tag) => (
-                <Tag key={tag} variant="secondary" className="inline-flex items-center gap-1">
-                  {tag}
-                  {isOwner && (
-                    <IconButton
-                      label={t('household_settings.remove_tag', { tag })}
-                      className="!size-5"
-                      onClick={() => void removeTag(tag)}
-                      disabled={update.isPending}
-                    >
-                      <X size={12} strokeWidth={1.5} />
-                    </IconButton>
-                  )}
-                </Tag>
-              ))}
-            </div>
+        <TabsContent value="members">
+          {user && (
+            <MembersSection
+              householdId={householdId}
+              selfProfileId={user.id}
+              isOwner={isOwner}
+              onRequestDeleteHousehold={() => {
+                void nav({ search: { tab: 'general' }, replace: true });
+              }}
+            />
+          )}
+        </TabsContent>
 
-            {isOwner ? (
-              <>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <Input
-                      value={draft}
-                      onChange={(e) => setDraft((e.target as HTMLInputElement).value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void addTag();
-                        }
-                      }}
-                      placeholder={t('household_settings.add_tag_placeholder')}
-                      disabled={update.isPending}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() => void addTag()}
-                    disabled={update.isPending || draft.trim().length === 0}
-                  >
-                    {t('household_settings.add')}
-                  </Button>
-                </div>
-                {error && <p className="text-pomegranate text-sm">{error}</p>}
+        <TabsContent value="sharing">
+          <SharingSection householdId={householdId} isOwner={isOwner} />
+        </TabsContent>
 
-                <div className="pt-2 border-t border-cream-line">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => void resetToDefaults()}
-                    disabled={update.isPending}
-                  >
-                    {t('household_settings.reset_defaults')}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <p className="text-ink-soft text-sm">{t('household_settings.read_only_notice')}</p>
-            )}
-          </>
-        )}
-      </Card>
+        <TabsContent value="tags">
+          <TagsSection
+            household={household.data}
+            householdId={householdId}
+            isLoading={household.isLoading}
+            isOwner={isOwner}
+          />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }
