@@ -14,6 +14,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as FollowingIndexRouteImport } from './routes/following/index'
+import { Route as AuthUpdatePasswordRouteImport } from './routes/auth/update-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthResetRouteImport } from './routes/auth/reset'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -46,6 +47,11 @@ const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
 const FollowingIndexRoute = FollowingIndexRouteImport.update({
   id: '/following/',
   path: '/following/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthUpdatePasswordRoute = AuthUpdatePasswordRouteImport.update({
+  id: '/auth/update-password',
+  path: '/auth/update-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/auth/update-password': typeof AuthUpdatePasswordRoute
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/auth/update-password': typeof AuthUpdatePasswordRoute
   '/following': typeof FollowingIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/auth/update-password': typeof AuthUpdatePasswordRoute
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset'
     | '/auth/signup'
+    | '/auth/update-password'
     | '/following/'
     | '/onboarding/'
     | '/h/$householdId/import'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset'
     | '/auth/signup'
+    | '/auth/update-password'
     | '/following'
     | '/onboarding'
     | '/h/$householdId/import'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/reset'
     | '/auth/signup'
+    | '/auth/update-password'
     | '/following/'
     | '/onboarding/'
     | '/h/$householdId/import'
@@ -191,6 +203,7 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthResetRoute: typeof AuthResetRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  AuthUpdatePasswordRoute: typeof AuthUpdatePasswordRoute
   FollowingIndexRoute: typeof FollowingIndexRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
   HHouseholdIdImportRoute: typeof HHouseholdIdImportRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/following'
       fullPath: '/following/'
       preLoaderRoute: typeof FollowingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/update-password': {
+      id: '/auth/update-password'
+      path: '/auth/update-password'
+      fullPath: '/auth/update-password'
+      preLoaderRoute: typeof AuthUpdatePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
@@ -303,6 +323,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthResetRoute: AuthResetRoute,
   AuthSignupRoute: AuthSignupRoute,
+  AuthUpdatePasswordRoute: AuthUpdatePasswordRoute,
   FollowingIndexRoute: FollowingIndexRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
   HHouseholdIdImportRoute: HHouseholdIdImportRoute,

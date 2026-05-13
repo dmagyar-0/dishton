@@ -212,9 +212,14 @@ create trigger on_auth_user_created after insert on auth.users
 
 ### Password reset
 
-1. `/auth/reset` calls `supabase.auth.resetPasswordForEmail(email, { redirectTo })`.
-2. Email link returns to `/auth/callback?type=recovery` then to a "set new
-   password" form.
+1. `/auth/reset` calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: '/auth/update-password' })`.
+2. The email link lands on `/auth/update-password`. The Supabase client picks
+   up the recovery hash via `detectSessionInUrl: true` and emits
+   `PASSWORD_RECOVERY`; the page enables its form once that event fires and
+   calls `supabase.auth.updateUser({ password })`.
+3. `/auth/callback` also forwards any leftover `?type=recovery` links to
+   `/auth/update-password` so emails issued before the dedicated page existed
+   keep working.
 
 ### First-run gate
 

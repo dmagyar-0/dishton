@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LoginSchema, ResetSchema, SignupSchema } from './auth';
+import { LoginSchema, ResetSchema, SignupSchema, UpdatePasswordSchema } from './auth';
 
 describe('LoginSchema', () => {
   it('accepts a well-formed login', () => {
@@ -29,5 +29,21 @@ describe('SignupSchema', () => {
 describe('ResetSchema', () => {
   it('accepts a valid email', () => {
     expect(() => ResetSchema.parse({ email: 'a@b.test' })).not.toThrow();
+  });
+});
+
+describe('UpdatePasswordSchema', () => {
+  it('accepts matching passwords of at least 10 chars', () => {
+    expect(() =>
+      UpdatePasswordSchema.parse({ password: 'longenoughpw', confirm: 'longenoughpw' }),
+    ).not.toThrow();
+  });
+  it('rejects short passwords', () => {
+    expect(() => UpdatePasswordSchema.parse({ password: 'short', confirm: 'short' })).toThrow();
+  });
+  it('rejects mismatched passwords', () => {
+    expect(() =>
+      UpdatePasswordSchema.parse({ password: 'longenoughpw', confirm: 'differentlongpw' }),
+    ).toThrow();
   });
 });
