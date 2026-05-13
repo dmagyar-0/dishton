@@ -52,7 +52,12 @@ export function AppShell() {
             </li>
             {householdId && (
               <li>
-                <Link to="/h/$householdId/settings" params={{ householdId }} className={NAV_CLASS}>
+                <Link
+                  to="/h/$householdId/settings"
+                  params={{ householdId }}
+                  search={{ tab: 'general' }}
+                  className={NAV_CLASS}
+                >
                   <Settings size={16} strokeWidth={1.5} />
                   <span className="hidden sm:inline">{t('nav.household_settings')}</span>
                 </Link>

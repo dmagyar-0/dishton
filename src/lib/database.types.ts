@@ -41,6 +41,11 @@ export type Database = {
       create_invite: { Args: { p_household: string }; Returns: string };
       add_follow: { Args: { p_code: string }; Returns: string };
       create_follow_code: { Args: { p_household: string }; Returns: string };
+      leave_household: { Args: { p_household: string }; Returns: void };
+      transfer_ownership: {
+        Args: { p_household: string; p_new_owner: string };
+        Returns: void;
+      };
       search_recipes: { Args: { q: string; household_ids: string[] }; Returns: GenericRow[] };
       popular_tags: {
         Args: { p_household_ids: string[]; p_limit: number };

@@ -81,7 +81,7 @@ export const useAuth = create<AuthState>((set) => ({
   },
 }));
 
-async function refreshAuthDerivedState(userId: string): Promise<void> {
+export async function refreshAuthDerivedState(userId: string): Promise<void> {
   const profile = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
   if (profile.data) useAuth.getState().setProfile(profile.data as Profile);
 
