@@ -169,6 +169,23 @@ begin
 end;
 $$;
 
+-- Count co-member profiles visible to a persona (used to verify the
+-- profiles_co_member_read policy lets members see each other).
+create or replace function pg_temp.visible_profile_count_as(
+  p_persona uuid, p_target uuid
+) returns bigint language plpgsql as $$
+declare n bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_persona::text, 'role', 'authenticated')::text,
+    true);
+  select count(*) into n from app.profiles where id = p_target;
+  perform set_config('role', 'postgres', true);
+  return n;
+end;
+$$;
+
 create or replace function pg_temp.role_of(p_household uuid, p_profile uuid)
 returns text language plpgsql as $$
 declare r text;
@@ -182,6 +199,24 @@ $$;
 ------------------------------------------------------------------------------
 -- Assertions
 ------------------------------------------------------------------------------
+
+-- 0a. profiles_co_member_read: B (editor of H1) can see A's profile.
+select pg_temp.check_as(
+  'co-member can read other profile',
+  '00000000-0000-0000-0000-00000000000b'::uuid,
+  pg_temp.visible_profile_count_as(
+    '00000000-0000-0000-0000-00000000000b'::uuid,
+    '00000000-0000-0000-0000-00000000000a'::uuid
+  ) = 1);
+
+-- 0b. Unrelated persona cannot see a household-only profile.
+select pg_temp.check_as(
+  'unrelated cannot read other profile',
+  '00000000-0000-0000-0000-00000000000c'::uuid,
+  pg_temp.visible_profile_count_as(
+    '00000000-0000-0000-0000-00000000000c'::uuid,
+    '00000000-0000-0000-0000-00000000000a'::uuid
+  ) = 0);
 
 -- 1. Editor B can leave H1.
 select pg_temp.check_as(

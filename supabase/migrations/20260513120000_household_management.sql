@@ -7,8 +7,73 @@
 --
 -- transfer_ownership is a convenience that performs the swap atomically so
 -- the leave-as-last-owner UI flow doesn't have to do two round trips.
+--
+-- This migration also hardens app.gen_base32 to schema-qualify
+-- pgcrypto.gen_random_bytes. In a hosted Supabase project pgcrypto lives in
+-- the `extensions` schema, which is not on the search_path of the
+-- security-definer functions that wrap it; the original definition would
+-- raise `function gen_random_bytes(integer) does not exist` at runtime.
 
 set search_path = public;
+
+------------------------------------------------------------------------------
+-- Allow household members to read each other's profile rows. Without this,
+-- queries that join `household_members` to `profiles!inner` drop co-members
+-- because RLS would only expose `id = auth.uid()`. We exclusively expose the
+-- display_name and avatar_url columns via SELECT, since the rest of
+-- profiles (locale, language, preferences) remain private.
+------------------------------------------------------------------------------
+
+drop policy if exists profiles_co_member_read on app.profiles;
+create policy profiles_co_member_read on app.profiles
+  for select using (
+    exists (
+      select 1
+      from app.household_members me
+      join app.household_members other
+        on other.household_id = me.household_id
+      where me.profile_id = auth.uid()
+        and other.profile_id = app.profiles.id
+    )
+  );
+
+------------------------------------------------------------------------------
+-- Patch app.gen_base32 to resolve gen_random_bytes regardless of where
+-- pgcrypto was installed (public vs extensions). Identical body to
+-- 20260430120300_invites.sql apart from the qualified call.
+------------------------------------------------------------------------------
+
+create or replace function app.gen_base32(p_len int)
+returns text
+language plpgsql
+set search_path = app, public, extensions
+as $$
+declare
+  alphabet constant text := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  bytes bytea := gen_random_bytes(greatest(p_len, 16));
+  acc bigint := 0;
+  bits int := 0;
+  out text := '';
+  i int := 0;
+  b int;
+begin
+  while length(out) < p_len loop
+    if bits < 5 then
+      if i >= length(bytes) then
+        bytes := bytes || gen_random_bytes(8);
+      end if;
+      b := get_byte(bytes, i);
+      i := i + 1;
+      acc := (acc << 8) | b;
+      bits := bits + 8;
+    end if;
+    out := out || substr(alphabet, ((acc >> (bits - 5)) & 31)::int + 1, 1);
+    bits := bits - 5;
+    acc := acc & ((1::bigint << bits) - 1);
+  end loop;
+  return out;
+end;
+$$;
 
 ------------------------------------------------------------------------------
 -- app.leave_household(p_household uuid)

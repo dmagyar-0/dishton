@@ -15,17 +15,21 @@ test.describe('household member management', () => {
     );
 
     const stamp = Date.now();
-    const ownerEmail = `owner-${stamp}@dishton.test`;
-    const guestEmail = `guest-${stamp}@dishton.test`;
+    const ownerName = `owner-${stamp}`;
+    const guestName = `guest-${stamp}`;
+    const ownerEmail = `${ownerName}@dishton.test`;
+    const guestEmail = `${guestName}@dishton.test`;
     const password = 'test-password-1234';
     const householdName = `Members ${stamp}`;
+    // NB: the handle_new_user trigger uses the email prefix as the initial
+    // display_name and ignores the value entered in the signup form.
 
     // Owner signs up, creates the household.
     const ownerCtx = await browser.newContext();
     const ownerPage = await ownerCtx.newPage();
     await ownerPage.goto('/');
     await ownerPage.getByRole('link', { name: /create account/i }).click();
-    await ownerPage.getByLabel(/display name/i).fill('Hostess Hattie');
+    await ownerPage.getByLabel(/display name/i).fill(ownerName);
     await ownerPage.getByLabel(/email/i).fill(ownerEmail);
     await ownerPage.getByLabel(/password/i).fill(password);
     await ownerPage.getByRole('button', { name: /create account/i }).click();
@@ -49,7 +53,7 @@ test.describe('household member management', () => {
     const guestCtx = await browser.newContext();
     const guestPage = await guestCtx.newPage();
     await guestPage.goto('/auth/signup');
-    await guestPage.getByLabel(/display name/i).fill('Guest Gwen');
+    await guestPage.getByLabel(/display name/i).fill(guestName);
     await guestPage.getByLabel(/email/i).fill(guestEmail);
     await guestPage.getByLabel(/password/i).fill(password);
     await guestPage.getByRole('button', { name: /create account/i }).click();
@@ -63,13 +67,15 @@ test.describe('household member management', () => {
 
     // Owner refreshes members tab and promotes the guest.
     await ownerPage.reload();
-    await expect(ownerPage.getByText('Guest Gwen')).toBeVisible();
+    await expect(ownerPage.getByText(guestName)).toBeVisible();
     await ownerPage
       .getByLabel(/promote to owner/i)
       .first()
       .click();
     await ownerPage.getByRole('button', { name: /^promote$/i }).click();
-    await expect(ownerPage.getByText(/owner/i)).toHaveCount(2);
+    // After promotion both rows are owners — no "Editor" badge remains in the
+    // members list.
+    await expect(ownerPage.getByText('Editor', { exact: true })).toHaveCount(0);
 
     // Guest (now an owner) leaves; since there is still another owner this
     // succeeds without entering the transfer flow.
@@ -81,7 +87,7 @@ test.describe('household member management', () => {
 
     // Owner sees the guest gone.
     await ownerPage.reload();
-    await expect(ownerPage.getByText('Guest Gwen')).toHaveCount(0);
+    await expect(ownerPage.getByText(guestName)).toHaveCount(0);
 
     await guestCtx.close();
     await ownerCtx.close();
