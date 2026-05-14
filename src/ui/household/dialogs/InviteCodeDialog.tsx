@@ -48,9 +48,9 @@ export function InviteCodeDialog({ open, onOpenChange, code }: Props) {
           </DialogDescription>
         </DialogHeader>
         {code && (
-          <div className="rounded-[var(--radius-lg)] border border-dashed border-cream-line bg-paper shadow-press p-6 text-center">
+          <div className="rounded-[var(--radius-lg)] border border-dashed border-cream-line bg-paper shadow-press p-4 sm:p-6 text-center">
             <p
-              className="font-display text-4xl tracking-[0.4em] text-aubergine"
+              className="font-display text-2xl tracking-[0.25em] sm:text-4xl sm:tracking-[0.4em] text-aubergine break-all"
               aria-label={t('household_settings.members.copy_code')}
             >
               {code}
