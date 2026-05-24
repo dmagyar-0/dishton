@@ -140,7 +140,7 @@ begin
   insert into app.household_members (household_id, profile_id, role)
     values (hh, '00000000-0000-0000-0000-0000000000a1', 'owner');
   insert into app.import_jobs (profile_id, household_id, kind, status)
-    values ('00000000-0000-0000-0000-0000000000a1', hh, 'url', 'pending');
+    values ('00000000-0000-0000-0000-0000000000a1', hh, 'url', 'queued');
 
   delete from app.households where id = hh;
 
