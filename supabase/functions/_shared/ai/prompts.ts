@@ -45,7 +45,7 @@ The JSON object MUST match this TypeScript type exactly:
 }
 
 Rules:
-- Output ONLY a single JSON object. No prose, no code fences, no commentary.
+- Call the \`extract_recipe\` tool with the parsed recipe. Do not emit any text outside the tool call.
 - If a quantity is ambiguous (e.g. "a pinch"), set quantity=null and
   non_scalable_qty to the matching token; scalable=false.
 - For range quantities like "1-2 tbsp", "1 - 1.5 cups", or "2-2.5 limes",

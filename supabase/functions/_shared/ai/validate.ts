@@ -1,8 +1,10 @@
-// Bridges AI output to the canonical Recipe schema, with one re-prompt on
-// JSON parse failure. Schema failures do not retry — they hit needs_review.
+// Bridges AI output to the canonical Recipe schema. The model is forced to
+// call the `extract_recipe` tool, so the parsed JSON arrives as structured
+// data; we no longer parse free-form text or retry on JSON errors.
 
 import { Recipe, type Recipe as RecipeType } from '../domain/recipe.ts';
 import { aiChat, type AiCallOpts, type AiResult } from './client.ts';
+import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 
 export type ValidationResult =
   | { ok: true; recipe: RecipeType; usage: AiResult['usage']; model: string; raw: string }
@@ -20,53 +22,34 @@ export function normalizePositions(recipe: RecipeType): RecipeType {
   };
 }
 
-function tryParseJson(text: string):
-  | { ok: true; value: unknown }
-  | { ok: false; error: string } {
-  try {
-    const cleaned = text.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    return { ok: true, value: JSON.parse(cleaned) };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-}
-
 export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResult> {
-  const first = await aiChat(opts);
-  let parsed = tryParseJson(first.content);
-  let raw = first.content;
-  let usage: AiResult['usage'] = { ...first.usage };
-  const model = first.model;
+  const result = await aiChat({
+    ...opts,
+    tools: [EXTRACT_RECIPE_TOOL],
+    tool_choice: { type: 'tool', name: EXTRACT_RECIPE_TOOL.name },
+  });
 
-  if (!parsed.ok) {
-    const retry = await aiChat({
-      ...opts,
-      messages: [
-        ...opts.messages,
-        { role: 'assistant', content: first.content },
-        {
-          role: 'user',
-          content: `Your previous response was not valid JSON: ${parsed.error}.
-Return ONLY a single JSON object that matches the schema. No commentary.`,
-        },
-      ],
-    });
-    raw = retry.content;
-    usage = {
-      input: usage.input + retry.usage.input,
-      output: usage.output + retry.usage.output,
-      cache_read: (usage.cache_read ?? 0) + (retry.usage.cache_read ?? 0) || undefined,
-      cache_write: (usage.cache_write ?? 0) + (retry.usage.cache_write ?? 0) || undefined,
+  if (result.tool_input === undefined) {
+    // Forced tool_choice should make this branch effectively unreachable, but
+    // if Anthropic ever returns a text-only response (e.g. tool-call failure),
+    // surface it as a parse error rather than crashing.
+    return {
+      ok: false,
+      reason: 'parse',
+      raw: result.content,
     };
-    parsed = tryParseJson(retry.content);
-    if (!parsed.ok) {
-      return { ok: false, reason: 'parse', raw };
-    }
   }
 
-  const safe = Recipe.safeParse(parsed.value);
+  const safe = Recipe.safeParse(result.tool_input);
+  const raw = JSON.stringify(result.tool_input);
   if (!safe.success) {
-    return { ok: false, reason: 'schema', raw: JSON.stringify(parsed.value) };
+    return { ok: false, reason: 'schema', raw };
   }
-  return { ok: true, recipe: normalizePositions(safe.data), usage, model, raw };
+  return {
+    ok: true,
+    recipe: normalizePositions(safe.data),
+    usage: result.usage,
+    model: result.model,
+    raw,
+  };
 }
