@@ -1,5 +1,8 @@
-// Single happy-path smoke covering signup → household → URL import →
-// view → scale → unit toggle → language toggle.
+// Single happy-path smoke covering signup → URL import → view.
+//
+// Since the personal-household redesign, a fresh signup lands directly
+// on the user's "My Recipes" page — there is no /onboarding gate to
+// pass.
 //
 // NIM is mocked at the Edge Function boundary via NIM_MOCK_MODE=playwright,
 // which the function reads from env (see docs/12-testing-strategy.md).
@@ -7,7 +10,7 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('dishton smoke', () => {
-  test('signup → household → URL import → view → scale → toggle', async ({ page }) => {
+  test('signup → personal household → URL import → view', async ({ page }) => {
     test.skip(
       !process.env.PLAYWRIGHT_BASE_URL && !process.env.CI,
       'requires a running preview or local dev server',
@@ -25,11 +28,10 @@ test.describe('dishton smoke', () => {
     await page.getByLabel(/password/i).fill(password);
     await page.getByRole('button', { name: /create account/i }).click();
 
-    await expect(page).toHaveURL(/\/onboarding/);
-    await page.getByPlaceholder('The Pantry').fill('Test Kitchen');
-    await page.getByRole('button', { name: /^create$/i }).click();
-
+    // The new flow drops onboarding entirely — every signup is greeted by
+    // their personal household.
     await expect(page).toHaveURL(/\/h\//);
+
     await page.getByRole('link', { name: /import/i }).click();
 
     await page

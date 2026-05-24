@@ -12,7 +12,13 @@ const NAV_CLASS = cn(
 export function AppShell() {
   const { t } = useTranslation();
   const memberships = useAuth((s) => s.memberships);
-  const householdId = memberships[0]?.household_id;
+  // Prefer the personal household for header links when the user has
+  // multiple memberships — keeps the "Home" affordance pointing at the
+  // user's own recipes rather than a shared household chosen by array
+  // order. Single-membership users get the same household either way.
+  const personalMembership = memberships.find((m) => m.is_personal);
+  const householdId = (personalMembership ?? memberships[0])?.household_id;
+  const isSolo = memberships.length === 1 && memberships[0]?.is_personal === true;
 
   return (
     <div className="min-h-dvh">
@@ -26,7 +32,9 @@ export function AppShell() {
               <li>
                 <Link to="/h/$householdId" params={{ householdId }} className={NAV_CLASS}>
                   <Home size={16} strokeWidth={1.5} />
-                  <span className="hidden md:inline">{t('nav.home')}</span>
+                  <span className="hidden md:inline">
+                    {isSolo ? t('nav.my_recipes') : t('nav.home')}
+                  </span>
                 </Link>
               </li>
             )}

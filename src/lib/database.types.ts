@@ -42,6 +42,7 @@ export type Database = {
       add_follow: { Args: { p_code: string }; Returns: string };
       create_follow_code: { Args: { p_household: string }; Returns: string };
       leave_household: { Args: { p_household: string }; Returns: void };
+      leave_household_with_recipes: { Args: { p_household: string }; Returns: string };
       transfer_ownership: {
         Args: { p_household: string; p_new_owner: string };
         Returns: void;

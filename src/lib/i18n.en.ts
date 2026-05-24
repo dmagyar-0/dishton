@@ -5,6 +5,7 @@ export default {
   },
   nav: {
     home: 'Home',
+    my_recipes: 'My Recipes',
     following: 'Following',
     import: 'Import',
     profile: 'Profile',
@@ -40,6 +41,8 @@ export default {
     create: 'Create',
     redeem: 'Join',
     invite_prefilled: 'Invite code prefilled from your link.',
+    merge_notice:
+      'Joining will move your recipes and custom tags into the other kitchen. Your personal space will close.',
   },
   following: {
     title: 'Following',
@@ -58,9 +61,20 @@ export default {
   household_settings: {
     title: 'Household settings',
     subtitle: 'Tags and preferences shared with everyone in this household.',
+    solo: {
+      title: 'Settings',
+      subtitle: 'Tweak tags and invite someone to share your recipes.',
+      general_title: 'Your recipe space',
+      general_body:
+        "These are your recipes. Invite someone from the Invite tab and you'll start sharing — your recipes and tags will merge with theirs.",
+      invite_title: 'Share with someone',
+      invite_help:
+        'Generate a one-time code. When the other person joins, your recipes and tags merge into a shared space.',
+    },
     tabs: {
       general: 'General',
       members: 'Members',
+      invite: 'Invite',
       sharing: 'Sharing',
       tags: 'Tags',
     },
@@ -135,8 +149,13 @@ export default {
       leave_confirm_title: 'Leave this household?',
       leave_confirm_body:
         "You'll lose access to its recipes. An owner can invite you back any time.",
+      leave_confirm_body_v2:
+        "Choose what happens to recipes you added. Recipes you didn't author stay with the household.",
       leave_action: 'Leave',
+      leave_keep_recipes_action: 'Leave and keep my recipes',
+      leave_no_recipes_action: 'Leave without recipes',
       leave_success: 'You left the household',
+      leave_kept_success: 'You left and kept your recipes',
       leave_failed: "Couldn't leave household",
       last_owner_title: 'Pass the keys before you go',
       last_owner_body:

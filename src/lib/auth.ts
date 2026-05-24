@@ -52,6 +52,7 @@ export type Profile = {
 export type Membership = {
   household_id: string;
   role: 'owner' | 'editor';
+  is_personal: boolean;
 };
 
 export type AuthState = {
@@ -87,9 +88,25 @@ export async function refreshAuthDerivedState(userId: string): Promise<void> {
 
   const memberships = await supabase
     .from('household_members')
-    .select('household_id, role')
+    .select('household_id, role, households!inner(is_personal)')
     .eq('profile_id', userId);
-  useAuth.getState().setMemberships((memberships.data as Membership[]) ?? []);
+  const rows =
+    (memberships.data as Array<{
+      household_id: string;
+      role: 'owner' | 'editor';
+      households: { is_personal: boolean } | { is_personal: boolean }[];
+    }> | null) ?? [];
+  // Supabase returns the joined row as either an object or single-element
+  // array depending on the FK shape; normalize both forms.
+  const normalized: Membership[] = rows.map((r) => {
+    const join = Array.isArray(r.households) ? r.households[0] : r.households;
+    return {
+      household_id: r.household_id,
+      role: r.role,
+      is_personal: join?.is_personal ?? false,
+    };
+  });
+  useAuth.getState().setMemberships(normalized);
 }
 
 export async function bootstrapAuth(): Promise<void> {

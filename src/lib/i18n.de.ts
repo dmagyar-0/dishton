@@ -5,6 +5,7 @@ export default {
   },
   nav: {
     home: 'Start',
+    my_recipes: 'Meine Rezepte',
     following: 'Folge ich',
     import: 'Import',
     profile: 'Profil',
@@ -39,6 +40,8 @@ export default {
     create: 'Anlegen',
     redeem: 'Beitreten',
     invite_prefilled: 'Einladungscode aus deinem Link übernommen.',
+    merge_notice:
+      'Beim Beitreten werden deine Rezepte und Tags in die andere Küche verschoben. Dein persönlicher Bereich wird geschlossen.',
   },
   following: {
     title: 'Folge ich',
@@ -57,9 +60,20 @@ export default {
   household_settings: {
     title: 'Haushaltseinstellungen',
     subtitle: 'Tags und Voreinstellungen, die alle in diesem Haushalt teilen.',
+    solo: {
+      title: 'Einstellungen',
+      subtitle: 'Tags anpassen und jemanden einladen, deine Rezepte zu teilen.',
+      general_title: 'Dein Rezeptbereich',
+      general_body:
+        'Das sind deine Rezepte. Lade jemanden über den Einladen-Tab ein, dann teilst du — deine Rezepte und Tags werden mit ihren zusammengeführt.',
+      invite_title: 'Mit jemandem teilen',
+      invite_help:
+        'Erzeuge einen Einmal-Code. Wenn die andere Person beitritt, werden eure Rezepte und Tags zu einem gemeinsamen Bereich.',
+    },
     tabs: {
       general: 'Allgemein',
       members: 'Mitglieder',
+      invite: 'Einladen',
       sharing: 'Teilen',
       tags: 'Tags',
     },
@@ -135,8 +149,13 @@ export default {
       leave_confirm_title: 'Diesen Haushalt verlassen?',
       leave_confirm_body:
         'Du verlierst den Zugriff auf seine Rezepte. Ein:e Besitzer:in kann dich jederzeit wieder einladen.',
+      leave_confirm_body_v2:
+        'Wähle, was mit deinen hinzugefügten Rezepten passiert. Rezepte, die du nicht erstellt hast, bleiben beim Haushalt.',
       leave_action: 'Verlassen',
+      leave_keep_recipes_action: 'Verlassen und Rezepte behalten',
+      leave_no_recipes_action: 'Verlassen ohne Rezepte',
       leave_success: 'Haushalt verlassen',
+      leave_kept_success: 'Verlassen — Rezepte behalten',
       leave_failed: 'Verlassen fehlgeschlagen',
       last_owner_title: 'Gib vorher die Schlüssel weiter',
       last_owner_body:

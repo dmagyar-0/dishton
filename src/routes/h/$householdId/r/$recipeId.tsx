@@ -10,7 +10,7 @@ import { UnitToggle } from '@/ui/recipe/UnitToggle';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { z } from 'zod';
-import { requireHousehold } from '../../../_guards';
+import { requireAuth } from '../../../_guards';
 
 const Search = z
   .object({
@@ -28,7 +28,7 @@ const Search = z
   );
 
 export const Route = createFileRoute('/h/$householdId/r/$recipeId')({
-  beforeLoad: requireHousehold,
+  beforeLoad: requireAuth,
   validateSearch: Search,
   component: RecipeDetailPage,
 });

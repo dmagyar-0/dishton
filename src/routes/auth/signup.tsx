@@ -44,7 +44,7 @@ function SignupPage() {
               setServerError(authErrorCopy(error.message));
               return;
             }
-            await nav({ to: '/onboarding' });
+            await nav({ to: '/' });
           })}
         >
           <label className="block">

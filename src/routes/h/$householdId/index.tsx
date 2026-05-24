@@ -7,10 +7,10 @@ import { Skeleton } from '@/ui/primitives/Skeleton';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { requireHousehold } from '../../_guards';
+import { requireAuth } from '../../_guards';
 
 export const Route = createFileRoute('/h/$householdId/')({
-  beforeLoad: requireHousehold,
+  beforeLoad: requireAuth,
   component: RecipeListPage,
 });
 

@@ -11,9 +11,10 @@ type Props = {
   householdId: string;
   isLoading: boolean;
   isOwner: boolean;
+  isSolo: boolean;
 };
 
-export function GeneralSection({ household, householdId, isLoading, isOwner }: Props) {
+export function GeneralSection({ household, householdId, isLoading, isOwner, isSolo }: Props) {
   const { t } = useTranslation();
   const { push } = useToast();
   const update = useUpdateHouseholdName(householdId);
@@ -47,6 +48,24 @@ export function GeneralSection({ household, householdId, isLoading, isOwner }: P
       });
     }
   };
+
+  // Solo accounts have no household to "rename" or "delete" — the personal
+  // household name is fixed at "My Recipes" and disappears only when the
+  // user deletes their account. Render just an informational card.
+  if (isSolo) {
+    return (
+      <div className="space-y-6">
+        <Card className="p-6 space-y-3">
+          <div>
+            <h2 className="font-display text-xl mb-1">
+              {t('household_settings.solo.general_title')}
+            </h2>
+            <p className="text-ink-soft text-sm">{t('household_settings.solo.general_body')}</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

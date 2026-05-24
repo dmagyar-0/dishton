@@ -55,6 +55,14 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
 }
 
 function mockProfileAndMemberships(profile: Profile | null, memberships: Membership[]) {
+  // refreshAuthDerivedState selects with `households!inner(is_personal)`,
+  // so the supabase mock must return rows shaped like the join, not the
+  // already-normalized Membership type. We reshape per-call.
+  const joinRows = memberships.map((m) => ({
+    household_id: m.household_id,
+    role: m.role,
+    households: { is_personal: m.is_personal },
+  }));
   supabaseMock.from.mockImplementation((table: string) => {
     if (table === 'profiles') {
       return {
@@ -68,7 +76,7 @@ function mockProfileAndMemberships(profile: Profile | null, memberships: Members
     if (table === 'household_members') {
       return {
         select: () => ({
-          eq: () => Promise.resolve({ data: memberships, error: null }),
+          eq: () => Promise.resolve({ data: joinRows, error: null }),
         }),
       };
     }
@@ -130,8 +138,10 @@ describe('useAuth store', () => {
 
   it('setMemberships sets memberships AND flips hydrated to true', async () => {
     const { useAuth } = await import('./auth');
-    useAuth.getState().setMemberships([{ household_id: 'h1', role: 'owner' }]);
-    expect(useAuth.getState().memberships).toEqual([{ household_id: 'h1', role: 'owner' }]);
+    useAuth.getState().setMemberships([{ household_id: 'h1', role: 'owner', is_personal: false }]);
+    expect(useAuth.getState().memberships).toEqual([
+      { household_id: 'h1', role: 'owner', is_personal: false },
+    ]);
     expect(useAuth.getState().hydrated).toBe(true);
   });
 
@@ -139,7 +149,7 @@ describe('useAuth store', () => {
     const { useAuth } = await import('./auth');
     useAuth.getState().setSession(makeSession('u1'));
     useAuth.getState().setProfile(makeProfile());
-    useAuth.getState().setMemberships([{ household_id: 'h1', role: 'owner' }]);
+    useAuth.getState().setMemberships([{ household_id: 'h1', role: 'owner', is_personal: false }]);
 
     await useAuth.getState().signOut();
 
@@ -181,7 +191,7 @@ describe('bootstrapAuth', () => {
       const session = makeSession('u1');
       supabaseMock.auth.getSession.mockResolvedValueOnce({ data: { session } });
       const profile = makeProfile({ id: 'u1', display_name: 'Dev' });
-      const memberships: Membership[] = [{ household_id: 'h1', role: 'owner' }];
+      const memberships: Membership[] = [{ household_id: 'h1', role: 'owner', is_personal: true }];
       mockProfileAndMemberships(profile, memberships);
       // Stale stamp must be ignored when BUILD_SHA is empty.
       localStorage.setItem(BUILD_SHA_KEY, 'stale-from-some-old-build');
@@ -223,7 +233,9 @@ describe('bootstrapAuth', () => {
       localStorage.setItem(BUILD_SHA_KEY, 'sha-current');
       const session = makeSession('u1');
       supabaseMock.auth.getSession.mockResolvedValueOnce({ data: { session } });
-      const memberships: Membership[] = [{ household_id: 'h1', role: 'editor' }];
+      const memberships: Membership[] = [
+        { household_id: 'h1', role: 'editor', is_personal: false },
+      ];
       mockProfileAndMemberships(makeProfile({ id: 'u1' }), memberships);
 
       const { bootstrapAuth, useAuth } = await import('./auth');
@@ -249,7 +261,9 @@ describe('bootstrapAuth', () => {
       const { bootstrapAuth, useAuth } = await import('./auth');
       // Pre-populate store; bootstrap should clear it on mismatch.
       useAuth.getState().setProfile(makeProfile({ display_name: 'Pre-existing' }));
-      useAuth.getState().setMemberships([{ household_id: 'h-old', role: 'owner' }]);
+      useAuth
+        .getState()
+        .setMemberships([{ household_id: 'h-old', role: 'owner', is_personal: false }]);
 
       await bootstrapAuth();
 
@@ -286,7 +300,9 @@ describe('subscribeAuthChanges (registered by bootstrapAuth)', () => {
 
       const session = makeSession('u2');
       const profile = makeProfile({ id: 'u2', display_name: 'New' });
-      const memberships: Membership[] = [{ household_id: 'h2', role: 'editor' }];
+      const memberships: Membership[] = [
+        { household_id: 'h2', role: 'editor', is_personal: false },
+      ];
       mockProfileAndMemberships(profile, memberships);
 
       await lastAuthChangeCb?.('SIGNED_IN', session);
@@ -304,7 +320,7 @@ describe('subscribeAuthChanges (registered by bootstrapAuth)', () => {
       localStorage.setItem(BUILD_SHA_KEY, 'sha-current');
       useAuth.getState().setSession(makeSession('u1'));
       useAuth.getState().setProfile(makeProfile());
-      useAuth.getState().setMemberships([{ household_id: 'h', role: 'owner' }]);
+      useAuth.getState().setMemberships([{ household_id: 'h', role: 'owner', is_personal: false }]);
 
       await lastAuthChangeCb?.('SIGNED_OUT', null);
 
