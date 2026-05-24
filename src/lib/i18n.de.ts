@@ -287,8 +287,10 @@ export default {
       hint: 'Wir richten alles hübsch an…',
     },
     long_wait_hint: 'Langes Rezept — köchelt noch. Das kann bis zu einer Minute dauern.',
-    photo_pick_label: 'Foto auswählen',
-    photo_hint: 'JPEG oder PNG, bis zu 10 MB',
+    photo_pick_label: 'Fotos auswählen',
+    photo_hint: 'JPEG oder PNG, je bis zu 10 MB, bis zu {{max}} Fotos.',
+    photo_remove: 'Entfernen',
+    photo_remove_aria: '{{name}} entfernen',
     photo_comment_label: 'Hinweis für die KI (optional)',
     photo_comment_placeholder:
       'z. B. Handschrift am Rand ignorieren, das Rezept in der Mitte verwenden',
@@ -323,6 +325,7 @@ export default {
     instagram_unavailable:
       'Instagram hat diesen Post nicht freigegeben. Versuche einen öffentlichen Post oder gib das Rezept manuell ein.',
     photo_too_large: 'Dieses Foto überschreitet das Limit von 10 MB. Versuche ein kleineres Bild.',
+    photo_too_many: 'Du kannst bis zu {{max}} Fotos auf einmal anhängen.',
     photo_wrong_type: 'Bitte ein JPEG- oder PNG-Bild auswählen.',
     photo_upload_failed:
       'Wir konnten dieses Foto nicht hochladen. Bitte gleich noch einmal versuchen.',

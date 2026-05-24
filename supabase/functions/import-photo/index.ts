@@ -18,11 +18,16 @@ import { withTimeout } from '../_shared/timeout.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
 const INLINE_BUDGET_MS = 30_000;
+const MAX_PHOTOS = 6;
+// Vision input scales ~1500 tokens per image at Haiku 4.5; 2000 covers prompt
+// + output. Single-photo budget stays at 3500 to preserve existing behaviour.
+const TOKENS_BASE = 2000;
+const TOKENS_PER_PHOTO = 1500;
 
 const Body = z.object({
   job_id: z.string().uuid().optional(),
   household_id: z.string().uuid(),
-  path: z.string().min(1),
+  paths: z.array(z.string().min(1)).min(1).max(MAX_PHOTOS),
   comment: z.string().trim().max(500).optional(),
 });
 
@@ -70,8 +75,8 @@ serve(async (req: Request) => {
           kind: 'photo',
           status: 'running',
           payload: trimmedComment
-            ? { path: body.path, comment: trimmedComment }
-            : { path: body.path },
+            ? { paths: body.paths, comment: trimmedComment }
+            : { paths: body.paths },
         })
         .select('id')
         .single();
@@ -79,26 +84,30 @@ serve(async (req: Request) => {
       jobId = job.id as string;
     }
 
-    const { data: signed, error: signErr } = await caller.client.storage
-      .from('imports')
-      .createSignedUrl(body.path, 300);
-    if (signErr || !signed?.signedUrl) throw new HttpError(404, 'object_not_found');
-    const signedUrl = signed.signedUrl;
+    const signedUrls: string[] = [];
+    for (const path of body.paths) {
+      const { data: signed, error: signErr } = await caller.client.storage
+        .from('imports')
+        .createSignedUrl(path, 300);
+      if (signErr || !signed?.signedUrl) throw new HttpError(404, 'object_not_found');
+      signedUrls.push(signed.signedUrl);
+    }
 
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
     const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
+    const estimatedTokens = TOKENS_BASE + TOKENS_PER_PHOTO * body.paths.length;
     const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) =>
-      await withRateBudget(3500, () =>
+      await withRateBudget(estimatedTokens, () =>
         callAndValidate({
           lane: 'vision',
           messages: structuringFromImage({
-            imageUrl: signedUrl,
+            imageUrls: signedUrls,
             comment: trimmedComment,
             targetLanguage,
             allowedTags,
           }),
-          estimatedTokens: 3500,
+          estimatedTokens,
           signal,
         }),
       ),
@@ -125,7 +134,7 @@ serve(async (req: Request) => {
         .update({
           status: 'needs_review',
           payload: {
-            path: body.path,
+            paths: body.paths,
             ...(trimmedComment ? { comment: trimmedComment } : {}),
             raw_model_output: result.raw,
             reason: result.reason,
@@ -147,7 +156,7 @@ serve(async (req: Request) => {
       .update({
         status: 'done',
         payload: {
-          path: body.path,
+          paths: body.paths,
           ...(trimmedComment ? { comment: trimmedComment } : {}),
           tokens_in: result.usage.input,
           tokens_out: result.usage.output,

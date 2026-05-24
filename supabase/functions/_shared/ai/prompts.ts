@@ -89,6 +89,10 @@ Rules:
   that heading verbatim and apply it to every ingredient that belongs to
   it. The heading itself must NOT appear as its own ingredient row. If the
   source is a single flat list, set "section" to null on every ingredient.
+- Do not omit ingredients from the source. Include every line in every
+  ingredient cell, even when an ingredient's name differs from the recipe
+  title (e.g. plain potatoes appearing inside a "Sweet Potato" variant's
+  topping); the title labels the dish, not its complete ingredient list.
 `.trim();
 
 // Language handling for the structuring step. When `targetLanguage` is set
@@ -196,27 +200,41 @@ If the caption contains hashtags or emojis, ignore them.`,
 }
 
 export function structuringFromImage(args: {
-  imageUrl: string;
+  imageUrls: readonly string[];
   comment?: string;
   targetLanguage?: string;
   allowedTags: readonly string[];
 }): AiMessage[] {
+  if (args.imageUrls.length === 0) {
+    throw new Error('structuringFromImage requires at least one image URL');
+  }
   const note = args.comment?.trim();
-  const baseInstruction =
-    'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.';
+  const multi = args.imageUrls.length > 1;
+  // Matrix guard: cookbooks often print 2-3 variants of one dish as a
+  // side-by-side table (columns = variants, rows = ingredient categories).
+  // Without this rule the model picks ingredients from adjacent columns
+  // even when the user's note names a single variant.
+  const matrixGuard =
+    "If a photograph shows multiple recipe variants side-by-side as a matrix or table — columns are different recipes, rows are ingredient categories — and the user's note names one variant or column, extract ONLY that variant's column for every row. Never mix ingredients from adjacent columns.";
+  const baseInstruction = multi
+    ? `Extract a single recipe from these ${args.imageUrls.length} photographs. They depict the same recipe — typically different pages or angles (e.g. an ingredients page and a method page, or front and back of a card). Combine the information from every photo into one Recipe object: merge ingredient lists, concatenate steps in the order shown, and reconcile metadata (title, servings, total time). The images are provided in the order the user picked them. If parts are unreadable, set them to null. Do not invent or omit ingredients or steps; include every line that appears in any photo, and do not add anything that doesn't. ${matrixGuard}`
+    : `Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent or omit ingredients. ${matrixGuard}`;
   const allowedTagsLine = formatAllowedTags(args.allowedTags).trimEnd();
   const userText = note
     ? `${baseInstruction}
 
 ${allowedTagsLine}
 
-The user attached this note. Apply it ONLY if it is clearly relevant to the recipe shown in the image; otherwise ignore it completely. Do not let the note invent or override anything not visible in the image.
+The user attached this note. Apply it ONLY if it is clearly relevant to the recipe shown in the image${multi ? 's' : ''}; otherwise ignore it completely. Do not let the note invent or override anything not visible in the image${multi ? 's' : ''}.
 
 User note:
 """
 ${note}
 """`
     : `${baseInstruction}\n\n${allowedTagsLine}`;
+  const imageBlocks = args.imageUrls.map(
+    (url) => ({ type: 'image' as const, source: { type: 'url' as const, url } }),
+  );
   return [
     {
       role: 'system',
@@ -227,7 +245,7 @@ ${note}
       role: 'user',
       content: [
         { type: 'text', text: userText },
-        { type: 'image', source: { type: 'url', url: args.imageUrl } },
+        ...imageBlocks,
       ],
     },
   ];
