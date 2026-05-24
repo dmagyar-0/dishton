@@ -263,13 +263,17 @@ function PhotoTab({ householdId }: { householdId: string }) {
   function addFiles(picked: FileList | null): void {
     setFileError(null);
     if (!picked || picked.length === 0) return;
+    // Snapshot now: `picked` is a live FileList that empties when the input's
+    // value is cleared below — the setFiles updater runs at commit time, so a
+    // late Array.from() reads an empty list.
+    const incoming = Array.from(picked);
     setFiles((prev) => {
       const seen = new Set(prev.map(fileKey));
       const next = [...prev];
       let wrongType = false;
       let tooLarge = false;
       let capped = false;
-      for (const f of Array.from(picked)) {
+      for (const f of incoming) {
         if (!(PHOTO_ACCEPTED_TYPES as readonly string[]).includes(f.type)) {
           wrongType = true;
           continue;

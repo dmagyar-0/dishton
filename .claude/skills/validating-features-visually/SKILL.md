@@ -23,10 +23,15 @@ After any change that affects what the user sees: new route, new component, copy
 
 ## Prerequisites
 
-Each runs once per session; cache them.
+Each runs once per session; cache them. **Run all three before deciding the
+environment can't support this skill.** "`docker info` failed" is not a reason
+to skip — start the daemon and continue. The remote Claude-Code-on-the-Web
+container ships with `sudo dockerd` available and Playwright pre-staged at
+`/opt/pw-browsers/`; the steps below have all worked there.
 
 ```bash
-# 1. Docker daemon (in restricted sandboxes it may not auto-start)
+# 1. Docker daemon (in restricted sandboxes it may not auto-start).
+# This is the step most commonly skipped. Don't skip it.
 docker info >/dev/null 2>&1 || sudo dockerd > /tmp/dockerd.log 2>&1 &
 until docker info >/dev/null 2>&1; do sleep 1; done
 
@@ -37,9 +42,12 @@ curl -sL "https://github.com/supabase/cli/releases/latest/download/supabase_linu
   | tar -xzf - -C "$HOME/.local/share/supabase"
 export PATH="$HOME/.local/share/supabase:$PATH"
 
-# 3. Playwright Chromium
+# 3. Playwright Chromium (already cached under /opt/pw-browsers on web).
 pnpm exec playwright install chromium --with-deps
 ```
+
+If a step still fails after a real attempt, surface the actual error to the
+user and ask — don't silently fall back to "I'll commit and let CI catch it".
 
 ## Procedure
 
@@ -181,9 +189,29 @@ git status --short   # sanity: confirm no stray files left
 - **Hitting prod Supabase / Vercel.** Real `auth.users` rows, real cleanup burden, and Vercel deployment protection blocks unauthenticated headless browsers.
 - **Trusting "test passed".** The spec asserts `expect(true).toBe(true)`; the screenshots are the actual verification.
 - **Sending one screenshot.** Send the full set — the user spots inconsistencies you'll miss.
+- **Punting on tooling errors.** "Docker isn't running, so I can't validate" is the wrong call — start the daemon. Bailing on the skill because step 1 of the prereqs needed a `sudo dockerd` is exactly the failure mode this skill exists to prevent.
+
+## High-value spec patterns
+
+When the feature involves a real interaction (file picker, drag/drop, paste,
+focus/blur, form-state mutation), drive the actual interaction — don't stub it.
+Unit tests can't catch state-management bugs that only show up when the
+browser's own APIs are in the loop.
+
+- **File pickers**: drive `setInputFiles` with real `Buffer` payloads. A 1×1
+  PNG (89 hex bytes) is enough to satisfy MIME-type checks. Then assert the
+  rendered list, not just the input. (A recent multi-photo PR shipped a
+  live-FileList state bug that this exact assertion caught — typecheck and
+  unit tests were green.)
+- **Pickers that allow re-selection**: pick the same file again after
+  removing it, to catch handlers that reset `input.value = ''` but capture the
+  FileList asynchronously.
+- **Lists with order**: append more items rather than picking once, to verify
+  the handler dedupes / preserves order rather than replacing.
 
 ## Known sandbox gotchas
 
 - `supabase start` without `-x edge-runtime,functions` fails with `error setting rlimit type 7: operation not permitted`. Always exclude those two.
 - Moving the `supabase` binary out of its tarball directory breaks it — the shim resolves `supabase-go` relative to its own location.
 - `dockerd` started by `sudo dockerd &` leaves no PID file; kill it on session teardown if you started it.
+- Without `edge-runtime`/`functions`, the AI-driven import paths (URL, photo, Instagram) will surface backend errors. That's fine for validating the UI surface — stop short of submitting, or assert that the error toast appears. Don't conclude "the feature is broken".
