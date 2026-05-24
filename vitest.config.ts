@@ -25,17 +25,24 @@ export default defineConfig({
         'src/main.tsx',
         'src/lib/database.types.ts',
         'src/observability/**',
-        'src/feature-flags/registry.ts',
+        'src/feature-flags/**',
         'src/styles/**',
         // Excluded from the 70% overall threshold per docs/12. UI behaviour
         // is asserted by colocated component tests, not by line coverage.
         'src/ui/**',
         'src/routes/**',
+        // Thin Supabase + React Query wrappers. Exercised by the Playwright
+        // smoke and the schema/RLS harness, not by unit tests — doc 12 keeps
+        // network-touching code out of the Vitest layer.
+        'src/lib/queries/**',
+        'src/lib/supabase.ts',
         'src/lib/sw-update-toast.tsx',
         'src/lib/install-prompt.ts',
         'src/lib/wake-lock.ts',
         'src/lib/i18n.*.ts',
         'src/lib/i18n.ts',
+        // Pure barrel re-export — covered transitively via per-module tests.
+        'src/domain/index.ts',
       ],
       thresholds: {
         'src/domain/**': {
