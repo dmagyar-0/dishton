@@ -206,9 +206,15 @@ export function structuringFromImage(args: {
   }
   const note = args.comment?.trim();
   const multi = args.imageUrls.length > 1;
+  // Matrix guard: cookbooks often print 2-3 variants of one dish as a
+  // side-by-side table (columns = variants, rows = ingredient categories).
+  // Without this rule the model picks ingredients from adjacent columns
+  // even when the user's note names a single variant.
+  const matrixGuard =
+    "If a photograph shows multiple recipe variants side-by-side as a matrix or table — columns are different recipes, rows are ingredient categories — and the user's note names one variant or column, extract ONLY that variant's column for every row. Never mix ingredients from adjacent columns.";
   const baseInstruction = multi
-    ? `Extract a single recipe from these ${args.imageUrls.length} photographs. They depict the same recipe — typically different pages or angles (e.g. an ingredients page and a method page, or front and back of a card). Combine the information from every photo into one Recipe object: merge ingredient lists, concatenate steps in the order shown, and reconcile metadata (title, servings, total time). The images are provided in the order the user picked them. If parts are unreadable, set them to null. Do not invent ingredients or steps that do not appear in any photo.`
-    : 'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.';
+    ? `Extract a single recipe from these ${args.imageUrls.length} photographs. They depict the same recipe — typically different pages or angles (e.g. an ingredients page and a method page, or front and back of a card). Combine the information from every photo into one Recipe object: merge ingredient lists, concatenate steps in the order shown, and reconcile metadata (title, servings, total time). The images are provided in the order the user picked them. If parts are unreadable, set them to null. Do not invent ingredients or steps that do not appear in any photo. ${matrixGuard}`
+    : `Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients. ${matrixGuard}`;
   const allowedTagsLine = formatAllowedTags(args.allowedTags).trimEnd();
   const userText = note
     ? `${baseInstruction}

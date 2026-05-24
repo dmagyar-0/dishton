@@ -154,6 +154,23 @@ Deno.test('structuringFromImage with multiple URLs switches to merge-photos inst
   assertStringIncludes(text, 'the order the user picked');
 });
 
+Deno.test('structuringFromImage includes the matrix-layout guard in both single and multi paths', () => {
+  const single = structuringFromImage({
+    imageUrls: ['https://example.test/x.jpg'],
+    allowedTags: [],
+  });
+  const multi = structuringFromImage({
+    imageUrls: ['https://example.test/a.jpg', 'https://example.test/b.jpg'],
+    allowedTags: [],
+  });
+  for (const messages of [single, multi]) {
+    const text = getUserText(messages);
+    assertStringIncludes(text, 'matrix or table');
+    assertStringIncludes(text, 'extract ONLY that variant');
+    assertStringIncludes(text, 'Never mix ingredients from adjacent columns');
+  }
+});
+
 Deno.test('structuringFromImage with multiple URLs and a comment uses plural pronouns', () => {
   const messages = structuringFromImage({
     imageUrls: ['https://example.test/a.jpg', 'https://example.test/b.jpg'],
