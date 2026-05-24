@@ -302,6 +302,27 @@ Deno.test('RECIPE_JSON_SHAPE asks for both Celsius and Fahrenheit on baking-temp
   assertStringIncludes(RECIPE_JSON_SHAPE, '350°F (180°C)');
 });
 
+// The g-vs-ml rule: source recipes wander across unit families ("100 g milk",
+// "1 cup flour"). The model should land on g for solids and ml for liquids
+// regardless of what the source wrote, using pantry densities for the
+// conversion. Without this rule the model just echoes the source's family.
+
+Deno.test('RECIPE_JSON_SHAPE tells the model to match the unit family to the ingredient', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'unit FAMILY');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'Liquids and pourables');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'Solids and powders');
+});
+
+Deno.test('RECIPE_JSON_SHAPE gives pantry densities for converting solid volumes to mass', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'all-purpose flour');
+  assertStringIncludes(RECIPE_JSON_SHAPE, '120 g');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'butter');
+});
+
+Deno.test('RECIPE_JSON_SHAPE gives a water-density rule for liquids stated in mass', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, '1 g ≈ 1 ml');
+});
+
 Deno.test('structuringFromHtml renders the allowed-tag list into the user message', () => {
   const messages = structuringFromHtml({
     html: '<html></html>',
