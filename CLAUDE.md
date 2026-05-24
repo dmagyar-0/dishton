@@ -60,6 +60,7 @@ Prefer a single test file over the whole suite during iteration. Run `pnpm typec
 - Vitest for SPA (unit + components), Deno test for Edge Functions and DB, Playwright for E2E.
 - Coverage thresholds: domain 90% lines/branches/functions; overall 70% lines.
 - Co-locate component tests next to components. Domain tests live under `src/domain/`.
+- **Visual validation is required for any user-facing change** before claiming a feature complete. Run the `validating-features-visually` skill — it boots a local Supabase + `pnpm preview`, drives Playwright through signup + the new flow + adjacent surfaces at desktop and mobile viewports, and screenshots each step. Typecheck and unit tests don't catch flash-of-wrong-content, mobile overflow, or wrong post-signup field population — recent merges (#61, #62, #63) all needed follow-up fixes for exactly this class of bug.
 
 ## Edge Functions (Deno)
 
@@ -84,4 +85,4 @@ Prefer a single test file over the whole suite during iteration. Run `pnpm typec
 
 Skills are installed under `.claude/skills/` (from [obra/superpowers](https://github.com/obra/superpowers) and [anthropics/skills](https://github.com/anthropics/skills), MIT). **At session start, invoke `using-superpowers` via the `Skill` tool.** Prefer matching a skill over improvising.
 
-Available: `using-superpowers`, `brainstorming`, `writing-plans`, `executing-plans`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `requesting-code-review`, `receiving-code-review`, `dispatching-parallel-agents`, `subagent-driven-development`, `using-git-worktrees`, `finishing-a-development-branch`, `writing-skills`, `frontend-design`.
+Available: `using-superpowers`, `brainstorming`, `writing-plans`, `executing-plans`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `validating-features-visually`, `requesting-code-review`, `receiving-code-review`, `dispatching-parallel-agents`, `subagent-driven-development`, `using-git-worktrees`, `finishing-a-development-branch`, `writing-skills`, `frontend-design`.
