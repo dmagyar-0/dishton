@@ -6,6 +6,7 @@ import {
   ImportUrlSchema,
   detectImportSource,
 } from '@/lib/forms/import';
+import { resizeForUpload } from '@/lib/photo-resize';
 import { supabase } from '@/lib/supabase';
 import {
   bcImportInputValidated,
@@ -330,7 +331,11 @@ function PhotoTab({ householdId }: { householdId: string }) {
             return;
           }
           const userId = userData.user.id;
-          const uploads = files.map((file) => {
+          // Shrink phone-camera photos before upload — cuts upload time and
+          // the vision-input token bill. resizeForUpload returns the original
+          // file on failure or when no resize is needed.
+          const prepared = await Promise.all(files.map(resizeForUpload));
+          const uploads = prepared.map((file) => {
             const ext = file.type === 'image/png' ? 'png' : 'jpg';
             const path = `${userId}/${crypto.randomUUID()}.${ext}`;
             return supabase.storage
