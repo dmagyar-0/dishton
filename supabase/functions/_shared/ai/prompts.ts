@@ -89,6 +89,10 @@ Rules:
   that heading verbatim and apply it to every ingredient that belongs to
   it. The heading itself must NOT appear as its own ingredient row. If the
   source is a single flat list, set "section" to null on every ingredient.
+- Do not omit ingredients from the source. Include every line in every
+  ingredient cell, even when an ingredient's name differs from the recipe
+  title (e.g. plain potatoes appearing inside a "Sweet Potato" variant's
+  topping); the title labels the dish, not its complete ingredient list.
 `.trim();
 
 // Language handling for the structuring step. When `targetLanguage` is set
@@ -213,8 +217,8 @@ export function structuringFromImage(args: {
   const matrixGuard =
     "If a photograph shows multiple recipe variants side-by-side as a matrix or table — columns are different recipes, rows are ingredient categories — and the user's note names one variant or column, extract ONLY that variant's column for every row. Never mix ingredients from adjacent columns.";
   const baseInstruction = multi
-    ? `Extract a single recipe from these ${args.imageUrls.length} photographs. They depict the same recipe — typically different pages or angles (e.g. an ingredients page and a method page, or front and back of a card). Combine the information from every photo into one Recipe object: merge ingredient lists, concatenate steps in the order shown, and reconcile metadata (title, servings, total time). The images are provided in the order the user picked them. If parts are unreadable, set them to null. Do not invent ingredients or steps that do not appear in any photo. ${matrixGuard}`
-    : `Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients. ${matrixGuard}`;
+    ? `Extract a single recipe from these ${args.imageUrls.length} photographs. They depict the same recipe — typically different pages or angles (e.g. an ingredients page and a method page, or front and back of a card). Combine the information from every photo into one Recipe object: merge ingredient lists, concatenate steps in the order shown, and reconcile metadata (title, servings, total time). The images are provided in the order the user picked them. If parts are unreadable, set them to null. Do not invent or omit ingredients or steps; include every line that appears in any photo, and do not add anything that doesn't. ${matrixGuard}`
+    : `Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent or omit ingredients. ${matrixGuard}`;
   const allowedTagsLine = formatAllowedTags(args.allowedTags).trimEnd();
   const userText = note
     ? `${baseInstruction}

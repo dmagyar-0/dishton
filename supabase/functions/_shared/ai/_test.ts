@@ -154,6 +154,27 @@ Deno.test('structuringFromImage with multiple URLs switches to merge-photos inst
   assertStringIncludes(text, 'the order the user picked');
 });
 
+Deno.test('RECIPE_JSON_SHAPE tells the model not to omit ingredients when the name differs from the title', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'Do not omit ingredients');
+  assertStringIncludes(RECIPE_JSON_SHAPE, "ingredient's name differs from the recipe");
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'the title labels the dish');
+});
+
+Deno.test('structuringFromImage user text says "invent or omit" in both single and multi paths', () => {
+  const single = structuringFromImage({
+    imageUrls: ['https://example.test/x.jpg'],
+    allowedTags: [],
+  });
+  const multi = structuringFromImage({
+    imageUrls: ['https://example.test/a.jpg', 'https://example.test/b.jpg'],
+    allowedTags: [],
+  });
+  for (const messages of [single, multi]) {
+    const text = getUserText(messages);
+    assertStringIncludes(text, 'Do not invent or omit');
+  }
+});
+
 Deno.test('structuringFromImage includes the matrix-layout guard in both single and multi paths', () => {
   const single = structuringFromImage({
     imageUrls: ['https://example.test/x.jpg'],
