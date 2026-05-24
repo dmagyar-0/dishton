@@ -33,6 +33,17 @@ import { requireAuth } from '../../_guards';
 const IMPORT_URL_TIMEOUT_MS = 120_000;
 const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 const PHOTO_ACCEPTED_TYPES = ['image/jpeg', 'image/png'] as const;
+const PHOTO_MAX_COUNT = 6;
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileKey(f: File): string {
+  return `${f.name}|${f.size}|${f.lastModified}`;
+}
 
 const KNOWN_ERROR_KEYS = [
   'rate_limit',
@@ -237,7 +248,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
   const { push } = useToast();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const {
     register,
@@ -249,23 +260,43 @@ function PhotoTab({ householdId }: { householdId: string }) {
     defaultValues: { comment: '' },
   });
 
-  function pickFile(next: File | null): void {
+  function addFiles(picked: FileList | null): void {
     setFileError(null);
-    if (!next) {
-      setFile(null);
-      return;
-    }
-    if (!(PHOTO_ACCEPTED_TYPES as readonly string[]).includes(next.type)) {
-      setFile(null);
-      setFileError(t('errors.photo_wrong_type'));
-      return;
-    }
-    if (next.size > PHOTO_MAX_BYTES) {
-      setFile(null);
-      setFileError(t('errors.photo_too_large'));
-      return;
-    }
-    setFile(next);
+    if (!picked || picked.length === 0) return;
+    setFiles((prev) => {
+      const seen = new Set(prev.map(fileKey));
+      const next = [...prev];
+      let wrongType = false;
+      let tooLarge = false;
+      let capped = false;
+      for (const f of Array.from(picked)) {
+        if (!(PHOTO_ACCEPTED_TYPES as readonly string[]).includes(f.type)) {
+          wrongType = true;
+          continue;
+        }
+        if (f.size > PHOTO_MAX_BYTES) {
+          tooLarge = true;
+          continue;
+        }
+        const k = fileKey(f);
+        if (seen.has(k)) continue;
+        if (next.length >= PHOTO_MAX_COUNT) {
+          capped = true;
+          break;
+        }
+        seen.add(k);
+        next.push(f);
+      }
+      if (wrongType) setFileError(t('errors.photo_wrong_type'));
+      else if (tooLarge) setFileError(t('errors.photo_too_large'));
+      else if (capped) setFileError(t('errors.photo_too_many', { max: PHOTO_MAX_COUNT }));
+      return next;
+    });
+  }
+
+  function removeFile(index: number): void {
+    setFileError(null);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   return (
@@ -273,14 +304,15 @@ function PhotoTab({ householdId }: { householdId: string }) {
       <form
         className="space-y-3"
         onSubmit={handleSubmit(async (values) => {
-          if (!file) {
+          if (files.length === 0) {
             setFileError(t('errors.photo_wrong_type'));
             return;
           }
           bcImportStart('photo');
           const trimmedComment = values.comment?.trim() ?? '';
           bcImportInputValidated({
-            file_size: file.size,
+            file_count: files.length,
+            file_size: files.reduce((s, f) => s + f.size, 0),
             comment_length: trimmedComment.length,
           });
 
@@ -293,13 +325,18 @@ function PhotoTab({ householdId }: { householdId: string }) {
             });
             return;
           }
-          const ext = file.type === 'image/png' ? 'png' : 'jpg';
-          const path = `${userData.user.id}/${crypto.randomUUID()}.${ext}`;
-
-          const { error: uploadErr } = await supabase.storage
-            .from('imports')
-            .upload(path, file, { contentType: file.type, upsert: false });
-          if (uploadErr) {
+          const userId = userData.user.id;
+          const uploads = files.map((file) => {
+            const ext = file.type === 'image/png' ? 'png' : 'jpg';
+            const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+            return supabase.storage
+              .from('imports')
+              .upload(path, file, { contentType: file.type, upsert: false })
+              .then((res) => ({ path, error: res.error }));
+          });
+          const uploadResults = await Promise.all(uploads);
+          const uploadFailed = uploadResults.find((r) => r.error);
+          if (uploadFailed) {
             push({
               variant: 'error',
               title: t('import.error_title'),
@@ -307,6 +344,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
             });
             return;
           }
+          const paths = uploadResults.map((r) => r.path);
 
           const t0 = performance.now();
           bcImportRequestSent('import-photo', '');
@@ -318,7 +356,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
             const result = await supabase.functions.invoke('import-photo', {
               body: {
                 household_id: householdId,
-                path,
+                paths,
                 ...(trimmedComment ? { comment: trimmedComment } : {}),
               },
               signal: ac.signal,
@@ -386,7 +424,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
             description: t('import.success_body'),
           });
           reset({ comment: '' });
-          setFile(null);
+          setFiles([]);
           await navigate({
             to: '/h/$householdId/r/$recipeId',
             params: { householdId, recipeId: newId },
@@ -400,11 +438,42 @@ function PhotoTab({ householdId }: { householdId: string }) {
           <input
             type="file"
             accept={PHOTO_ACCEPTED_TYPES.join(',')}
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+            multiple
+            onChange={(e) => {
+              addFiles(e.target.files);
+              // Reset so re-picking the same file after removal still fires onChange.
+              e.target.value = '';
+            }}
             className="block w-full text-sm text-ink file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-saffron file:px-3 file:py-2 file:text-ink file:font-body hover:file:cursor-pointer disabled:opacity-60"
-            disabled={isSubmitting}
+            disabled={isSubmitting || files.length >= PHOTO_MAX_COUNT}
           />
-          <p className="text-xs text-ink-muted">{t('import.photo_hint')}</p>
+          <p className="text-xs text-ink-muted">
+            {t('import.photo_hint', { max: PHOTO_MAX_COUNT })}
+          </p>
+          {files.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {files.map((f, i) => (
+                <li
+                  key={fileKey(f)}
+                  className="flex items-center justify-between rounded-[var(--radius-sm)] border border-ink/10 bg-paper px-2 py-1 text-sm"
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="text-ink-muted mr-2">{i + 1}.</span>
+                    {f.name} <span className="text-ink-muted">({formatBytes(f.size)})</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(i)}
+                    disabled={isSubmitting}
+                    className="ml-2 shrink-0 rounded px-2 py-0.5 text-xs text-pomegranate hover:underline disabled:opacity-60"
+                    aria-label={t('import.photo_remove_aria', { name: f.name })}
+                  >
+                    {t('import.photo_remove')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {fileError && <p className="text-pomegranate text-sm">{fileError}</p>}
         </div>
         <div className="space-y-1">
@@ -421,7 +490,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
           <p className="text-xs text-ink-muted">{t('import.photo_comment_hint')}</p>
           {errors.comment && <p className="text-pomegranate text-sm">{errors.comment.message}</p>}
         </div>
-        <Button type="submit" loading={isSubmitting} disabled={isSubmitting || !file}>
+        <Button type="submit" loading={isSubmitting} disabled={isSubmitting || files.length === 0}>
           {t('import.submit')}
         </Button>
       </form>

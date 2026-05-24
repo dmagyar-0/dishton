@@ -196,27 +196,35 @@ If the caption contains hashtags or emojis, ignore them.`,
 }
 
 export function structuringFromImage(args: {
-  imageUrl: string;
+  imageUrls: readonly string[];
   comment?: string;
   targetLanguage?: string;
   allowedTags: readonly string[];
 }): AiMessage[] {
+  if (args.imageUrls.length === 0) {
+    throw new Error('structuringFromImage requires at least one image URL');
+  }
   const note = args.comment?.trim();
-  const baseInstruction =
-    'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.';
+  const multi = args.imageUrls.length > 1;
+  const baseInstruction = multi
+    ? `Extract a single recipe from these ${args.imageUrls.length} photographs. They depict the same recipe — typically different pages or angles (e.g. an ingredients page and a method page, or front and back of a card). Combine the information from every photo into one Recipe object: merge ingredient lists, concatenate steps in the order shown, and reconcile metadata (title, servings, total time). The images are provided in the order the user picked them. If parts are unreadable, set them to null. Do not invent ingredients or steps that do not appear in any photo.`
+    : 'Extract the recipe in this image. If parts are unreadable, set them to null. Do not invent ingredients.';
   const allowedTagsLine = formatAllowedTags(args.allowedTags).trimEnd();
   const userText = note
     ? `${baseInstruction}
 
 ${allowedTagsLine}
 
-The user attached this note. Apply it ONLY if it is clearly relevant to the recipe shown in the image; otherwise ignore it completely. Do not let the note invent or override anything not visible in the image.
+The user attached this note. Apply it ONLY if it is clearly relevant to the recipe shown in the image${multi ? 's' : ''}; otherwise ignore it completely. Do not let the note invent or override anything not visible in the image${multi ? 's' : ''}.
 
 User note:
 """
 ${note}
 """`
     : `${baseInstruction}\n\n${allowedTagsLine}`;
+  const imageBlocks = args.imageUrls.map(
+    (url) => ({ type: 'image' as const, source: { type: 'url' as const, url } }),
+  );
   return [
     {
       role: 'system',
@@ -227,7 +235,7 @@ ${note}
       role: 'user',
       content: [
         { type: 'text', text: userText },
-        { type: 'image', source: { type: 'url', url: args.imageUrl } },
+        ...imageBlocks,
       ],
     },
   ];

@@ -92,7 +92,7 @@ function getUserText(messages: ReturnType<typeof structuringFromImage>): string 
 
 Deno.test('structuringFromImage without comment includes the base instruction and allowed-tag list', () => {
   const messages = structuringFromImage({
-    imageUrl: 'https://example.test/x.jpg',
+    imageUrls: ['https://example.test/x.jpg'],
     allowedTags: ['main', 'dessert'],
   });
   const text = getUserText(messages);
@@ -103,7 +103,7 @@ Deno.test('structuringFromImage without comment includes the base instruction an
 
 Deno.test('structuringFromImage with comment appends a fenced user note', () => {
   const messages = structuringFromImage({
-    imageUrl: 'https://example.test/x.jpg',
+    imageUrls: ['https://example.test/x.jpg'],
     comment: 'the title is in Italian',
     allowedTags: [],
   });
@@ -115,7 +115,7 @@ Deno.test('structuringFromImage with comment appends a fenced user note', () => 
 
 Deno.test('structuringFromImage with whitespace-only comment behaves as if absent', () => {
   const messages = structuringFromImage({
-    imageUrl: 'https://example.test/x.jpg',
+    imageUrls: ['https://example.test/x.jpg'],
     comment: '   \n  ',
     allowedTags: [],
   });
@@ -123,6 +123,59 @@ Deno.test('structuringFromImage with whitespace-only comment behaves as if absen
   assertStringIncludes(text, 'Extract the recipe in this image.');
   // Whitespace-only comments should not surface the user-note block.
   assert(!text.includes('User note:'), 'expected no user-note section');
+});
+
+Deno.test('structuringFromImage with multiple URLs emits one image block per URL', () => {
+  const urls = [
+    'https://example.test/a.jpg',
+    'https://example.test/b.jpg',
+    'https://example.test/c.jpg',
+  ];
+  const messages = structuringFromImage({ imageUrls: urls, allowedTags: [] });
+  const user = messages.find((m) => m.role === 'user');
+  assert(user, 'expected a user message');
+  assert(Array.isArray(user.content), 'expected user content to be an array');
+  const imageBlocks = user.content.filter((c) => c.type === 'image');
+  assertEquals(imageBlocks.length, 3);
+  const gotUrls = imageBlocks
+    .map((c) => (c.type === 'image' && c.source.type === 'url' ? c.source.url : null))
+    .filter((u): u is string => u !== null);
+  assertEquals(gotUrls, urls);
+});
+
+Deno.test('structuringFromImage with multiple URLs switches to merge-photos instruction', () => {
+  const messages = structuringFromImage({
+    imageUrls: ['https://example.test/a.jpg', 'https://example.test/b.jpg'],
+    allowedTags: [],
+  });
+  const text = getUserText(messages);
+  assertStringIncludes(text, 'Extract a single recipe from these 2 photographs');
+  assertStringIncludes(text, 'Combine the information from every photo');
+  assertStringIncludes(text, 'the order the user picked');
+});
+
+Deno.test('structuringFromImage with multiple URLs and a comment uses plural pronouns', () => {
+  const messages = structuringFromImage({
+    imageUrls: ['https://example.test/a.jpg', 'https://example.test/b.jpg'],
+    comment: 'the title is on the first page',
+    allowedTags: [],
+  });
+  const text = getUserText(messages);
+  assertStringIncludes(text, 'relevant to the recipe shown in the images');
+  assertStringIncludes(text, 'not visible in the images');
+  assertStringIncludes(text, 'User note:');
+});
+
+Deno.test('structuringFromImage throws when no images are provided', () => {
+  let threw = false;
+  try {
+    structuringFromImage({ imageUrls: [], allowedTags: [] });
+  } catch (e) {
+    threw = true;
+    assert(e instanceof Error);
+    assertStringIncludes(e.message, 'at least one image');
+  }
+  assert(threw, 'expected an error for empty imageUrls');
 });
 
 function systemContent(messages: { role: string; content: unknown }[]): string {
@@ -167,7 +220,7 @@ Deno.test('structuringFromCaption threads targetLanguage into the system message
 
 Deno.test('structuringFromImage threads targetLanguage into the system message', () => {
   const messages = structuringFromImage({
-    imageUrl: 'https://example.test/x.jpg',
+    imageUrls: ['https://example.test/x.jpg'],
     targetLanguage: 'hu',
     allowedTags: [],
   });
