@@ -1,3 +1,5 @@
+import { useAuth } from '@/lib/auth';
+import { useHousehold } from '@/lib/queries/households';
 import { useRecipeList } from '@/lib/queries/recipes';
 import { Badge } from '@/ui/primitives/Badge';
 import { Button } from '@/ui/primitives/Button';
@@ -18,11 +20,23 @@ function RecipeListPage() {
   const { householdId } = Route.useParams();
   const { t } = useTranslation();
   const list = useRecipeList(householdId);
+  const household = useHousehold(householdId);
+  const memberships = useAuth((s) => s.memberships);
+  // Solo = personal household with the current user as only member. We
+  // use it to swap in a friendlier headline + empty state for new
+  // signups, so the recipe-list page doesn't feel like a clinical
+  // "household" surface when there's no household to speak of.
+  const isSolo =
+    household.data?.is_personal === true &&
+    memberships.filter((m) => m.household_id === householdId).length === 1 &&
+    memberships.length === 1;
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
       <header className="mb-8 flex items-baseline justify-between">
-        <h1 className="font-display text-display">Recipes</h1>
+        <h1 className="font-display text-display">
+          {isSolo ? t('recipe.list_title_solo') : t('recipe.list_title')}
+        </h1>
         <Link to="/h/$householdId/import" params={{ householdId }}>
           <Button>{t('nav.import')}</Button>
         </Link>
@@ -38,8 +52,8 @@ function RecipeListPage() {
 
       {list.data && list.data.length === 0 && (
         <EmptyState
-          title={t('recipe.empty_title')}
-          description=""
+          title={isSolo ? t('recipe.empty_title_solo') : t('recipe.empty_title')}
+          description={isSolo ? t('recipe.empty_body_solo') : ''}
           action={
             <Link to="/h/$householdId/import" params={{ householdId }}>
               <Button>{t('recipe.empty_action')}</Button>

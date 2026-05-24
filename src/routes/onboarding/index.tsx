@@ -67,7 +67,14 @@ function OnboardingPage() {
             {t('household.invite_prefilled')}
           </p>
         )}
-        {solo && <p className="text-ink-soft text-sm mb-3">{t('household.merge_notice')}</p>}
+        {solo && (
+          <div className="rounded-[var(--radius-md)] border border-saffron/40 bg-saffron/10 px-3 py-3 mb-3">
+            <p className="font-display text-base text-aubergine mb-1">
+              {t('household.merge_notice_title')}
+            </p>
+            <p className="text-ink-soft text-sm leading-relaxed">{t('household.merge_notice')}</p>
+          </div>
+        )}
         <form
           className="space-y-3"
           onSubmit={redeem.handleSubmit(async (values) => {

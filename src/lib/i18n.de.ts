@@ -40,8 +40,9 @@ export default {
     create: 'Anlegen',
     redeem: 'Beitreten',
     invite_prefilled: 'Einladungscode aus deinem Link übernommen.',
+    merge_notice_title: 'Ihr legt eure Küchen zusammen',
     merge_notice:
-      'Beim Beitreten werden deine Rezepte und Tags in die andere Küche verschoben. Dein persönlicher Bereich wird geschlossen.',
+      'Deine Rezepte und Tags wandern zu ihren — Duplikate bleiben erhalten. Dein persönlicher Bereich schließt, sobald du teilst.',
   },
   following: {
     title: 'Folge ich',
@@ -63,9 +64,12 @@ export default {
     solo: {
       title: 'Einstellungen',
       subtitle: 'Tags anpassen und jemanden einladen, deine Rezepte zu teilen.',
-      general_title: 'Dein Rezeptbereich',
+      general_title: 'Dieser Bereich gehört dir',
       general_body:
-        'Das sind deine Rezepte. Lade jemanden über den Einladen-Tab ein, dann teilst du — deine Rezepte und Tags werden mit ihren zusammengeführt.',
+        'Alles, was du speicherst, lebt hier — nur für dich sichtbar. Kein Haushalt zum Umbenennen, keine Mitglieder zu verwalten — koch weiter und sammle so viele Rezepte, wie du magst.',
+      share_callout_title: 'Wenn du teilen möchtest',
+      share_callout_body:
+        'Öffne den Einladen-Tab und sende den Code. Sobald die andere Person beitritt, werden eure Rezepte und Tags zusammengeführt — ab dann teilt ihr eine Küche.',
       invite_title: 'Mit jemandem teilen',
       invite_help:
         'Erzeuge einen Einmal-Code. Wenn die andere Person beitritt, werden eure Rezepte und Tags zu einem gemeinsamen Bereich.',
@@ -220,7 +224,12 @@ export default {
     language_save_failed: 'Sprache konnte nicht gespeichert werden',
   },
   recipe: {
+    list_title: 'Rezepte',
+    list_title_solo: 'Meine Rezepte',
     empty_title: 'Deine Speisekammer ist leer',
+    empty_title_solo: 'Willkommen — füllen wir die Regale',
+    empty_body_solo:
+      'Importiere von einer URL oder füge ein Rezept von Hand ein. Alles, was du hinzufügst, bleibt nur deins — bis du jemanden zum Teilen einlädst.',
     empty_action: 'Rezept importieren',
     servings: 'Portionen',
     scale: 'Skalieren',
