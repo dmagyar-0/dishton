@@ -5,36 +5,43 @@
 // runtime keeps the worker alive after the HTTP response is sent; caller
 // responds 202.
 //
-// The worker promise is the authoritative writer of the import_jobs row
-// regardless of which branch wins, so the SPA's Realtime subscription
-// observes the same lifecycle either way.
+// The helper takes the worker as a pure function that returns a result
+// value (no terminal writes), then routes the result into `onFinish` with
+// the chosen mode. This lets sync-mode imports write `status='done'` and
+// background-mode imports write `status='awaiting_save'`, which keeps the
+// SPA's Realtime listener idempotent: it only auto-saves on
+// `awaiting_save`, so the sync caller's `save_recipe` can never race with
+// the listener.
 
 // Supabase Edge Runtime exposes `EdgeRuntime.waitUntil(promise)` for
 // post-response background work. The global is provided by the runtime in
-// production; in deno test the type-only declaration below keeps the
-// compiler happy, and the runtime call path is exercised by the unit test.
+// production; declared here so the deno type checker is happy in tests.
 declare const EdgeRuntime: {
   waitUntil: (promise: Promise<unknown>) => void;
 } | undefined;
+
+export type DetachMode = 'sync' | 'background';
 
 export type DetachResult<T> =
   | { mode: 'sync'; value: T }
   | { mode: 'background' };
 
 export type DetachOptions<T> = {
-  // Total wall-clock budget for the worker. Used by the worker itself for
-  // its inner abort signal; the detach helper doesn't enforce it.
-  totalMs: number;
   // After this many ms, if the worker hasn't finished, the caller responds
   // 202 and the worker keeps running via EdgeRuntime.waitUntil.
   firstResponseMs: number;
-  // The worker. Must always finish by writing terminal state to import_jobs
-  // — the caller has no way to surface a thrown error after the response is
-  // sent.
-  run: () => Promise<T>;
-  // Optional hook invoked when the detach decision is made (sync win or
-  // background). Useful for adding breadcrumbs in production.
-  onDecision?: (mode: 'sync' | 'background') => void;
+  // The worker. Pure: do the work, return a result value. Don't write
+  // terminal state to import_jobs — onFinish handles that based on mode.
+  work: () => Promise<T>;
+  // Called after the race decides, with the worker's return value. Writes
+  // terminal state to import_jobs ('done' in sync mode, 'awaiting_save' in
+  // background mode). Must not throw; wrap your own try/catch.
+  onFinish: (value: T, mode: DetachMode) => Promise<void>;
+  // Called when the worker throws. Writes 'failed' state. Must not throw.
+  onError: (err: unknown) => Promise<void>;
+  // Optional hook invoked when the detach decision is made. Useful for
+  // adding breadcrumbs in production.
+  onDecision?: (mode: DetachMode) => void;
 };
 
 export async function runWithBackgroundDetach<T>(
@@ -45,34 +52,42 @@ export async function runWithBackgroundDetach<T>(
     timerId = setTimeout(() => resolve('timer'), opts.firstResponseMs);
   });
 
-  const workerPromise = opts.run();
-  // Tag the worker promise so we can identify it on the race winner.
-  const wrappedWorker = workerPromise.then((value) => ({ kind: 'worker' as const, value }));
+  const workPromise = opts.work();
+  const wrappedWork = workPromise.then(
+    (value) => ({ kind: 'work' as const, value }),
+    (error) => ({ kind: 'work-error' as const, error }),
+  );
 
   const winner = await Promise.race([
-    wrappedWorker,
+    wrappedWork,
     timer.then((kind) => ({ kind })),
   ]);
 
-  if (winner.kind === 'worker') {
+  // Sync mode: worker resolved (or threw) before the timer fired.
+  if (winner.kind === 'work' || winner.kind === 'work-error') {
     if (timerId !== null) clearTimeout(timerId);
+    if (winner.kind === 'work-error') {
+      await opts.onError(winner.error).catch(() => undefined);
+      throw winner.error;
+    }
+    await opts.onFinish(winner.value, 'sync').catch(() => undefined);
     opts.onDecision?.('sync');
     return { mode: 'sync', value: winner.value };
   }
 
-  // Timer fired first. Hand the still-running worker promise to the runtime
-  // so the function isn't killed when we send the 202 response. Swallow any
-  // thrown errors — the worker is responsible for writing terminal state to
-  // the import_jobs row, and there's no client to surface a rejection to.
+  // Background mode: timer fired first. Schedule the terminal write to
+  // happen after the still-in-flight worker finishes, via waitUntil.
+  const tail = workPromise.then(
+    (value) => opts.onFinish(value, 'background').catch(() => undefined),
+    (err) => opts.onError(err).catch(() => undefined),
+  );
+
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
-    EdgeRuntime.waitUntil(workerPromise.catch(() => undefined));
+    EdgeRuntime.waitUntil(tail);
   } else {
-    // In test environments (or older runtimes) waitUntil isn't available.
-    // Don't drop the promise on the floor — keep a reference so the test
-    // harness can await completion if it wants. The worker still runs to
-    // completion in-process; the caller just won't receive a synchronous
-    // ack.
-    void workerPromise.catch(() => undefined);
+    // In test environments waitUntil isn't available; keep a reference so
+    // the unhandled rejection doesn't terminate the process.
+    void tail;
   }
   opts.onDecision?.('background');
   return { mode: 'background' };

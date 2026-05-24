@@ -19,7 +19,10 @@ const LONG_WAIT_MS = 12000;
 
 const EASE_PAPER: [number, number, number, number] = [0.2, 0.7, 0.1, 1.05];
 
-export function ImportProgress({ active }: { active: boolean }) {
+export function ImportProgress({
+  active,
+  onBackground,
+}: { active: boolean; onBackground?: () => void }) {
   const { t } = useTranslation();
   const reduce = useReducedMotion();
   const [stepIndex, setStepIndex] = useState(0);
@@ -88,6 +91,20 @@ export function ImportProgress({ active }: { active: boolean }) {
                 ? t('import.long_wait_hint')
                 : t(`import.step_${STEP_KEYS[stepIndex]}.hint`)}
             </p>
+
+            {longWait && onBackground && (
+              <button
+                type="button"
+                onClick={onBackground}
+                className={cn(
+                  'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-pill)]',
+                  'border border-cream-line bg-paper hover:bg-paper-2 transition-colors',
+                  'font-body text-sm text-ink',
+                )}
+              >
+                {t('import.background_button')}
+              </button>
+            )}
 
             <InkTrail stepIndex={stepIndex} reduce={reduce ?? false} />
 

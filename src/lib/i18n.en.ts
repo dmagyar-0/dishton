@@ -287,6 +287,17 @@ export default {
     photo_comment_placeholder:
       'e.g. ignore the handwriting in the margin, focus on the recipe in the centre',
     photo_comment_hint: "If your note isn't relevant to the image, the AI will ignore it.",
+    background_button: 'Continue in background',
+    background_toast_title: 'Continuing in background',
+    background_toast_body: "We'll let you know when this recipe is ready.",
+    ready_title: 'Recipe ready',
+    ready_view_recipe: 'View recipe',
+    phase_default: 'Importing',
+    phase_scrape: 'Reading source',
+    phase_ai: 'Asking the model',
+    phase_saving: 'Saving recipe',
+    active_indicator_count: '{{count}} imports',
+    active_indicator_tooltip: '{{count}} import(s) running',
   },
   household_errors: {
     last_owner: "You're the only owner. Promote another member first, or delete the household.",
@@ -302,7 +313,7 @@ export default {
   },
   errors: {
     rate_limit: 'Importer is busy. Try again in a minute.',
-    too_many_imports: 'You already have two imports running. Wait for one to finish.',
+    too_many_imports: 'You already have five imports running. Wait for one to finish.',
     fetch_failed: "We couldn't reach that URL. Check the link or try again.",
     not_household_member: "You don't have permission to add to this household.",
     network: "We couldn't reach the importer. Check your connection and try again.",

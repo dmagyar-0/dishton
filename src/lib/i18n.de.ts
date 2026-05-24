@@ -295,6 +295,17 @@ export default {
     photo_comment_placeholder:
       'z. B. Handschrift am Rand ignorieren, das Rezept in der Mitte verwenden',
     photo_comment_hint: 'Wenn dein Hinweis nicht zum Bild passt, ignoriert die KI ihn.',
+    background_button: 'Im Hintergrund fortsetzen',
+    background_toast_title: 'Läuft im Hintergrund weiter',
+    background_toast_body: 'Wir melden uns, sobald das Rezept fertig ist.',
+    ready_title: 'Rezept fertig',
+    ready_view_recipe: 'Rezept ansehen',
+    phase_default: 'Importiere',
+    phase_scrape: 'Quelle wird gelesen',
+    phase_ai: 'Modell wird befragt',
+    phase_saving: 'Rezept wird gespeichert',
+    active_indicator_count: '{{count}} Importe',
+    active_indicator_tooltip: '{{count}} Import(e) laufen',
   },
   household_errors: {
     last_owner:
@@ -311,7 +322,7 @@ export default {
   },
   errors: {
     rate_limit: 'Importer ist ausgelastet. Bitte in einer Minute erneut versuchen.',
-    too_many_imports: 'Es laufen bereits zwei Importe. Warte, bis einer fertig ist.',
+    too_many_imports: 'Es laufen bereits fünf Importe. Warte, bis einer fertig ist.',
     fetch_failed: 'Diese URL ist nicht erreichbar.',
     not_household_member: 'Du hast keine Berechtigung für diesen Haushalt.',
     network: 'Der Importer ist nicht erreichbar. Prüfe deine Verbindung.',

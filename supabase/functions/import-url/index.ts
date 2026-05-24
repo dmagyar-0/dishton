@@ -1,16 +1,11 @@
 // import-url: paste a blog/article URL → JSON-LD scrape + lightStripHtml →
 // Anthropic → validated draft Recipe + import_jobs row.
 //
-// The edge function never writes to app.recipes; the SPA does that on save
-// (whether triggered by the synchronous response or by the active-imports
-// Realtime listener picking up an `awaiting_save` row).
-//
-// Lifecycle: every run inserts an import_jobs row at status='running' and
-// — if the AI work outlives the 10 s first-response window — keeps going
-// via EdgeRuntime.waitUntil. On success the worker flips the row to
-// `awaiting_save` with payload.draft populated, so the SPA's Realtime
-// subscription delivers the draft regardless of whether the original HTTP
-// response was awaited.
+// The edge function never writes to app.recipes; the SPA does that on save.
+// Sync mode: worker writes status='done', the SPA's response handler calls
+// save_recipe directly. Background mode: worker writes status='awaiting_save'
+// and the SPA's Realtime listener calls save_recipe. The status-vs-mode split
+// keeps the listener idempotent — it never auto-saves a sync-mode import.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { parseHTML } from 'npm:linkedom@0.18';
@@ -37,23 +32,17 @@ const Body = z.object({
 });
 
 const MAX_BYTES = 5_000_000;
-const MAX_REDIRECTS = 3;
 const FIRST_RESPONSE_MS = 10_000;
-const TOTAL_BUDGET_MS = 120_000;
 const CONCURRENCY_CAP = 5;
 
 async function fetchHtml(url: string): Promise<string> {
-  const signal = AbortSignal.timeout(15_000);
   const res = await fetch(url, {
     method: 'GET',
     redirect: 'follow',
     headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
-    signal,
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new HttpError(502, 'fetch_failed', { status: res.status });
-  if (res.redirected) {
-    void MAX_REDIRECTS;
-  }
   const ct = res.headers.get('content-type') ?? '';
   if (!ct.includes('text/html')) throw new HttpError(415, 'not_html');
   const reader = res.body?.getReader();
@@ -83,17 +72,21 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
-type RunOk = {
-  ok: true;
-  draft: Record<string, unknown>;
-  needs_review: false;
-};
-type RunNeedsReview = {
-  ok: false;
-  reason: 'parse' | 'schema' | 'rate_limit' | 'upstream';
-  needs_review: true;
-};
-type RunResult = RunOk | RunNeedsReview;
+type AiUsage = { input: number; output: number; cache_read?: number; cache_write?: number };
+type WorkResult =
+  | {
+      ok: true;
+      draft: Record<string, unknown>;
+      usage: AiUsage;
+      model: string;
+      latencyMs: number;
+    }
+  | {
+      ok: false;
+      reason: 'parse' | 'schema' | 'rate_limit' | 'upstream';
+      raw: string | null;
+      latencyMs: number;
+    };
 
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
@@ -116,10 +109,6 @@ serve(async (req: Request) => {
       event: 'request.start',
     });
 
-    // Reap rows whose worker was hard-killed (no DB heartbeat exists, so a
-    // crashed run leaves status='running' until something flips it). Run
-    // this BEFORE the cap check so a wedged user (5/5 stuck) self-recovers
-    // on their next attempt.
     await caller.client.rpc('reap_stuck_imports');
 
     const { count } = await caller.client
@@ -147,144 +136,152 @@ serve(async (req: Request) => {
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
     const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
-    // The worker writes terminal state to import_jobs itself — both branches
-    // of runWithBackgroundDetach observe the same lifecycle via Realtime.
     const callerClient = caller.client;
     const callerProfileId = caller.profileId;
     const callerHouseholdId = body.household_id;
-    const runImport = async (): Promise<RunResult> => {
-      try {
-        const html = await fetchHtml(body.url);
-        const dom = parseHTML(html);
-        const scraped = extractRecipeJsonLd(dom.document);
-        const stripped = lightStripHtml(html);
+
+    const work = async (): Promise<WorkResult> => {
+      const html = await fetchHtml(body.url);
+      const dom = parseHTML(html);
+      const scraped = extractRecipeJsonLd(dom.document);
+      const stripped = lightStripHtml(html);
+      log({
+        request_id: requestId,
+        profile_id: callerProfileId,
+        household_id: callerHouseholdId,
+        function: 'import-url',
+        event: 'scrape.jsonld',
+        found: scraped !== null,
+      });
+
+      await callerClient
+        .from('import_jobs')
+        .update({ phase: 'ai', progress_text: 'Asking the model' })
+        .eq('id', jobId);
+
+      const budget = await withRateBudget(4000, () =>
+        callAndValidate({
+          lane: 'text',
+          messages: structuringFromHtml({
+            html: stripped,
+            sourceUrl: body.url,
+            scraped,
+            targetLanguage,
+            allowedTags,
+          }),
+          estimatedTokens: 4000,
+        }),
+      );
+      const latencyMs = Math.round(performance.now() - t0);
+
+      if (budget.status === 'rate_limit') {
         log({
           request_id: requestId,
           profile_id: callerProfileId,
           household_id: callerHouseholdId,
           function: 'import-url',
-          event: 'scrape.jsonld',
-          found: scraped !== null,
+          event: 'rate_budget.deny',
+          level: 'warn',
         });
+        return { ok: false, reason: 'rate_limit', raw: null, latencyMs };
+      }
 
-        await callerClient
-          .from('import_jobs')
-          .update({ phase: 'ai', progress_text: 'Asking the model' })
-          .eq('id', jobId);
+      const result = budget.value!;
+      if (!result.ok) {
+        logAiCall({
+          request_id: requestId,
+          function: 'import-url',
+          lane: 'text',
+          model: '(unknown)',
+          ms: latencyMs,
+          tokens_in: 0,
+          tokens_out: 0,
+          ok: false,
+          reason: result.reason,
+        });
+        return { ok: false, reason: result.reason, raw: result.raw, latencyMs };
+      }
 
-        const budget = await withRateBudget(4000, () =>
-          callAndValidate({
-            lane: 'text',
-            messages: structuringFromHtml({
-              html: stripped,
-              sourceUrl: body.url,
-              scraped,
-              targetLanguage,
-              allowedTags,
-            }),
-            estimatedTokens: 4000,
-          }),
-        );
-        const ms = Math.round(performance.now() - t0);
+      logAiCall({
+        request_id: requestId,
+        function: 'import-url',
+        lane: 'text',
+        model: result.model,
+        ms: latencyMs,
+        tokens_in: result.usage.input,
+        tokens_out: result.usage.output,
+        cache_read: result.usage.cache_read,
+        cache_write: result.usage.cache_write,
+        ok: true,
+      });
 
-        if (budget.status === 'rate_limit') {
+      return {
+        ok: true,
+        draft: { ...result.recipe, source_type: 'url' as const, source_url: body.url },
+        usage: result.usage,
+        model: result.model,
+        latencyMs,
+      };
+    };
+
+    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+      if (!value.ok) {
+        if (value.reason === 'rate_limit') {
           await callerClient
             .from('import_jobs')
             .update({
               status: 'failed',
               error: 'rate_limit',
-              payload: { url: body.url, latency_ms: ms },
+              payload: { url: body.url, latency_ms: value.latencyMs },
             })
             .eq('id', jobId);
-          log({
-            request_id: requestId,
-            profile_id: callerProfileId,
-            household_id: callerHouseholdId,
-            function: 'import-url',
-            event: 'rate_budget.deny',
-            level: 'warn',
-          });
-          return { ok: false, needs_review: true, reason: 'rate_limit' };
+          return;
         }
-
-        const result = budget.value!;
-        if (!result.ok) {
-          await callerClient
-            .from('import_jobs')
-            .update({
-              status: 'needs_review',
-              payload: {
-                url: body.url,
-                raw_model_output: result.raw,
-                reason: result.reason,
-                latency_ms: ms,
-              },
-            })
-            .eq('id', jobId);
-          logAiCall({
-            request_id: requestId,
-            function: 'import-url',
-            lane: 'text',
-            model: '(unknown)',
-            ms,
-            tokens_in: 0,
-            tokens_out: 0,
-            ok: false,
-            reason: result.reason,
-          });
-          return { ok: false, needs_review: true, reason: result.reason };
-        }
-
-        const draft = {
-          ...result.recipe,
-          source_type: 'url' as const,
-          source_url: body.url,
-        };
-
         await callerClient
           .from('import_jobs')
           .update({
-            status: 'awaiting_save',
-            phase: 'saving',
-            progress_text: 'Saving recipe',
+            status: 'needs_review',
             payload: {
               url: body.url,
-              draft,
-              tokens_in: result.usage.input,
-              tokens_out: result.usage.output,
-              latency_ms: ms,
+              raw_model_output: value.raw,
+              reason: value.reason,
+              latency_ms: value.latencyMs,
             },
           })
           .eq('id', jobId);
-
-        logAiCall({
-          request_id: requestId,
-          function: 'import-url',
-          lane: 'text',
-          model: result.model,
-          ms,
-          tokens_in: result.usage.input,
-          tokens_out: result.usage.output,
-          cache_read: result.usage.cache_read,
-          cache_write: result.usage.cache_write,
-          ok: true,
-        });
-
-        return { ok: true, draft, needs_review: false };
-      } catch (err) {
-        const reason = err instanceof HttpError ? err.message : 'internal';
-        await callerClient
-          .from('import_jobs')
-          .update({ status: 'failed', error: reason })
-          .eq('id', jobId);
-        throw err;
+        return;
       }
+      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
+      await callerClient
+        .from('import_jobs')
+        .update({
+          status: terminalStatus,
+          phase: 'saving',
+          progress_text: 'Saving recipe',
+          payload: {
+            url: body.url,
+            draft: value.draft,
+            tokens_in: value.usage.input,
+            tokens_out: value.usage.output,
+            latency_ms: value.latencyMs,
+          },
+        })
+        .eq('id', jobId);
     };
 
-    const detach = await runWithBackgroundDetach<RunResult>({
-      totalMs: TOTAL_BUDGET_MS,
+    const onError = async (err: unknown): Promise<void> => {
+      const reason = err instanceof HttpError ? err.message : 'internal';
+      await callerClient
+        .from('import_jobs')
+        .update({ status: 'failed', error: reason })
+        .eq('id', jobId);
+    };
+
+    const detach = await runWithBackgroundDetach<WorkResult>({
       firstResponseMs: FIRST_RESPONSE_MS,
-      run: runImport,
+      work,
+      onFinish,
+      onError,
     });
 
     if (detach.mode === 'background') {
@@ -302,14 +299,21 @@ serve(async (req: Request) => {
       );
     }
 
-    const result = detach.value;
-    if (!result.ok) {
+    const value = detach.value;
+    if (!value.ok) {
+      if (value.reason === 'rate_limit') {
+        return jsonResponse(
+          { error: 'rate_limit', retry_after: 60, request_id: requestId },
+          429,
+          cors,
+        );
+      }
       return jsonResponse(
         {
           job_id: jobId,
           draft: null,
           needs_review: true,
-          reason: result.reason,
+          reason: value.reason,
           request_id: requestId,
         },
         200,
@@ -318,14 +322,11 @@ serve(async (req: Request) => {
     }
 
     return jsonResponse(
-      { job_id: jobId, draft: result.draft, needs_review: false, request_id: requestId },
+      { job_id: jobId, draft: value.draft, needs_review: false, request_id: requestId },
       200,
       cors,
     );
   } catch (e) {
-    // Worker writes its own terminal state, but if the failure happened
-    // before we entered runImport (auth, body parse, job insert) we still
-    // need to mark any partial row failed.
     if (caller && jobId) {
       const reason = e instanceof HttpError ? e.message : 'internal';
       try {
@@ -333,7 +334,7 @@ serve(async (req: Request) => {
           .from('import_jobs')
           .update({ status: 'failed', error: reason })
           .eq('id', jobId);
-      } catch { /* best-effort; outer error is what we report */ }
+      } catch { /* best-effort */ }
     }
     if (e instanceof HttpError) {
       log({
