@@ -60,6 +60,25 @@ Rules:
   "cup_metric" (250 ml).
 - Canonical unit keys: g, kg, oz, lb, ml, l, tsp, tbsp, cup_us, cup_metric,
   fl_oz, count, C, F, min, h.
+- Pick the unit FAMILY by the ingredient's nature, not by what the source
+  happens to use. Liquids and pourables (water, milk, cream, yogurt, oil,
+  broth, juice, vinegar, wine, beer, syrup, soy sauce, vanilla extract,
+  eggs cracked into a bowl) take volume units (ml, l, tsp, tbsp, fl_oz,
+  cup_*). Solids and powders (flour, sugar, salt, butter, meat, vegetables,
+  fruit, cheese, dry pasta, rice, oats, nuts, spices, cocoa, baking powder,
+  yeast) take mass units (g, kg, oz, lb). When the source uses the wrong
+  family — a solid in volume (e.g. "1 cup flour", "2 dl oats") or a liquid
+  in mass (e.g. "100 g milk") — convert to the natural family using typical
+  pantry densities: 1 cup_us = 240 ml, 1 cup_metric = 250 ml, 1 tbsp = 15
+  ml, 1 tsp = 5 ml; 1 cup all-purpose flour ≈ 120 g; 1 cup granulated
+  sugar ≈ 200 g; 1 cup butter ≈ 227 g (1 tbsp ≈ 14 g); 1 cup uncooked
+  rice ≈ 185 g; 1 cup rolled oats ≈ 90 g; 1 cup cocoa powder ≈ 100 g;
+  1 tsp table salt ≈ 6 g; 1 tsp baking powder ≈ 4 g. For water-like
+  liquids (water, milk, broth, juice, wine, oil), 1 g ≈ 1 ml. For less
+  common ingredients use your knowledge of typical pantry densities and
+  round the result to a tidy pantry number (nearest 5 g under 100 g,
+  nearest 10 g above). Small volume measures (tsp, tbsp) for liquids,
+  condiments, or extracts are fine as-is and do NOT need converting to ml.
 - Translate non-English unit words to canonical keys: Hungarian ek/tk/mk →
   tbsp/tsp/quarter-tsp (set quantity=0.25, unit=tsp for mk); German EL/TL →
   tbsp/tsp; French "c. à s."/"c. à c." → tbsp/tsp; Italian
