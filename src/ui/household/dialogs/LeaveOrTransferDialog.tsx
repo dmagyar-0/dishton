@@ -1,6 +1,7 @@
 import {
   type HouseholdMember,
   useLeaveHousehold,
+  useLeaveHouseholdWithRecipes,
   useTransferOwnership,
 } from '@/lib/queries/households';
 import {
@@ -43,6 +44,7 @@ export function LeaveOrTransferDialog({
   const { push } = useToast();
   const nav = useNavigate();
   const leave = useLeaveHousehold();
+  const leaveWithRecipes = useLeaveHouseholdWithRecipes();
   const transfer = useTransferOwnership(householdId);
 
   const [stage, setStage] = useState<'leave' | 'transfer'>('leave');
@@ -60,7 +62,7 @@ export function LeaveOrTransferDialog({
     }
   }, [open]);
 
-  const isPending = leave.isPending || transfer.isPending;
+  const isPending = leave.isPending || transfer.isPending || leaveWithRecipes.isPending;
 
   const performLeave = async () => {
     try {
@@ -71,6 +73,35 @@ export function LeaveOrTransferDialog({
         title: t('household_settings.members.leave_success'),
       });
       await nav({ to: '/' });
+    } catch (err) {
+      if (householdErrorCode(err) === 'last_owner') {
+        setStage('transfer');
+        return;
+      }
+      push({
+        variant: 'error',
+        title: t('household_settings.members.leave_failed'),
+        description: translateHouseholdError(t, err),
+      });
+    }
+  };
+
+  // Symmetric counterpart to the merge-on-redeem behaviour. The user
+  // leaves the shared household but takes the recipes they authored
+  // with them into a fresh (or existing) personal household, where they
+  // can continue solo.
+  const performLeaveKeepRecipes = async () => {
+    try {
+      const newPersonalId = await leaveWithRecipes.mutateAsync(householdId);
+      onOpenChange(false);
+      push({
+        variant: 'success',
+        title: t('household_settings.members.leave_kept_success'),
+      });
+      await nav({
+        to: '/h/$householdId',
+        params: { householdId: newPersonalId },
+      });
     } catch (err) {
       if (householdErrorCode(err) === 'last_owner') {
         setStage('transfer');
@@ -123,20 +154,27 @@ export function LeaveOrTransferDialog({
             <DialogHeader>
               <DialogTitle>{t('household_settings.members.leave_confirm_title')}</DialogTitle>
               <DialogDescription className="text-base leading-relaxed text-ink-soft">
-                {t('household_settings.members.leave_confirm_body')}
+                {t('household_settings.members.leave_confirm_body_v2')}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
                 {t('household_settings.common.cancel')}
               </Button>
               <Button
-                variant="destructive"
+                variant="secondary"
                 onClick={() => void performLeave()}
-                loading={isPending}
+                loading={leave.isPending}
                 disabled={isPending}
               >
-                {t('household_settings.members.leave_action')}
+                {t('household_settings.members.leave_no_recipes_action')}
+              </Button>
+              <Button
+                onClick={() => void performLeaveKeepRecipes()}
+                loading={leaveWithRecipes.isPending}
+                disabled={isPending}
+              >
+                {t('household_settings.members.leave_keep_recipes_action')}
               </Button>
             </DialogFooter>
           </>

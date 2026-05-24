@@ -5,6 +5,7 @@ export default {
   },
   nav: {
     home: 'Start',
+    my_recipes: 'Meine Rezepte',
     following: 'Folge ich',
     import: 'Import',
     profile: 'Profil',
@@ -39,6 +40,9 @@ export default {
     create: 'Anlegen',
     redeem: 'Beitreten',
     invite_prefilled: 'Einladungscode aus deinem Link übernommen.',
+    merge_notice_title: 'Ihr legt eure Küchen zusammen',
+    merge_notice:
+      'Deine Rezepte und Tags wandern zu ihren — Duplikate bleiben erhalten. Dein persönlicher Bereich schließt, sobald du teilst.',
   },
   following: {
     title: 'Folge ich',
@@ -57,9 +61,23 @@ export default {
   household_settings: {
     title: 'Haushaltseinstellungen',
     subtitle: 'Tags und Voreinstellungen, die alle in diesem Haushalt teilen.',
+    solo: {
+      title: 'Einstellungen',
+      subtitle: 'Tags anpassen und jemanden einladen, deine Rezepte zu teilen.',
+      general_title: 'Dieser Bereich gehört dir',
+      general_body:
+        'Alles, was du speicherst, lebt hier — nur für dich sichtbar. Kein Haushalt zum Umbenennen, keine Mitglieder zu verwalten — koch weiter und sammle so viele Rezepte, wie du magst.',
+      share_callout_title: 'Wenn du teilen möchtest',
+      share_callout_body:
+        'Öffne den Einladen-Tab und sende den Code. Sobald die andere Person beitritt, werden eure Rezepte und Tags zusammengeführt — ab dann teilt ihr eine Küche.',
+      invite_title: 'Mit jemandem teilen',
+      invite_help:
+        'Erzeuge einen Einmal-Code. Wenn die andere Person beitritt, werden eure Rezepte und Tags zu einem gemeinsamen Bereich.',
+    },
     tabs: {
       general: 'Allgemein',
       members: 'Mitglieder',
+      invite: 'Einladen',
       sharing: 'Teilen',
       tags: 'Tags',
     },
@@ -135,8 +153,13 @@ export default {
       leave_confirm_title: 'Diesen Haushalt verlassen?',
       leave_confirm_body:
         'Du verlierst den Zugriff auf seine Rezepte. Ein:e Besitzer:in kann dich jederzeit wieder einladen.',
+      leave_confirm_body_v2:
+        'Wähle, was mit deinen hinzugefügten Rezepten passiert. Rezepte, die du nicht erstellt hast, bleiben beim Haushalt.',
       leave_action: 'Verlassen',
+      leave_keep_recipes_action: 'Verlassen und Rezepte behalten',
+      leave_no_recipes_action: 'Verlassen ohne Rezepte',
       leave_success: 'Haushalt verlassen',
+      leave_kept_success: 'Verlassen — Rezepte behalten',
       leave_failed: 'Verlassen fehlgeschlagen',
       last_owner_title: 'Gib vorher die Schlüssel weiter',
       last_owner_body:
@@ -201,7 +224,12 @@ export default {
     language_save_failed: 'Sprache konnte nicht gespeichert werden',
   },
   recipe: {
+    list_title: 'Rezepte',
+    list_title_solo: 'Meine Rezepte',
     empty_title: 'Deine Speisekammer ist leer',
+    empty_title_solo: 'Willkommen — füllen wir die Regale',
+    empty_body_solo:
+      'Importiere von einer URL oder füge ein Rezept von Hand ein. Alles, was du hinzufügst, bleibt nur deins — bis du jemanden zum Teilen einlädst.',
     empty_action: 'Rezept importieren',
     servings: 'Portionen',
     scale: 'Skalieren',

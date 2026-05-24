@@ -9,10 +9,10 @@ import { Link, createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { requireHousehold } from '../_guards';
+import { requireAuth } from '../_guards';
 
 export const Route = createFileRoute('/following/')({
-  beforeLoad: requireHousehold,
+  beforeLoad: requireAuth,
   component: FollowingPage,
 });
 

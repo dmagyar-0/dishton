@@ -22,6 +22,7 @@ type Props = {
   householdId: string;
   selfProfileId: string;
   isOwner: boolean;
+  isSolo: boolean;
   onRequestDeleteHousehold: () => void;
 };
 
@@ -29,6 +30,7 @@ export function MembersSection({
   householdId,
   selfProfileId,
   isOwner,
+  isSolo,
   onRequestDeleteHousehold,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -70,44 +72,52 @@ export function MembersSection({
 
   return (
     <div className="space-y-6">
-      <Card className="p-6 space-y-4">
-        <div>
-          <h2 className="font-display text-xl mb-1">{t('household_settings.members.title')}</h2>
-          <p className="text-ink-soft text-sm">{t('household_settings.members.help')}</p>
-        </div>
+      {!isSolo && (
+        <Card className="p-6 space-y-4">
+          <div>
+            <h2 className="font-display text-xl mb-1">{t('household_settings.members.title')}</h2>
+            <p className="text-ink-soft text-sm">{t('household_settings.members.help')}</p>
+          </div>
 
-        {members.isLoading && <Skeleton className="h-32" />}
+          {members.isLoading && <Skeleton className="h-32" />}
 
-        {members.data && members.data.length === 0 && (
-          <p className="text-ink-soft text-sm">{t('household_settings.members.empty')}</p>
-        )}
+          {members.data && members.data.length === 0 && (
+            <p className="text-ink-soft text-sm">{t('household_settings.members.empty')}</p>
+          )}
 
-        {members.data && members.data.length > 0 && (
-          <ul className="divide-y divide-cream-line">
-            {members.data.map((m) => (
-              <MemberRow
-                key={m.profile_id}
-                member={m}
-                isSelf={m.profile_id === selfProfileId}
-                isOwner={isOwner}
-                ownerCount={members.data.filter((x) => x.role === 'owner').length}
-                householdId={householdId}
-                onLeave={() => setLeaveOpen(true)}
-                joinedLabel={t('household_settings.members.joined_at', {
-                  date: dateFormatter.format(new Date(m.joined_at)),
-                })}
-              />
-            ))}
-          </ul>
-        )}
-      </Card>
+          {members.data && members.data.length > 0 && (
+            <ul className="divide-y divide-cream-line">
+              {members.data.map((m) => (
+                <MemberRow
+                  key={m.profile_id}
+                  member={m}
+                  isSelf={m.profile_id === selfProfileId}
+                  isOwner={isOwner}
+                  ownerCount={members.data.filter((x) => x.role === 'owner').length}
+                  householdId={householdId}
+                  onLeave={() => setLeaveOpen(true)}
+                  joinedLabel={t('household_settings.members.joined_at', {
+                    date: dateFormatter.format(new Date(m.joined_at)),
+                  })}
+                />
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
 
       <Card className="p-6 space-y-4">
         <div>
           <h2 className="font-display text-xl mb-1">
-            {t('household_settings.members.invite_title')}
+            {isSolo
+              ? t('household_settings.solo.invite_title')
+              : t('household_settings.members.invite_title')}
           </h2>
-          <p className="text-ink-soft text-sm">{t('household_settings.members.invite_help')}</p>
+          <p className="text-ink-soft text-sm">
+            {isSolo
+              ? t('household_settings.solo.invite_help')
+              : t('household_settings.members.invite_help')}
+          </p>
         </div>
         <div>
           <Button

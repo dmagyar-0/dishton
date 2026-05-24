@@ -11,9 +11,10 @@ type Props = {
   householdId: string;
   isLoading: boolean;
   isOwner: boolean;
+  isSolo: boolean;
 };
 
-export function GeneralSection({ household, householdId, isLoading, isOwner }: Props) {
+export function GeneralSection({ household, householdId, isLoading, isOwner, isSolo }: Props) {
   const { t } = useTranslation();
   const { push } = useToast();
   const update = useUpdateHouseholdName(householdId);
@@ -47,6 +48,33 @@ export function GeneralSection({ household, householdId, isLoading, isOwner }: P
       });
     }
   };
+
+  // Solo accounts have no household to "rename" or "delete" — the personal
+  // household name is fixed at "My Recipes" and disappears only when the
+  // user deletes their account. Render a friendly welcome with the
+  // important headline first and a "what changes when you share?" follow-up
+  // so the page doesn't look under-built.
+  if (isSolo) {
+    return (
+      <div className="space-y-6">
+        <Card className="p-6 space-y-3">
+          <h2 className="font-display text-2xl">{t('household_settings.solo.general_title')}</h2>
+          <p className="text-ink-soft leading-relaxed">
+            {t('household_settings.solo.general_body')}
+          </p>
+        </Card>
+
+        <Card className="p-6 space-y-3 border-saffron/30 bg-saffron/5">
+          <h3 className="font-display text-lg">
+            {t('household_settings.solo.share_callout_title')}
+          </h3>
+          <p className="text-ink-soft text-sm leading-relaxed">
+            {t('household_settings.solo.share_callout_body')}
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

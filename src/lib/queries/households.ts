@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/auth';
+import { refreshAuthDerivedState, useAuth } from '@/lib/auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
@@ -6,6 +6,7 @@ export type HouseholdSettings = {
   id: string;
   name: string;
   allowed_tags: string[];
+  is_personal: boolean;
 };
 
 export type HouseholdMember = {
@@ -48,17 +49,23 @@ export function useHousehold(householdId: string) {
     queryFn: async (): Promise<HouseholdSettings> => {
       const { data, error } = await supabase
         .from('households')
-        .select('id, name, allowed_tags')
+        .select('id, name, allowed_tags, is_personal')
         .eq('id', householdId)
         .single();
       if (error) throw error;
-      const row = data as { id: string; name: string; allowed_tags?: unknown };
+      const row = data as {
+        id: string;
+        name: string;
+        allowed_tags?: unknown;
+        is_personal?: unknown;
+      };
       return {
         id: row.id,
         name: row.name,
         allowed_tags: Array.isArray(row.allowed_tags)
           ? (row.allowed_tags as unknown[]).filter((t): t is string => typeof t === 'string')
           : [],
+        is_personal: row.is_personal === true,
       };
     },
   });
@@ -306,6 +313,33 @@ export function useLeaveHousehold() {
     },
     onSuccess: (householdId) => {
       void qc.invalidateQueries({ queryKey: ['household', householdId] });
+    },
+  });
+}
+
+// Leaves the household but pulls the caller's authored recipes into a
+// fresh personal household. Returns the new personal household id so the
+// caller can route there immediately; the server-side RPC reuses an
+// existing personal household if one is already linked to the user.
+export function useLeaveHouseholdWithRecipes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (householdId: string): Promise<string> => {
+      const { data, error } = await supabase.rpc('leave_household_with_recipes', {
+        p_household: householdId,
+      });
+      if (error) throw error;
+      const newPersonalId = data as unknown as string;
+      const user = useAuth.getState().user;
+      if (user) {
+        await refreshAuthDerivedState(user.id);
+      }
+      return newPersonalId;
+    },
+    onSuccess: (newPersonalId, householdId) => {
+      void qc.invalidateQueries({ queryKey: ['household', householdId] });
+      void qc.invalidateQueries({ queryKey: ['recipes', householdId] });
+      void qc.invalidateQueries({ queryKey: ['recipes', newPersonalId] });
     },
   });
 }

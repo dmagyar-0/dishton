@@ -28,7 +28,7 @@ import { Globe, Instagram } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { requireHousehold } from '../../_guards';
+import { requireAuth } from '../../_guards';
 
 const IMPORT_URL_TIMEOUT_MS = 120_000;
 const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
@@ -71,7 +71,7 @@ async function readErrorCode(error: unknown): Promise<ErrorKey> {
 }
 
 export const Route = createFileRoute('/h/$householdId/import')({
-  beforeLoad: requireHousehold,
+  beforeLoad: requireAuth,
   component: ImportPage,
 });
 

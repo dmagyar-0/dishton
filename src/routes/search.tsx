@@ -8,7 +8,7 @@ import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { z } from 'zod';
-import { requireHousehold } from './_guards';
+import { requireAuth } from './_guards';
 
 const Search = z.object({
   q: z.string().optional(),
@@ -16,7 +16,7 @@ const Search = z.object({
 });
 
 export const Route = createFileRoute('/search')({
-  beforeLoad: requireHousehold,
+  beforeLoad: requireAuth,
   validateSearch: Search,
   component: SearchPage,
 });
