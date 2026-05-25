@@ -22,7 +22,8 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as HHouseholdIdIndexRouteImport } from './routes/h/$householdId/index'
 import { Route as HHouseholdIdSettingsRouteImport } from './routes/h/$householdId/settings'
 import { Route as HHouseholdIdImportRouteImport } from './routes/h/$householdId/import'
-import { Route as HHouseholdIdRRecipeIdRouteImport } from './routes/h/$householdId/r/$recipeId'
+import { Route as HHouseholdIdRRecipeIdIndexRouteImport } from './routes/h/$householdId/r/$recipeId/index'
+import { Route as HHouseholdIdRRecipeIdEditRouteImport } from './routes/h/$householdId/r/$recipeId/edit'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -89,11 +90,18 @@ const HHouseholdIdImportRoute = HHouseholdIdImportRouteImport.update({
   path: '/h/$householdId/import',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HHouseholdIdRRecipeIdRoute = HHouseholdIdRRecipeIdRouteImport.update({
-  id: '/h/$householdId/r/$recipeId',
-  path: '/h/$householdId/r/$recipeId',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const HHouseholdIdRRecipeIdIndexRoute =
+  HHouseholdIdRRecipeIdIndexRouteImport.update({
+    id: '/h/$householdId/r/$recipeId/',
+    path: '/h/$householdId/r/$recipeId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HHouseholdIdRRecipeIdEditRoute =
+  HHouseholdIdRRecipeIdEditRouteImport.update({
+    id: '/h/$householdId/r/$recipeId/edit',
+    path: '/h/$householdId/r/$recipeId/edit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,7 +117,8 @@ export interface FileRoutesByFullPath {
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId/': typeof HHouseholdIdIndexRoute
-  '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdRoute
+  '/h/$householdId/r/$recipeId/edit': typeof HHouseholdIdRRecipeIdEditRoute
+  '/h/$householdId/r/$recipeId/': typeof HHouseholdIdRRecipeIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,7 +134,8 @@ export interface FileRoutesByTo {
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId': typeof HHouseholdIdIndexRoute
-  '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdRoute
+  '/h/$householdId/r/$recipeId/edit': typeof HHouseholdIdRRecipeIdEditRoute
+  '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,7 +152,8 @@ export interface FileRoutesById {
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId/': typeof HHouseholdIdIndexRoute
-  '/h/$householdId/r/$recipeId': typeof HHouseholdIdRRecipeIdRoute
+  '/h/$householdId/r/$recipeId/edit': typeof HHouseholdIdRRecipeIdEditRoute
+  '/h/$householdId/r/$recipeId/': typeof HHouseholdIdRRecipeIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,7 +171,8 @@ export interface FileRouteTypes {
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
     | '/h/$householdId/'
-    | '/h/$householdId/r/$recipeId'
+    | '/h/$householdId/r/$recipeId/edit'
+    | '/h/$householdId/r/$recipeId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -176,6 +188,7 @@ export interface FileRouteTypes {
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
     | '/h/$householdId'
+    | '/h/$householdId/r/$recipeId/edit'
     | '/h/$householdId/r/$recipeId'
   id:
     | '__root__'
@@ -192,7 +205,8 @@ export interface FileRouteTypes {
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
     | '/h/$householdId/'
-    | '/h/$householdId/r/$recipeId'
+    | '/h/$householdId/r/$recipeId/edit'
+    | '/h/$householdId/r/$recipeId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -209,7 +223,8 @@ export interface RootRouteChildren {
   HHouseholdIdImportRoute: typeof HHouseholdIdImportRoute
   HHouseholdIdSettingsRoute: typeof HHouseholdIdSettingsRoute
   HHouseholdIdIndexRoute: typeof HHouseholdIdIndexRoute
-  HHouseholdIdRRecipeIdRoute: typeof HHouseholdIdRRecipeIdRoute
+  HHouseholdIdRRecipeIdEditRoute: typeof HHouseholdIdRRecipeIdEditRoute
+  HHouseholdIdRRecipeIdIndexRoute: typeof HHouseholdIdRRecipeIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -305,11 +320,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HHouseholdIdImportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/h/$householdId/r/$recipeId': {
-      id: '/h/$householdId/r/$recipeId'
+    '/h/$householdId/r/$recipeId/': {
+      id: '/h/$householdId/r/$recipeId/'
       path: '/h/$householdId/r/$recipeId'
-      fullPath: '/h/$householdId/r/$recipeId'
-      preLoaderRoute: typeof HHouseholdIdRRecipeIdRouteImport
+      fullPath: '/h/$householdId/r/$recipeId/'
+      preLoaderRoute: typeof HHouseholdIdRRecipeIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/h/$householdId/r/$recipeId/edit': {
+      id: '/h/$householdId/r/$recipeId/edit'
+      path: '/h/$householdId/r/$recipeId/edit'
+      fullPath: '/h/$householdId/r/$recipeId/edit'
+      preLoaderRoute: typeof HHouseholdIdRRecipeIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -329,7 +351,8 @@ const rootRouteChildren: RootRouteChildren = {
   HHouseholdIdImportRoute: HHouseholdIdImportRoute,
   HHouseholdIdSettingsRoute: HHouseholdIdSettingsRoute,
   HHouseholdIdIndexRoute: HHouseholdIdIndexRoute,
-  HHouseholdIdRRecipeIdRoute: HHouseholdIdRRecipeIdRoute,
+  HHouseholdIdRRecipeIdEditRoute: HHouseholdIdRRecipeIdEditRoute,
+  HHouseholdIdRRecipeIdIndexRoute: HHouseholdIdRRecipeIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

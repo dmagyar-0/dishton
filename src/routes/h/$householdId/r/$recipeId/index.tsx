@@ -1,16 +1,18 @@
 import { convert, niceQuantity, pickDisplayUnit } from '@/domain';
 import { useAuth } from '@/lib/auth';
-import { useRecipe } from '@/lib/queries/recipes';
+import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { type DisplayIngredient, IngredientsCard } from '@/ui/recipe/IngredientsCard';
 import { ServingsScaler } from '@/ui/recipe/ServingsScaler';
 import { UnitToggle } from '@/ui/recipe/UnitToggle';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Pencil } from 'lucide-react';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
-import { requireAuth } from '../../../_guards';
+import { requireAuth } from '../../../../_guards';
 
 const Search = z
   .object({
@@ -27,7 +29,7 @@ const Search = z
     'use scale or servings, not both',
   );
 
-export const Route = createFileRoute('/h/$householdId/r/$recipeId')({
+export const Route = createFileRoute('/h/$householdId/r/$recipeId/')({
   beforeLoad: requireAuth,
   validateSearch: Search,
   component: RecipeDetailPage,
@@ -38,6 +40,8 @@ function RecipeDetailPage() {
   const search = Route.useSearch();
   const nav = useNavigate({ from: Route.fullPath });
   const profile = useAuth((s) => s.profile);
+  const canEdit = useIsRecipeEditor(householdId);
+  const { t } = useTranslation();
   const q = useRecipe(recipeId);
 
   const displayUnits = search.units ?? profile?.preferred_unit_system ?? 'metric';
@@ -80,7 +84,6 @@ function RecipeDetailPage() {
     );
   }
   if (!displayed) return <main className="p-8 text-ink-soft">Recipe not found.</main>;
-  void householdId;
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -102,7 +105,20 @@ function RecipeDetailPage() {
         ))}
       </div>
 
-      <h1 className="font-display text-display leading-tight mb-4">{displayed.recipe.title}</h1>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <h1 className="font-display text-display leading-tight">{displayed.recipe.title}</h1>
+        {canEdit && (
+          <Link
+            to="/h/$householdId/r/$recipeId/edit"
+            params={{ householdId, recipeId }}
+            className="mt-2 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink"
+            aria-label={t('recipe.edit_action')}
+          >
+            <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
+            <span>{t('recipe.edit_action')}</span>
+          </Link>
+        )}
+      </div>
       {displayed.recipe.description && (
         <p className="text-lg text-ink-soft leading-relaxed mb-8 max-w-prose">
           {displayed.recipe.description}
