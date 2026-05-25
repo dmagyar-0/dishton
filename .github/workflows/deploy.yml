@@ -54,15 +54,23 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      # `vercel build` resets the build subprocess env from
+      # .vercel/.env.production.local (what `vercel pull` just wrote) and
+      # ignores anything in this step's env: block. Append the vars we
+      # need at build time so Vite bakes them into the bundle. Repeated
+      # keys are fine — dotenv keeps the last value.
+      - name: Inject build-time env vars
+        run: |
+          cat >> .vercel/.env.production.local <<EOF
+          VITE_RELEASE_SHA=${{ github.sha }}
+          VITE_FEATURE_PHOTO_IMPORT=true
+          VITE_SENTRY_DSN_FRONTEND=${{ secrets.SENTRY_DSN_FRONTEND }}
+          EOF
+
       - name: Build with Vercel
         run: npx --yes vercel@53.2.0 build --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          VITE_RELEASE_SHA: ${{ github.sha }}
-          VITE_SENTRY_DSN_FRONTEND: ${{ secrets.SENTRY_DSN_FRONTEND }}
-          VITE_FEATURE_PHOTO_IMPORT: 'true'
 
       - name: Strip source maps from deploy artifact
         run: find .vercel/output -name '*.map' -delete
