@@ -1,7 +1,11 @@
 // import-url: paste a blog/article URL → JSON-LD scrape + lightStripHtml →
 // Anthropic → validated draft Recipe + import_jobs row.
 //
-// Never writes to app.recipes; the SPA does that on Save via app.save_recipe.
+// The edge function never writes to app.recipes; the SPA does that on save.
+// Sync mode: worker writes status='done', the SPA's response handler calls
+// save_recipe directly. Background mode: worker writes status='awaiting_save'
+// and the SPA's Realtime listener calls save_recipe. The status-vs-mode split
+// keeps the listener idempotent — it never auto-saves a sync-mode import.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { parseHTML } from 'npm:linkedom@0.18';
@@ -19,7 +23,7 @@ import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
 import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
 import { lightStripHtml } from '../_shared/scrape/strip-html.ts';
-import { withTimeout } from '../_shared/timeout.ts';
+import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
 const Body = z.object({
@@ -28,24 +32,17 @@ const Body = z.object({
 });
 
 const MAX_BYTES = 5_000_000;
-const MAX_REDIRECTS = 3;
-const INLINE_BUDGET_MS = 30_000;
+const FIRST_RESPONSE_MS = 10_000;
+const CONCURRENCY_CAP = 5;
 
-async function fetchHtml(url: string, parent?: AbortSignal): Promise<string> {
-  const signal = parent
-    ? AbortSignal.any([parent, AbortSignal.timeout(15_000)])
-    : AbortSignal.timeout(15_000);
+async function fetchHtml(url: string): Promise<string> {
   const res = await fetch(url, {
     method: 'GET',
     redirect: 'follow',
     headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
-    signal,
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new HttpError(502, 'fetch_failed', { status: res.status });
-  if (res.redirected) {
-    // basic redirect cap is honoured by `redirect: 'follow'` — server defaults
-    void MAX_REDIRECTS;
-  }
   const ct = res.headers.get('content-type') ?? '';
   if (!ct.includes('text/html')) throw new HttpError(415, 'not_html');
   const reader = res.body?.getReader();
@@ -75,6 +72,22 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
+type AiUsage = { input: number; output: number; cache_read?: number; cache_write?: number };
+type WorkResult =
+  | {
+      ok: true;
+      draft: Record<string, unknown>;
+      usage: AiUsage;
+      model: string;
+      latencyMs: number;
+    }
+  | {
+      ok: false;
+      reason: 'parse' | 'schema' | 'rate_limit' | 'upstream';
+      raw: string | null;
+      latencyMs: number;
+    };
+
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
@@ -96,19 +109,14 @@ serve(async (req: Request) => {
       event: 'request.start',
     });
 
-    // Reap rows whose worker was hard-killed (no DB heartbeat exists, so a
-    // crashed run leaves status='running' until something flips it). Run
-    // this BEFORE the cap check so a wedged user (2/2 stuck) self-recovers
-    // on their next attempt.
     await caller.client.rpc('reap_stuck_imports');
 
-    // Concurrency check
     const { count } = await caller.client
       .from('import_jobs')
       .select('id', { count: 'exact', head: true })
       .eq('profile_id', caller.profileId)
-      .eq('status', 'running');
-    if ((count ?? 0) >= 2) throw new HttpError(409, 'too_many_imports');
+      .in('status', ['queued', 'running', 'awaiting_save']);
+    if ((count ?? 0) >= CONCURRENCY_CAP) throw new HttpError(409, 'too_many_imports');
 
     const { data: job, error: jobErr } = await caller.client
       .from('import_jobs')
@@ -117,6 +125,7 @@ serve(async (req: Request) => {
         household_id: body.household_id,
         kind: 'url',
         status: 'running',
+        phase: 'scrape',
         payload: { url: body.url },
       })
       .select('id')
@@ -127,22 +136,30 @@ serve(async (req: Request) => {
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
     const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
-    const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
-      const html = await fetchHtml(body.url, signal);
-      // JSON-LD extraction must run on the raw HTML (lightStripHtml drops
-      // <script> blocks, including the application/ld+json ones).
+    const callerClient = caller.client;
+    const callerProfileId = caller.profileId;
+    const callerHouseholdId = body.household_id;
+
+    const work = async (): Promise<WorkResult> => {
+      const html = await fetchHtml(body.url);
       const dom = parseHTML(html);
       const scraped = extractRecipeJsonLd(dom.document);
       const stripped = lightStripHtml(html);
       log({
         request_id: requestId,
-        profile_id: caller.profileId,
-        household_id: body.household_id,
+        profile_id: callerProfileId,
+        household_id: callerHouseholdId,
         function: 'import-url',
         event: 'scrape.jsonld',
         found: scraped !== null,
       });
-      return await withRateBudget(4000, () =>
+
+      await callerClient
+        .from('import_jobs')
+        .update({ phase: 'ai', progress_text: 'Asking the model' })
+        .eq('id', jobId);
+
+      const budget = await withRateBudget(4000, () =>
         callAndValidate({
           lane: 'text',
           messages: structuringFromHtml({
@@ -153,108 +170,171 @@ serve(async (req: Request) => {
             allowedTags,
           }),
           estimatedTokens: 4000,
-          signal,
         }),
       );
-    });
+      const latencyMs = Math.round(performance.now() - t0);
 
-    if (budget.status === 'rate_limit') {
-      await caller.client
-        .from('import_jobs')
-        .update({ status: 'failed', error: 'rate_limit', completed_at: new Date().toISOString() })
-        .eq('id', job.id);
-      log({
-        request_id: requestId,
-        profile_id: caller.profileId,
-        household_id: body.household_id,
-        function: 'import-url',
-        event: 'rate_budget.deny',
-        level: 'warn',
-      });
-      return jsonResponse(
-        { error: 'rate_limit', retry_after: 60, request_id: requestId },
-        429,
-        cors,
-      );
-    }
+      if (budget.status === 'rate_limit') {
+        log({
+          request_id: requestId,
+          profile_id: callerProfileId,
+          household_id: callerHouseholdId,
+          function: 'import-url',
+          event: 'rate_budget.deny',
+          level: 'warn',
+        });
+        return { ok: false, reason: 'rate_limit', raw: null, latencyMs };
+      }
 
-    const result = budget.value!;
-    const ms = Math.round(performance.now() - t0);
-
-    if (!result.ok) {
-      await caller.client
-        .from('import_jobs')
-        .update({
-          status: 'needs_review',
-          payload: { url: body.url, raw_model_output: result.raw, reason: result.reason },
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', job.id);
+      const result = budget.value!;
+      if (!result.ok) {
+        logAiCall({
+          request_id: requestId,
+          function: 'import-url',
+          lane: 'text',
+          model: '(unknown)',
+          ms: latencyMs,
+          tokens_in: 0,
+          tokens_out: 0,
+          ok: false,
+          reason: result.reason,
+        });
+        return { ok: false, reason: result.reason, raw: result.raw, latencyMs };
+      }
 
       logAiCall({
         request_id: requestId,
         function: 'import-url',
         lane: 'text',
-        model: '(unknown)',
-        ms,
-        tokens_in: 0,
-        tokens_out: 0,
-        ok: false,
-        reason: result.reason,
+        model: result.model,
+        ms: latencyMs,
+        tokens_in: result.usage.input,
+        tokens_out: result.usage.output,
+        cache_read: result.usage.cache_read,
+        cache_write: result.usage.cache_write,
+        ok: true,
+      });
+
+      return {
+        ok: true,
+        draft: { ...result.recipe, source_type: 'url' as const, source_url: body.url },
+        usage: result.usage,
+        model: result.model,
+        latencyMs,
+      };
+    };
+
+    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+      if (!value.ok) {
+        if (value.reason === 'rate_limit') {
+          await callerClient
+            .from('import_jobs')
+            .update({
+              status: 'failed',
+              error: 'rate_limit',
+              payload: { url: body.url, latency_ms: value.latencyMs },
+            })
+            .eq('id', jobId);
+          return;
+        }
+        await callerClient
+          .from('import_jobs')
+          .update({
+            status: 'needs_review',
+            payload: {
+              url: body.url,
+              raw_model_output: value.raw,
+              reason: value.reason,
+              latency_ms: value.latencyMs,
+            },
+          })
+          .eq('id', jobId);
+        return;
+      }
+      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
+      await callerClient
+        .from('import_jobs')
+        .update({
+          status: terminalStatus,
+          phase: 'saving',
+          progress_text: 'Saving recipe',
+          payload: {
+            url: body.url,
+            draft: value.draft,
+            tokens_in: value.usage.input,
+            tokens_out: value.usage.output,
+            latency_ms: value.latencyMs,
+          },
+        })
+        .eq('id', jobId);
+    };
+
+    const onError = async (err: unknown): Promise<void> => {
+      const reason = err instanceof HttpError ? err.message : 'internal';
+      await callerClient
+        .from('import_jobs')
+        .update({ status: 'failed', error: reason })
+        .eq('id', jobId);
+    };
+
+    const detach = await runWithBackgroundDetach<WorkResult>({
+      firstResponseMs: FIRST_RESPONSE_MS,
+      work,
+      onFinish,
+      onError,
+    });
+
+    if (detach.mode === 'background') {
+      log({
+        request_id: requestId,
+        profile_id: caller.profileId,
+        household_id: body.household_id,
+        function: 'import-url',
+        event: 'background.detach',
       });
       return jsonResponse(
-        { job_id: job.id, draft: null, needs_review: true, reason: result.reason, request_id: requestId },
+        { job_id: jobId, status: 'running', request_id: requestId },
+        202,
+        cors,
+      );
+    }
+
+    const value = detach.value;
+    if (!value.ok) {
+      if (value.reason === 'rate_limit') {
+        return jsonResponse(
+          { error: 'rate_limit', retry_after: 60, request_id: requestId },
+          429,
+          cors,
+        );
+      }
+      return jsonResponse(
+        {
+          job_id: jobId,
+          draft: null,
+          needs_review: true,
+          reason: value.reason,
+          request_id: requestId,
+        },
         200,
         cors,
       );
     }
 
-    const draft = { ...result.recipe, source_type: 'url' as const, source_url: body.url };
-
-    await caller.client
-      .from('import_jobs')
-      .update({
-        status: 'done',
-        payload: {
-          url: body.url,
-          tokens_in: result.usage.input,
-          tokens_out: result.usage.output,
-          latency_ms: ms,
-        },
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', job.id);
-
-    logAiCall({
-      request_id: requestId,
-      function: 'import-url',
-      lane: 'text',
-      model: result.model,
-      ms,
-      tokens_in: result.usage.input,
-      tokens_out: result.usage.output,
-      cache_read: result.usage.cache_read,
-      cache_write: result.usage.cache_write,
-      ok: true,
-    });
-
     return jsonResponse(
-      { job_id: job.id, draft, needs_review: false, request_id: requestId },
+      { job_id: jobId, draft: value.draft, needs_review: false, request_id: requestId },
       200,
       cors,
     );
   } catch (e) {
-    // If we already inserted an import_jobs row, mark it failed so it doesn't
-    // count toward the per-profile concurrency cap. Without this, every 5xx
-    // leaves an orphan row stuck in `running` forever.
     if (caller && jobId) {
       const reason = e instanceof HttpError ? e.message : 'internal';
       try {
         await caller.client
           .from('import_jobs')
-          .update({ status: 'failed', error: reason, completed_at: new Date().toISOString() })
+          .update({ status: 'failed', error: reason })
           .eq('id', jobId);
-      } catch { /* best-effort; outer error is what we report */ }
+      } catch { /* best-effort */ }
     }
     if (e instanceof HttpError) {
       log({

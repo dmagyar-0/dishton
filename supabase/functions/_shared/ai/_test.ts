@@ -11,6 +11,7 @@ import {
   structuringFromHtml,
   structuringFromImage,
 } from './prompts.ts';
+import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 import { normalizePositions } from './validate.ts';
 
 const RECIPE_FIELDS = [
@@ -43,6 +44,47 @@ Deno.test('RECIPE_JSON_SHAPE mentions every Recipe field', () => {
   for (const f of RECIPE_FIELDS) {
     assertStringIncludes(RECIPE_JSON_SHAPE, `"${f}"`, `missing field: ${f}`);
   }
+});
+
+// Parity test for the tool-use schema. Each Recipe field (including nested
+// fields under ingredients/steps) must appear as a property somewhere in
+// EXTRACT_RECIPE_TOOL.input_schema. Catches drift when the Zod schema gains
+// a field but the tool definition isn't updated.
+Deno.test('EXTRACT_RECIPE_TOOL mentions every Recipe field', () => {
+  const seen = new Set<string>();
+  function walk(node: unknown): void {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item);
+      return;
+    }
+    const obj = node as Record<string, unknown>;
+    if (obj.properties && typeof obj.properties === 'object') {
+      for (const key of Object.keys(obj.properties as Record<string, unknown>)) {
+        seen.add(key);
+      }
+    }
+    for (const v of Object.values(obj)) walk(v);
+  }
+  walk(EXTRACT_RECIPE_TOOL.input_schema);
+  for (const f of RECIPE_FIELDS) {
+    assert(seen.has(f), `tool schema missing field: ${f}`);
+  }
+});
+
+Deno.test('EXTRACT_RECIPE_TOOL has a stable tool name and force-callable shape', () => {
+  assertEquals(EXTRACT_RECIPE_TOOL.name, 'extract_recipe');
+  assertEquals(EXTRACT_RECIPE_TOOL.input_schema.type, 'object');
+});
+
+Deno.test('RECIPE_JSON_SHAPE instructs the model to call the tool', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'extract_recipe');
+  // The pre-tool-use "Output ONLY a single JSON object" sentence is gone —
+  // it confused the model once tool_choice forced a tool call.
+  assert(
+    !RECIPE_JSON_SHAPE.includes('Output ONLY a single JSON object'),
+    'RECIPE_JSON_SHAPE still tells the model to output a JSON object directly',
+  );
 });
 
 Deno.test('Recipe.parse accepts a sample structuring response', () => {

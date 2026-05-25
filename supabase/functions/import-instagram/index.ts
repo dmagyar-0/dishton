@@ -1,4 +1,9 @@
-// import-instagram: oEmbed → caption + thumbnail → Anthropic → draft Recipe.
+// import-instagram: oEmbed (or no-key fallback chain) → caption + thumbnail
+// → Anthropic → draft Recipe + import_jobs row.
+//
+// See import-url for the sync-vs-background lifecycle. The Realtime listener
+// only acts on `awaiting_save`, so a sync import never races with the
+// listener.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
@@ -13,7 +18,7 @@ import {
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
-import { withTimeout } from '../_shared/timeout.ts';
+import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
 import { env } from '../_shared/env.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 import {
@@ -28,7 +33,8 @@ const Body = z.object({
   household_id: z.string().uuid(),
 });
 
-const INLINE_BUDGET_MS = 30_000;
+const FIRST_RESPONSE_MS = 10_000;
+const CONCURRENCY_CAP = 5;
 const RAW_PREVIEW_LIMIT = 240;
 
 type CaptionSource = 'oembed' | FallbackTier;
@@ -37,23 +43,13 @@ type OEmbedAttempt =
   | { ok: true; body: OEmbed; status: number; ms: number }
   | { ok: false; status?: number; ms: number; reason: 'fetch_error' | 'non_ok' | 'parse_error' };
 
-function mergeSignal(parent: AbortSignal | undefined, ms: number): AbortSignal {
-  return parent
-    ? AbortSignal.any([parent, AbortSignal.timeout(ms)])
-    : AbortSignal.timeout(ms);
-}
-
-async function fetchOEmbed(
-  url: string,
-  token: string,
-  parent?: AbortSignal,
-): Promise<OEmbedAttempt> {
+async function fetchOEmbed(url: string, token: string): Promise<OEmbedAttempt> {
   const endpoint =
     `https://graph.facebook.com/v18.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=${token}`;
   const t0 = performance.now();
   let res: Response;
   try {
-    res = await fetch(endpoint, { signal: mergeSignal(parent, 10_000) });
+    res = await fetch(endpoint, { signal: AbortSignal.timeout(10_000) });
   } catch {
     return { ok: false, ms: Math.round(performance.now() - t0), reason: 'fetch_error' };
   }
@@ -66,6 +62,28 @@ async function fetchOEmbed(
     return { ok: false, status: res.status, ms, reason: 'parse_error' };
   }
 }
+
+type AiUsage = { input: number; output: number; cache_read?: number; cache_write?: number };
+
+type WorkResult =
+  | {
+      ok: true;
+      draft: Record<string, unknown>;
+      thumbnailUrl: string | null;
+      usage: AiUsage;
+      model: string;
+      captionSource: CaptionSource;
+      captionLength: number;
+      latencyMs: number;
+    }
+  | {
+      ok: false;
+      reason: 'parse' | 'schema' | 'rate_limit' | 'upstream' | 'instagram_unavailable';
+      raw: string | null;
+      captionSource: CaptionSource | null;
+      captionLength: number;
+      latencyMs: number;
+    };
 
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
@@ -101,16 +119,14 @@ serve(async (req: Request) => {
 
     emit('request.start', { url_host: safeHost(body.url) });
 
-    // See import-url for the rationale: reap any running rows whose worker
-    // was hard-killed before we count slots, so a wedged user recovers.
     await caller.client.rpc('reap_stuck_imports');
 
     const { count } = await caller.client
       .from('import_jobs')
       .select('id', { count: 'exact', head: true })
       .eq('profile_id', caller.profileId)
-      .eq('status', 'running');
-    if ((count ?? 0) >= 2) throw new HttpError(409, 'too_many_imports');
+      .in('status', ['queued', 'running', 'awaiting_save']);
+    if ((count ?? 0) >= CONCURRENCY_CAP) throw new HttpError(409, 'too_many_imports');
 
     const { data: job, error: jobErr } = await caller.client
       .from('import_jobs')
@@ -119,6 +135,7 @@ serve(async (req: Request) => {
         household_id: body.household_id,
         kind: 'instagram',
         status: 'running',
+        phase: 'scrape',
         payload: { url: body.url },
       })
       .select('id')
@@ -129,83 +146,110 @@ serve(async (req: Request) => {
     const targetLanguage = await getCallerPreferredLanguage(caller.client, caller.profileId);
     const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
+    const callerClient = caller.client;
     const fallbackEvents: FallbackEvent[] = [];
-    const fallbackLogger = (e: FallbackEvent): void => {
-      fallbackEvents.push(e);
-      emit(
-        'oembed.fallback_tier',
-        {
-          tier: e.tier,
-          tier_url: e.url,
-          ok: e.ok,
-          status: e.status ?? null,
-          ms: e.ms,
-          reason: e.reason ?? null,
-        },
-        e.ok ? 'info' : 'warn',
-      );
-    };
 
-    const {
-      oembed,
-      budget,
-      captionSource,
-      captionLength,
-      hasThumbnail,
-      oembedAttempt,
-    } = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) => {
+    const work = async (): Promise<WorkResult> => {
+      const fallbackLogger = (e: FallbackEvent): void => {
+        fallbackEvents.push(e);
+        emit(
+          'oembed.fallback_tier',
+          {
+            tier: e.tier,
+            tier_url: e.url,
+            ok: e.ok,
+            status: e.status ?? null,
+            ms: e.ms,
+            reason: e.reason ?? null,
+          },
+          e.ok ? 'info' : 'warn',
+        );
+      };
+
       let oe: OEmbed | null = null;
-      let source: CaptionSource | null = null;
-      let oeAttempt: OEmbedAttempt | null = null;
+      let captionSource: CaptionSource | null = null;
+      let oembedAttempt: OEmbedAttempt | null = null;
 
       if (env.IG_OEMBED_TOKEN) {
-        oeAttempt = await fetchOEmbed(body.url, env.IG_OEMBED_TOKEN, signal);
+        oembedAttempt = await fetchOEmbed(body.url, env.IG_OEMBED_TOKEN);
         emit(
           'oembed.attempt',
           {
-            ok: oeAttempt.ok,
-            status: oeAttempt.ok ? oeAttempt.status : oeAttempt.status ?? null,
-            ms: oeAttempt.ms,
-            reason: oeAttempt.ok ? null : oeAttempt.reason,
+            ok: oembedAttempt.ok,
+            status: oembedAttempt.ok ? oembedAttempt.status : oembedAttempt.status ?? null,
+            ms: oembedAttempt.ms,
+            reason: oembedAttempt.ok ? null : oembedAttempt.reason,
           },
-          oeAttempt.ok ? 'info' : 'warn',
+          oembedAttempt.ok ? 'info' : 'warn',
         );
-        if (oeAttempt.ok) {
-          oe = oeAttempt.body;
-          source = 'oembed';
+        if (oembedAttempt.ok) {
+          oe = oembedAttempt.body;
+          captionSource = 'oembed';
         }
       } else {
         emit('oembed.attempt', { ok: false, reason: 'no_token', skipped: true }, 'info');
       }
 
       if (!oe) {
-        const fb = await fetchOgFallback(body.url, signal, fallbackLogger, env.SCRAPER_API_KEY);
+        const fb = await fetchOgFallback(body.url, undefined, fallbackLogger, env.SCRAPER_API_KEY);
         if (fb) {
           oe = fb.oembed;
-          source = fb.source;
+          captionSource = fb.source;
         }
       }
 
+      const latencyMs = Math.round(performance.now() - t0);
+
       if (!oe) {
+        emit(
+          'request.unavailable',
+          {
+            ms: latencyMs,
+            oembed_token_present: Boolean(env.IG_OEMBED_TOKEN),
+            scraper_key_present: Boolean(env.SCRAPER_API_KEY),
+            oembed_attempt: oembedAttempt
+              ? {
+                  ok: oembedAttempt.ok,
+                  status: oembedAttempt.ok ? oembedAttempt.status : oembedAttempt.status ?? null,
+                  reason: oembedAttempt.ok ? null : oembedAttempt.reason,
+                }
+              : null,
+            fallback_tiers_tried: fallbackEvents.length,
+            fallback_tiers: fallbackEvents.map((e) => ({
+              tier: e.tier,
+              ok: e.ok,
+              status: e.status ?? null,
+              reason: e.reason ?? null,
+            })),
+          },
+          'warn',
+        );
         return {
-          oembed: null,
-          budget: null,
+          ok: false,
+          reason: 'instagram_unavailable',
+          raw: null,
           captionSource: null,
           captionLength: 0,
-          hasThumbnail: false,
-          oembedAttempt: oeAttempt,
+          latencyMs,
         };
       }
 
       const caption = `${oe.title ?? ''}\n\n${(oe.html ?? '').replace(/<[^>]+>/g, '')}`;
+      const captionLength = caption.length;
+      const hasThumbnail = Boolean(oe.thumbnail_url);
       emit('caption.ready', {
-        source,
-        caption_length: caption.length,
+        source: captionSource,
+        caption_length: captionLength,
         has_title: Boolean(oe.title),
-        has_thumbnail: Boolean(oe.thumbnail_url),
+        has_thumbnail: hasThumbnail,
       });
 
-      const b = await withRateBudget(1200, () =>
+      await callerClient
+        .from('import_jobs')
+        .update({ phase: 'ai', progress_text: 'Asking the model' })
+        .eq('id', jobId);
+
+      const budget = await withRateBudget(1200, () =>
         callAndValidate({
           lane: 'text',
           messages: structuringFromCaption({
@@ -215,147 +259,193 @@ serve(async (req: Request) => {
             allowedTags,
           }),
           estimatedTokens: 1200,
-          signal,
         }),
       );
-      return {
-        oembed: oe,
-        budget: b,
-        captionSource: source,
-        captionLength: caption.length,
-        hasThumbnail: Boolean(oe.thumbnail_url),
-        oembedAttempt: oeAttempt,
-      };
-    });
 
-    if (!oembed || !budget) {
       const ms = Math.round(performance.now() - t0);
-      await caller.client
+
+      if (budget.status === 'rate_limit') {
+        emit('request.rate_limit', { ms, caption_source: captionSource }, 'warn');
+        return {
+          ok: false,
+          reason: 'rate_limit',
+          raw: null,
+          captionSource,
+          captionLength,
+          latencyMs: ms,
+        };
+      }
+
+      const result = budget.value!;
+      if (!result.ok) {
+        emit(
+          'request.needs_review',
+          {
+            ms,
+            reason: result.reason,
+            caption_source: captionSource,
+            caption_length: captionLength,
+            has_thumbnail: hasThumbnail,
+            raw_length: result.raw.length,
+            raw_preview: result.raw.slice(0, RAW_PREVIEW_LIMIT),
+          },
+          'warn',
+        );
+        return {
+          ok: false,
+          reason: result.reason,
+          raw: result.raw,
+          captionSource,
+          captionLength,
+          latencyMs: ms,
+        };
+      }
+
+      logAiCall({
+        request_id: requestId,
+        function: 'import-instagram',
+        lane: 'text',
+        model: result.model,
+        ms,
+        tokens_in: result.usage.input,
+        tokens_out: result.usage.output,
+        cache_read: result.usage.cache_read,
+        cache_write: result.usage.cache_write,
+        ok: true,
+      });
+      emit('request.success', {
+        ms,
+        caption_source: captionSource,
+        caption_length: captionLength,
+        ai_model: result.model,
+        ai_tokens_in: result.usage.input,
+        ai_tokens_out: result.usage.output,
+      });
+
+      return {
+        ok: true,
+        draft: { ...result.recipe, source_type: 'instagram' as const, source_url: body.url },
+        thumbnailUrl: oe.thumbnail_url ?? null,
+        usage: result.usage,
+        model: result.model,
+        captionSource,
+        captionLength,
+        latencyMs: ms,
+      };
+    };
+
+    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+      if (!value.ok) {
+        if (value.reason === 'rate_limit') {
+          await callerClient
+            .from('import_jobs')
+            .update({
+              status: 'failed',
+              error: 'rate_limit',
+              payload: { url: body.url, latency_ms: value.latencyMs },
+            })
+            .eq('id', jobId);
+          return;
+        }
+        if (value.reason === 'instagram_unavailable') {
+          await callerClient
+            .from('import_jobs')
+            .update({
+              status: 'failed',
+              error: 'instagram_unavailable',
+              payload: { url: body.url, latency_ms: value.latencyMs },
+            })
+            .eq('id', jobId);
+          return;
+        }
+        await callerClient
+          .from('import_jobs')
+          .update({
+            status: 'needs_review',
+            payload: {
+              url: body.url,
+              raw_model_output: value.raw,
+              reason: value.reason,
+              latency_ms: value.latencyMs,
+            },
+          })
+          .eq('id', jobId);
+        return;
+      }
+      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
+      await callerClient
         .from('import_jobs')
         .update({
-          status: 'failed',
-          error: 'instagram_unavailable',
-          completed_at: new Date().toISOString(),
+          status: terminalStatus,
+          phase: 'saving',
+          progress_text: 'Saving recipe',
+          payload: {
+            url: body.url,
+            draft: value.draft,
+            thumbnail_url: value.thumbnailUrl,
+            tokens_in: value.usage.input,
+            tokens_out: value.usage.output,
+            latency_ms: value.latencyMs,
+          },
         })
-        .eq('id', job.id);
-      emit(
-        'request.unavailable',
-        {
-          ms,
-          oembed_token_present: Boolean(env.IG_OEMBED_TOKEN),
-          scraper_key_present: Boolean(env.SCRAPER_API_KEY),
-          oembed_attempt: oembedAttempt
-            ? {
-                ok: oembedAttempt.ok,
-                status: oembedAttempt.ok ? oembedAttempt.status : oembedAttempt.status ?? null,
-                reason: oembedAttempt.ok ? null : oembedAttempt.reason,
-              }
-            : null,
-          fallback_tiers_tried: fallbackEvents.length,
-          fallback_tiers: fallbackEvents.map((e) => ({
-            tier: e.tier,
-            ok: e.ok,
-            status: e.status ?? null,
-            reason: e.reason ?? null,
-          })),
-        },
-        'warn',
-      );
-      throw new HttpError(422, 'instagram_unavailable');
-    }
+        .eq('id', jobId);
+    };
 
-    const ms = Math.round(performance.now() - t0);
-
-    if (budget.status === 'rate_limit') {
-      await caller.client
+    const onError = async (err: unknown): Promise<void> => {
+      const reason = err instanceof HttpError ? err.message : 'internal';
+      await callerClient
         .from('import_jobs')
-        .update({ status: 'failed', error: 'rate_limit', completed_at: new Date().toISOString() })
-        .eq('id', job.id);
-      emit('request.rate_limit', { ms, caption_source: captionSource }, 'warn');
+        .update({ status: 'failed', error: reason })
+        .eq('id', jobId);
+    };
+
+    const detach = await runWithBackgroundDetach<WorkResult>({
+      firstResponseMs: FIRST_RESPONSE_MS,
+      work,
+      onFinish,
+      onError,
+    });
+
+    if (detach.mode === 'background') {
+      emit('background.detach');
       return jsonResponse(
-        { error: 'rate_limit', retry_after: 60, request_id: requestId },
-        429,
+        { job_id: jobId, status: 'running', request_id: requestId },
+        202,
         cors,
       );
     }
 
-    const result = budget.value!;
-    if (!result.ok) {
-      await caller.client
-        .from('import_jobs')
-        .update({
-          status: 'needs_review',
-          payload: { url: body.url, raw_model_output: result.raw, reason: result.reason },
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', job.id);
-      emit(
-        'request.needs_review',
-        {
-          ms,
-          reason: result.reason,
-          caption_source: captionSource,
-          caption_length: captionLength,
-          has_thumbnail: hasThumbnail,
-          raw_length: result.raw.length,
-          raw_preview: result.raw.slice(0, RAW_PREVIEW_LIMIT),
-        },
-        'warn',
-      );
+    const value = detach.value;
+    if (!value.ok) {
+      if (value.reason === 'rate_limit') {
+        return jsonResponse(
+          { error: 'rate_limit', retry_after: 60, request_id: requestId },
+          429,
+          cors,
+        );
+      }
+      if (value.reason === 'instagram_unavailable') {
+        throw new HttpError(422, 'instagram_unavailable');
+      }
       return jsonResponse(
-        { job_id: job.id, draft: null, needs_review: true, reason: result.reason, request_id: requestId },
+        {
+          job_id: jobId,
+          draft: null,
+          needs_review: true,
+          reason: value.reason,
+          request_id: requestId,
+        },
         200,
         cors,
       );
     }
 
-    const draft = {
-      ...result.recipe,
-      source_type: 'instagram' as const,
-      source_url: body.url,
-    };
-
-    await caller.client
-      .from('import_jobs')
-      .update({
-        status: 'done',
-        payload: {
-          url: body.url,
-          tokens_in: result.usage.input,
-          tokens_out: result.usage.output,
-          latency_ms: ms,
-        },
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', job.id);
-
-    logAiCall({
-      request_id: requestId,
-      function: 'import-instagram',
-      lane: 'text',
-      model: result.model,
-      ms,
-      tokens_in: result.usage.input,
-      tokens_out: result.usage.output,
-      cache_read: result.usage.cache_read,
-      cache_write: result.usage.cache_write,
-      ok: true,
-    });
-    emit('request.success', {
-      ms,
-      caption_source: captionSource,
-      caption_length: captionLength,
-      ai_model: result.model,
-      ai_tokens_in: result.usage.input,
-      ai_tokens_out: result.usage.output,
-    });
-
     return jsonResponse(
       {
-        job_id: job.id,
-        draft,
+        job_id: jobId,
+        draft: value.draft,
         needs_review: false,
-        thumbnail_url: oembed.thumbnail_url ?? null,
+        thumbnail_url: value.thumbnailUrl,
         request_id: requestId,
       },
       200,
@@ -367,7 +457,7 @@ serve(async (req: Request) => {
       try {
         await caller.client
           .from('import_jobs')
-          .update({ status: 'failed', error: reason, completed_at: new Date().toISOString() })
+          .update({ status: 'failed', error: reason })
           .eq('id', jobId);
       } catch { /* best-effort */ }
     }

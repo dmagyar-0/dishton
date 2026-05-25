@@ -1,5 +1,9 @@
-// import-photo: read an uploaded image from the `imports` bucket via a
-// short-lived signed URL → Anthropic vision → draft Recipe.
+// import-photo: read uploaded images from the `imports` bucket via short-
+// lived signed URLs → Anthropic vision → draft Recipe + import_jobs row.
+//
+// See import-url for the sync-vs-background lifecycle. The Realtime listener
+// only acts on `awaiting_save`, so a sync import never races with the
+// listener.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
@@ -14,13 +18,12 @@ import {
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
-import { withTimeout } from '../_shared/timeout.ts';
+import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
-const INLINE_BUDGET_MS = 30_000;
+const FIRST_RESPONSE_MS = 10_000;
+const CONCURRENCY_CAP = 5;
 const MAX_PHOTOS = 6;
-// Vision input scales ~1500 tokens per image at Haiku 4.5; 2000 covers prompt
-// + output. Single-photo budget stays at 3500 to preserve existing behaviour.
 const TOKENS_BASE = 2000;
 const TOKENS_PER_PHOTO = 1500;
 
@@ -30,6 +33,22 @@ const Body = z.object({
   paths: z.array(z.string().min(1)).min(1).max(MAX_PHOTOS),
   comment: z.string().trim().max(500).optional(),
 });
+
+type AiUsage = { input: number; output: number; cache_read?: number; cache_write?: number };
+type WorkResult =
+  | {
+      ok: true;
+      draft: Record<string, unknown>;
+      usage: AiUsage;
+      model: string;
+      latencyMs: number;
+    }
+  | {
+      ok: false;
+      reason: 'parse' | 'schema' | 'rate_limit' | 'upstream';
+      raw: string | null;
+      latencyMs: number;
+    };
 
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
@@ -52,16 +71,14 @@ serve(async (req: Request) => {
       event: 'request.start',
     });
 
-    // See import-url for the rationale: reap any running rows whose worker
-    // was hard-killed before we count slots, so a wedged user recovers.
     await caller.client.rpc('reap_stuck_imports');
 
     const { count } = await caller.client
       .from('import_jobs')
       .select('id', { count: 'exact', head: true })
       .eq('profile_id', caller.profileId)
-      .eq('status', 'running');
-    if ((count ?? 0) >= 2) throw new HttpError(409, 'too_many_imports');
+      .in('status', ['queued', 'running', 'awaiting_save']);
+    if ((count ?? 0) >= CONCURRENCY_CAP) throw new HttpError(409, 'too_many_imports');
 
     const trimmedComment = body.comment?.trim() || undefined;
 
@@ -74,6 +91,7 @@ serve(async (req: Request) => {
           household_id: body.household_id,
           kind: 'photo',
           status: 'running',
+          phase: 'scrape',
           payload: trimmedComment
             ? { paths: body.paths, comment: trimmedComment }
             : { paths: body.paths },
@@ -97,8 +115,15 @@ serve(async (req: Request) => {
     const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
     const estimatedTokens = TOKENS_BASE + TOKENS_PER_PHOTO * body.paths.length;
-    const budget = await withTimeout(INLINE_BUDGET_MS, req.signal, async (signal) =>
-      await withRateBudget(estimatedTokens, () =>
+    const callerClient = caller.client;
+
+    const work = async (): Promise<WorkResult> => {
+      await callerClient
+        .from('import_jobs')
+        .update({ phase: 'ai', progress_text: 'Asking the model' })
+        .eq('id', jobId);
+
+      const budget = await withRateBudget(estimatedTokens, () =>
         callAndValidate({
           lane: 'vision',
           messages: structuringFromImage({
@@ -108,79 +133,147 @@ serve(async (req: Request) => {
             allowedTags,
           }),
           estimatedTokens,
-          signal,
         }),
-      ),
-    );
+      );
 
-    const ms = Math.round(performance.now() - t0);
+      const latencyMs = Math.round(performance.now() - t0);
 
-    if (budget.status === 'rate_limit') {
-      await caller.client
+      if (budget.status === 'rate_limit') {
+        return { ok: false, reason: 'rate_limit', raw: null, latencyMs };
+      }
+
+      const result = budget.value!;
+      if (!result.ok) {
+        return { ok: false, reason: result.reason, raw: result.raw, latencyMs };
+      }
+
+      logAiCall({
+        request_id: requestId,
+        function: 'import-photo',
+        lane: 'vision',
+        model: result.model,
+        ms: latencyMs,
+        tokens_in: result.usage.input,
+        tokens_out: result.usage.output,
+        cache_read: result.usage.cache_read,
+        cache_write: result.usage.cache_write,
+        ok: true,
+      });
+
+      return {
+        ok: true,
+        draft: { ...result.recipe, source_type: 'photo' as const, source_url: null },
+        usage: result.usage,
+        model: result.model,
+        latencyMs,
+      };
+    };
+
+    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+      if (!value.ok) {
+        if (value.reason === 'rate_limit') {
+          await callerClient
+            .from('import_jobs')
+            .update({
+              status: 'failed',
+              error: 'rate_limit',
+              payload: {
+                paths: body.paths,
+                ...(trimmedComment ? { comment: trimmedComment } : {}),
+                latency_ms: value.latencyMs,
+              },
+            })
+            .eq('id', jobId);
+          return;
+        }
+        await callerClient
+          .from('import_jobs')
+          .update({
+            status: 'needs_review',
+            payload: {
+              paths: body.paths,
+              ...(trimmedComment ? { comment: trimmedComment } : {}),
+              raw_model_output: value.raw,
+              reason: value.reason,
+              latency_ms: value.latencyMs,
+            },
+          })
+          .eq('id', jobId);
+        return;
+      }
+      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
+      await callerClient
         .from('import_jobs')
-        .update({ status: 'failed', error: 'rate_limit', completed_at: new Date().toISOString() })
+        .update({
+          status: terminalStatus,
+          phase: 'saving',
+          progress_text: 'Saving recipe',
+          payload: {
+            paths: body.paths,
+            ...(trimmedComment ? { comment: trimmedComment } : {}),
+            draft: value.draft,
+            tokens_in: value.usage.input,
+            tokens_out: value.usage.output,
+            latency_ms: value.latencyMs,
+          },
+        })
         .eq('id', jobId);
+    };
+
+    const onError = async (err: unknown): Promise<void> => {
+      const reason = err instanceof HttpError ? err.message : 'internal';
+      await callerClient
+        .from('import_jobs')
+        .update({ status: 'failed', error: reason })
+        .eq('id', jobId);
+    };
+
+    const detach = await runWithBackgroundDetach<WorkResult>({
+      firstResponseMs: FIRST_RESPONSE_MS,
+      work,
+      onFinish,
+      onError,
+    });
+
+    if (detach.mode === 'background') {
+      log({
+        request_id: requestId,
+        profile_id: caller.profileId,
+        household_id: body.household_id,
+        function: 'import-photo',
+        event: 'background.detach',
+      });
       return jsonResponse(
-        { error: 'rate_limit', retry_after: 60, request_id: requestId },
-        429,
+        { job_id: jobId, status: 'running', request_id: requestId },
+        202,
         cors,
       );
     }
 
-    const result = budget.value!;
-    if (!result.ok) {
-      await caller.client
-        .from('import_jobs')
-        .update({
-          status: 'needs_review',
-          payload: {
-            paths: body.paths,
-            ...(trimmedComment ? { comment: trimmedComment } : {}),
-            raw_model_output: result.raw,
-            reason: result.reason,
-          },
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', jobId);
+    const value = detach.value;
+    if (!value.ok) {
+      if (value.reason === 'rate_limit') {
+        return jsonResponse(
+          { error: 'rate_limit', retry_after: 60, request_id: requestId },
+          429,
+          cors,
+        );
+      }
       return jsonResponse(
-        { job_id: jobId, draft: null, needs_review: true, reason: result.reason, request_id: requestId },
+        {
+          job_id: jobId,
+          draft: null,
+          needs_review: true,
+          reason: value.reason,
+          request_id: requestId,
+        },
         200,
         cors,
       );
     }
 
-    const draft = { ...result.recipe, source_type: 'photo' as const, source_url: null };
-
-    await caller.client
-      .from('import_jobs')
-      .update({
-        status: 'done',
-        payload: {
-          paths: body.paths,
-          ...(trimmedComment ? { comment: trimmedComment } : {}),
-          tokens_in: result.usage.input,
-          tokens_out: result.usage.output,
-          latency_ms: ms,
-        },
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', jobId);
-
-    logAiCall({
-      request_id: requestId,
-      function: 'import-photo',
-      lane: 'vision',
-      model: result.model,
-      ms,
-      tokens_in: result.usage.input,
-      tokens_out: result.usage.output,
-      cache_read: result.usage.cache_read,
-      cache_write: result.usage.cache_write,
-      ok: true,
-    });
-
     return jsonResponse(
-      { job_id: jobId, draft, needs_review: false, request_id: requestId },
+      { job_id: jobId, draft: value.draft, needs_review: false, request_id: requestId },
       200,
       cors,
     );
@@ -190,7 +283,7 @@ serve(async (req: Request) => {
       try {
         await caller.client
           .from('import_jobs')
-          .update({ status: 'failed', error: reason, completed_at: new Date().toISOString() })
+          .update({ status: 'failed', error: reason })
           .eq('id', jobId);
       } catch { /* best-effort */ }
     }

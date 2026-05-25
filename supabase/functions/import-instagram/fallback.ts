@@ -158,6 +158,12 @@ async function fetchAsHtml(
   return parsed;
 }
 
+// 2 s grace window: if the preferred captioned_embed tier resolves OK within
+// this window, we return it without ever firing the other tiers. Saves
+// bandwidth on the common-case happy path while still giving the slow path
+// the full parallel speedup.
+const PREFERRED_GRACE_MS = 2_000;
+
 export async function fetchOgFallback(
   url: string,
   parent?: AbortSignal,
@@ -165,21 +171,62 @@ export async function fetchOgFallback(
   scraperApiKey?: string,
 ): Promise<FallbackResult | null> {
   const embed = captionedEmbedUrl(url);
-  if (embed) {
-    const oe = await fetchAsHtml(embed, 'captioned_embed', parent, logger);
-    if (oe) return { oembed: oe, source: 'captioned_embed' };
-  }
-  const direct = await fetchAsHtml(url, 'direct', parent, logger);
-  if (direct) return { oembed: direct, source: 'direct' };
   const mirror = mirrorUrl(url);
-  if (mirror) {
-    const oe = await fetchAsHtml(mirror, 'mirror', parent, logger);
-    if (oe) return { oembed: oe, source: 'mirror' };
-  }
   const scraper = scraperUrl(url, scraperApiKey);
-  if (scraper) {
-    const oe = await fetchAsHtml(scraper, 'scraper', parent, logger);
-    if (oe) return { oembed: oe, source: 'scraper' };
+
+  // Start the preferred tier first. If it wins inside the grace window we
+  // never fire the others; this preserves the existing single-fetch happy
+  // path so we don't burn bandwidth (and don't spam Instagram's blocks) on
+  // common-case imports.
+  const embedPromise = embed
+    ? fetchAsHtml(embed, 'captioned_embed', parent, logger)
+    : null;
+
+  if (embedPromise) {
+    let graceTimer: ReturnType<typeof setTimeout> | null = null;
+    const winner = await Promise.race<
+      | { kind: 'embed'; value: OEmbed | null }
+      | { kind: 'timer' }
+    >([
+      embedPromise.then((value) => ({ kind: 'embed' as const, value })),
+      new Promise((resolve) => {
+        graceTimer = setTimeout(
+          () => resolve({ kind: 'timer' as const }),
+          PREFERRED_GRACE_MS,
+        );
+      }),
+    ]);
+    if (winner.kind === 'embed' && winner.value) {
+      // Embed wins inside the grace; cancel the pending grace timer so
+      // Deno's test runner doesn't flag it as a leaked timer.
+      if (graceTimer !== null) clearTimeout(graceTimer);
+      return { oembed: winner.value, source: 'captioned_embed' };
+    }
+    // Grace expired or embed resolved null — the timer either fired (in
+    // which case the handle is harmless) or we fall through to parallel
+    // and let the timer settle on its own.
+    if (graceTimer !== null && winner.kind === 'embed') {
+      clearTimeout(graceTimer);
+    }
   }
+
+  // Grace expired (or no preferred tier applied). Fire every remaining tier
+  // in parallel — each has its own per-fetch 8 s timeout — and pick the
+  // first OK result by preference order once everything settles.
+  const directPromise = fetchAsHtml(url, 'direct', parent, logger);
+  const mirrorPromise = mirror ? fetchAsHtml(mirror, 'mirror', parent, logger) : null;
+  const scraperPromise = scraper ? fetchAsHtml(scraper, 'scraper', parent, logger) : null;
+
+  const [embedRes, directRes, mirrorRes, scraperRes] = await Promise.all([
+    embedPromise ?? Promise.resolve<OEmbed | null>(null),
+    directPromise,
+    mirrorPromise ?? Promise.resolve<OEmbed | null>(null),
+    scraperPromise ?? Promise.resolve<OEmbed | null>(null),
+  ]);
+
+  if (embedRes) return { oembed: embedRes, source: 'captioned_embed' };
+  if (directRes) return { oembed: directRes, source: 'direct' };
+  if (mirrorRes) return { oembed: mirrorRes, source: 'mirror' };
+  if (scraperRes) return { oembed: scraperRes, source: 'scraper' };
   return null;
 }

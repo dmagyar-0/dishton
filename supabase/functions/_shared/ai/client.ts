@@ -37,10 +37,16 @@ export type AiCallOpts = {
   estimatedTokens: number;
   signal?: AbortSignal;
   temperature?: number;
+  tools?: Anthropic.Tool[];
+  tool_choice?: Anthropic.ToolChoice;
 };
 
 export type AiResult = {
   content: string;
+  // When `tools` is set and the model invoked one, this holds the parsed
+  // `input` field of the first matching `tool_use` block. Callers that force
+  // a single tool via `tool_choice` should read this instead of `content`.
+  tool_input?: unknown;
   usage: { input: number; output: number; cache_read?: number; cache_write?: number };
   model: string;
 };
@@ -111,6 +117,8 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
     messages: rest,
     ...(system ? { system } : {}),
     ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+    ...(opts.tools ? { tools: opts.tools } : {}),
+    ...(opts.tool_choice ? { tool_choice: opts.tool_choice } : {}),
   };
 
   let lastErr: unknown;
@@ -124,13 +132,27 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
       clearTimeout(t);
       opts.signal?.removeEventListener('abort', onAbort);
 
-      // Concatenate all text blocks; tool/thinking blocks are not used here.
+      // Concatenate all text blocks; surface the first matching tool_use
+      // block as `tool_input` when the caller forced a tool.
       const text = resp.content
         .map((b) => (b.type === 'text' ? b.text : ''))
         .join('');
+      let tool_input: unknown | undefined;
+      if (opts.tools && opts.tools.length > 0) {
+        const forcedName = opts.tool_choice && opts.tool_choice.type === 'tool'
+          ? opts.tool_choice.name
+          : undefined;
+        for (const block of resp.content) {
+          if (block.type !== 'tool_use') continue;
+          if (forcedName && block.name !== forcedName) continue;
+          tool_input = block.input;
+          break;
+        }
+      }
 
       return {
         content: text,
+        ...(tool_input !== undefined ? { tool_input } : {}),
         usage: {
           input: resp.usage.input_tokens ?? 0,
           output: resp.usage.output_tokens ?? 0,

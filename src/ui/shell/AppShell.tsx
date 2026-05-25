@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
+import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
 import { Link, Outlet } from '@tanstack/react-router';
 import { Home, Search, Settings, Upload, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -76,6 +77,9 @@ export function AppShell() {
                 <User size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('nav.profile')}</span>
               </Link>
+            </li>
+            <li className="ml-1">
+              <ActiveImportsIndicator />
             </li>
           </ul>
         </nav>

@@ -6,6 +6,8 @@ import {
   ImportUrlSchema,
   detectImportSource,
 } from '@/lib/forms/import';
+import { useActiveImports } from '@/lib/imports/ActiveImportsProvider';
+import { resizeForUpload } from '@/lib/photo-resize';
 import { supabase } from '@/lib/supabase';
 import {
   bcImportInputValidated,
@@ -25,7 +27,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Globe, Instagram } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
@@ -121,18 +123,43 @@ type DraftResponse = {
   draft?: unknown | null;
   needs_review?: boolean;
   reason?: string;
+  // Server returns this when an import detached into background after the
+  // first-response timer fired. The SPA stops awaiting the draft directly
+  // and lets the Realtime listener pick it up when the worker finishes.
+  status?: 'running';
 };
+
+type ImportKindLocal = 'url' | 'instagram' | 'photo';
 
 function UrlTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
   const { push } = useToast();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { register: registerImport } = useActiveImports();
+  // backgrounded ref distinguishes a user-initiated "Continue in background"
+  // abort from a real network error: when set, AbortError is swallowed and
+  // the Realtime listener takes over.
+  const backgroundedRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ImportUrlInput>({ resolver: zodResolver(ImportUrlSchema) });
+
+  const dispatchToBackground = (): void => {
+    if (backgroundedRef.current) return;
+    backgroundedRef.current = true;
+    abortRef.current?.abort();
+    push({
+      variant: 'info',
+      title: t('import.background_toast_title'),
+      description: t('import.background_toast_body'),
+    });
+    reset();
+  };
 
   return (
     <Card className="mt-4 p-6">
@@ -141,13 +168,14 @@ function UrlTab({ householdId }: { householdId: string }) {
         onSubmit={handleSubmit(async (values) => {
           const source = detectImportSource(values.url);
           const fnName = source === 'instagram' ? 'import-instagram' : 'import-url';
+          const kind: ImportKindLocal = source === 'instagram' ? 'instagram' : 'url';
           bcImportStart(source);
           bcImportInputValidated({ url_length: values.url.length, source });
           const t0 = performance.now();
           bcImportRequestSent(fnName, '');
-          // Cap the wait so a hung NIM call (3 × 30 s server-side retry) can't
-          // leave the form spinning indefinitely with no user feedback.
+          backgroundedRef.current = false;
           const ac = new AbortController();
+          abortRef.current = ac;
           const timer = setTimeout(() => ac.abort(), IMPORT_URL_TIMEOUT_MS);
           let invokeError: unknown = null;
           let data: unknown = null;
@@ -162,8 +190,13 @@ function UrlTab({ householdId }: { householdId: string }) {
             invokeError = e;
           } finally {
             clearTimeout(timer);
+            abortRef.current = null;
           }
           bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 200);
+          // User clicked "Continue in background" mid-flight: the abort
+          // surfaces here as an AbortError, which we swallow. The Realtime
+          // listener handles auto-save once the worker finishes.
+          if (backgroundedRef.current) return;
           if (invokeError) {
             const code = await readErrorCode(invokeError);
             push({
@@ -174,6 +207,19 @@ function UrlTab({ householdId }: { householdId: string }) {
             return;
           }
           const payload = data as DraftResponse | null;
+          // Server-side background detach: 202 response. Register the job
+          // so the indicator can light up immediately; the Realtime listener
+          // will auto-save once the worker completes.
+          if (payload?.status === 'running' && payload.job_id) {
+            registerImport({ jobId: payload.job_id, householdId, kind });
+            push({
+              variant: 'info',
+              title: t('import.background_toast_title'),
+              description: t('import.background_toast_body'),
+            });
+            reset();
+            return;
+          }
           if (payload?.needs_review || !payload?.draft) {
             push({
               variant: 'error',
@@ -212,6 +258,15 @@ function UrlTab({ householdId }: { householdId: string }) {
             });
             return;
           }
+          // Patch the import_jobs row to reflect the saved recipe. Best-
+          // effort: failure here just means the indicator stays empty, no
+          // user-facing impact.
+          if (payload.job_id) {
+            void supabase
+              .from('import_jobs')
+              .update({ status: 'done', recipe_id: newId as string })
+              .eq('id', payload.job_id);
+          }
           await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
           push({
             variant: 'success',
@@ -238,7 +293,7 @@ function UrlTab({ householdId }: { householdId: string }) {
           {t('import.submit')}
         </Button>
       </form>
-      <ImportProgress active={isSubmitting} />
+      <ImportProgress active={isSubmitting} onBackground={dispatchToBackground} />
     </Card>
   );
 }
@@ -248,8 +303,11 @@ function PhotoTab({ householdId }: { householdId: string }) {
   const { push } = useToast();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const { register: registerImport } = useActiveImports();
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
+  const backgroundedRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
   const {
     register,
     handleSubmit,
@@ -259,6 +317,19 @@ function PhotoTab({ householdId }: { householdId: string }) {
     resolver: zodResolver(ImportPhotoSchema),
     defaultValues: { comment: '' },
   });
+
+  const dispatchToBackground = (): void => {
+    if (backgroundedRef.current) return;
+    backgroundedRef.current = true;
+    abortRef.current?.abort();
+    push({
+      variant: 'info',
+      title: t('import.background_toast_title'),
+      description: t('import.background_toast_body'),
+    });
+    reset({ comment: '' });
+    setFiles([]);
+  };
 
   function addFiles(picked: FileList | null): void {
     setFileError(null);
@@ -330,7 +401,11 @@ function PhotoTab({ householdId }: { householdId: string }) {
             return;
           }
           const userId = userData.user.id;
-          const uploads = files.map((file) => {
+          // Shrink phone-camera photos before upload — cuts upload time and
+          // the vision-input token bill. resizeForUpload returns the original
+          // file on failure or when no resize is needed.
+          const prepared = await Promise.all(files.map(resizeForUpload));
+          const uploads = prepared.map((file) => {
             const ext = file.type === 'image/png' ? 'png' : 'jpg';
             const path = `${userId}/${crypto.randomUUID()}.${ext}`;
             return supabase.storage
@@ -352,7 +427,9 @@ function PhotoTab({ householdId }: { householdId: string }) {
 
           const t0 = performance.now();
           bcImportRequestSent('import-photo', '');
+          backgroundedRef.current = false;
           const ac = new AbortController();
+          abortRef.current = ac;
           const timer = setTimeout(() => ac.abort(), IMPORT_URL_TIMEOUT_MS);
           let invokeError: unknown = null;
           let data: unknown = null;
@@ -371,8 +448,10 @@ function PhotoTab({ householdId }: { householdId: string }) {
             invokeError = e;
           } finally {
             clearTimeout(timer);
+            abortRef.current = null;
           }
           bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 200);
+          if (backgroundedRef.current) return;
           if (invokeError) {
             const code = await readErrorCode(invokeError);
             push({
@@ -383,6 +462,17 @@ function PhotoTab({ householdId }: { householdId: string }) {
             return;
           }
           const payload = data as DraftResponse | null;
+          if (payload?.status === 'running' && payload.job_id) {
+            registerImport({ jobId: payload.job_id, householdId, kind: 'photo' });
+            push({
+              variant: 'info',
+              title: t('import.background_toast_title'),
+              description: t('import.background_toast_body'),
+            });
+            reset({ comment: '' });
+            setFiles([]);
+            return;
+          }
           if (payload?.needs_review || !payload?.draft) {
             push({
               variant: 'error',
@@ -420,6 +510,12 @@ function PhotoTab({ householdId }: { householdId: string }) {
               ),
             });
             return;
+          }
+          if (payload.job_id) {
+            void supabase
+              .from('import_jobs')
+              .update({ status: 'done', recipe_id: newId as string })
+              .eq('id', payload.job_id);
           }
           await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
           push({
@@ -498,7 +594,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
           {t('import.submit')}
         </Button>
       </form>
-      <ImportProgress active={isSubmitting} />
+      <ImportProgress active={isSubmitting} onBackground={dispatchToBackground} />
     </Card>
   );
 }

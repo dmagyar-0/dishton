@@ -49,15 +49,15 @@ insert into app.household_members (household_id, profile_id, role) values
 on conflict do nothing;
 
 -- Four jobs with explicit created_at:
---   J1 = A, running, 5 min old      -> should be reaped
+--   J1 = A, running, 7 min old      -> should be reaped (threshold is 5 min)
 --   J2 = A, running, 1 min old      -> should be left alone
---   J3 = A, done,    5 min old      -> should be left alone
---   J4 = B, running, 5 min old      -> RLS hides from A's reaper
+--   J3 = A, done,    7 min old      -> should be left alone
+--   J4 = B, running, 7 min old      -> RLS hides from A's reaper
 insert into app.import_jobs (id, profile_id, household_id, kind, status, created_at) values
   ('11111111-0000-0000-0000-000000000001',
    '00000000-0000-0000-0000-0000000000a1',
    'cccccccc-0000-0000-0000-0000000000aa',
-   'manual','running', now() - interval '5 minutes'),
+   'manual','running', now() - interval '7 minutes'),
   ('11111111-0000-0000-0000-000000000002',
    '00000000-0000-0000-0000-0000000000a1',
    'cccccccc-0000-0000-0000-0000000000aa',
@@ -65,11 +65,11 @@ insert into app.import_jobs (id, profile_id, household_id, kind, status, created
   ('11111111-0000-0000-0000-000000000003',
    '00000000-0000-0000-0000-0000000000a1',
    'cccccccc-0000-0000-0000-0000000000aa',
-   'manual','done',    now() - interval '5 minutes'),
+   'manual','done',    now() - interval '7 minutes'),
   ('11111111-0000-0000-0000-000000000004',
    '00000000-0000-0000-0000-0000000000b2',
    'cccccccc-0000-0000-0000-0000000000aa',
-   'manual','running', now() - interval '5 minutes')
+   'manual','running', now() - interval '7 minutes')
 on conflict (id) do nothing;
 
 create temporary table _t_state(reaped_count int) on commit drop;
