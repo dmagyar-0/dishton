@@ -183,17 +183,30 @@ export async function fetchOgFallback(
     : null;
 
   if (embedPromise) {
+    let graceTimer: ReturnType<typeof setTimeout> | null = null;
     const winner = await Promise.race<
       | { kind: 'embed'; value: OEmbed | null }
       | { kind: 'timer' }
     >([
       embedPromise.then((value) => ({ kind: 'embed' as const, value })),
-      new Promise((resolve) =>
-        setTimeout(() => resolve({ kind: 'timer' as const }), PREFERRED_GRACE_MS),
-      ),
+      new Promise((resolve) => {
+        graceTimer = setTimeout(
+          () => resolve({ kind: 'timer' as const }),
+          PREFERRED_GRACE_MS,
+        );
+      }),
     ]);
     if (winner.kind === 'embed' && winner.value) {
+      // Embed wins inside the grace; cancel the pending grace timer so
+      // Deno's test runner doesn't flag it as a leaked timer.
+      if (graceTimer !== null) clearTimeout(graceTimer);
       return { oembed: winner.value, source: 'captioned_embed' };
+    }
+    // Grace expired or embed resolved null — the timer either fired (in
+    // which case the handle is harmless) or we fall through to parallel
+    // and let the timer settle on its own.
+    if (graceTimer !== null && winner.kind === 'embed') {
+      clearTimeout(graceTimer);
     }
   }
 
