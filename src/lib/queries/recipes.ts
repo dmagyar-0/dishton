@@ -1,3 +1,5 @@
+import type { Recipe } from '@/domain/recipe';
+import { useAuth } from '@/lib/auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
@@ -93,6 +95,35 @@ export function useDeleteRecipe(householdId: string) {
       qc.removeQueries({ queryKey: ['recipe', recipeId] });
     },
   });
+}
+
+export function useUpdateRecipe(recipeId: string, householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (draft: Recipe) => {
+      const { error } = await supabase.rpc('update_recipe', {
+        p_id: recipeId,
+        p_draft: draft as never,
+      });
+      if (error) throw error;
+      return recipeId;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['recipe', recipeId] });
+      void qc.invalidateQueries({ queryKey: ['recipes', householdId] });
+    },
+  });
+}
+
+// Whether the signed-in user can edit recipes in the given household.
+// Mirrors the server-side `is_recipe_editor()` RLS check: any membership
+// with role 'owner' or 'editor' qualifies (which is every membership in
+// the current data model — followers aren't stored in `memberships`).
+export function useIsRecipeEditor(householdId: string): boolean {
+  const memberships = useAuth((s) => s.memberships);
+  return memberships.some(
+    (m) => m.household_id === householdId && (m.role === 'owner' || m.role === 'editor'),
+  );
 }
 
 export function useRecipe(recipeId: string) {
