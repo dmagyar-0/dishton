@@ -195,29 +195,27 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
         .update({ status: 'done', recipe_id: newId })
         .eq('id', row.id);
       await queryClient.invalidateQueries({ queryKey: ['recipes', row.household_id] });
-      // Only notify when the originating tab has navigated away. The
-      // synchronous flow on the import page handles its own toast +
-      // navigation; this branch covers the background-detach case.
-      if (!originated.has(row.id) || window.location.pathname.includes('/import')) {
-        push({
-          variant: 'success',
-          title: t('import.ready_title'),
-          description: (
-            <button
-              type="button"
-              className="underline"
-              onClick={() => {
-                navigate({
-                  to: '/h/$householdId/r/$recipeId',
-                  params: { householdId: row.household_id, recipeId: newId as string },
-                });
-              }}
-            >
-              {t('import.ready_view_recipe')}
-            </button>
-          ),
-        });
-      }
+      // Always toast: this branch only fires for background-mode imports
+      // (sync mode writes status='done' on the server and never produces
+      // an awaiting_save event), so there's no duplicate-toast risk.
+      push({
+        variant: 'success',
+        title: t('import.ready_title'),
+        description: (
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              navigate({
+                to: '/h/$householdId/r/$recipeId',
+                params: { householdId: row.household_id, recipeId: newId as string },
+              });
+            }}
+          >
+            {t('import.ready_view_recipe')}
+          </button>
+        ),
+      });
     },
     [navigate, originated, push, queryClient, saved, t],
   );
@@ -247,21 +245,20 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
           upsert(row, 'realtime');
           if (row.status === 'awaiting_save') {
             void saveFromAwaiting(row);
-          } else if (row.status === 'needs_review') {
+          } else if (row.status === 'needs_review' && !originated.has(row.id)) {
+            // Sync handler shows its own needs_review toast; only surface
+            // background-mode reviews here.
             push({
               variant: 'error',
               title: t('import.needs_review_title'),
               description: t('import.needs_review_body'),
             });
-          } else if (row.status === 'failed') {
-            // Don't double-toast when the sync error path already notified.
-            if (!originated.has(row.id)) {
-              push({
-                variant: 'error',
-                title: t('import.error_title'),
-                description: t('errors.internal'),
-              });
-            }
+          } else if (row.status === 'failed' && !originated.has(row.id)) {
+            push({
+              variant: 'error',
+              title: t('import.error_title'),
+              description: t('errors.internal'),
+            });
           }
         },
       )
