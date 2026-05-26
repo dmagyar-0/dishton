@@ -22,13 +22,6 @@ export const FLAGS: FlagDefinition[] = [
     ownerDoc: 'docs/05-auth-and-households.md',
   },
   {
-    key: 'photo_import',
-    transport: 'build-time',
-    envVar: 'VITE_FEATURE_PHOTO_IMPORT',
-    description: 'Show the Photo tab in the import panel.',
-    ownerDoc: 'docs/08-import-pipelines.md',
-  },
-  {
     key: 'translation_cache',
     transport: 'build-time',
     envVar: 'VITE_FEATURE_TRANSLATION_CACHE',

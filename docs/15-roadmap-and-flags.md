@@ -82,8 +82,8 @@ Adds (one PR can ship one of these without the others, but the phase is
    auto-detects Instagram URLs (`detectImportSource` in
    `src/lib/forms/import.ts`) and dispatches to the `import-instagram`
    Edge Function; generic URLs go to `import-url`. No flag.
-3. **Photo import.** Flag `VITE_FEATURE_PHOTO_IMPORT`. Same shape: Edge
-   Function shipped, UI gated.
+3. **Photo import.** Always-on. Edge Function (`import-photo`) shipped;
+   the Photo tab renders unconditionally in the import panel.
 4. **Recipe translation.** Flag `VITE_FEATURE_TRANSLATION_CACHE` controls
    whether the language toggle exposes non-source languages and whether
    the SPA reads/writes `recipe_translations`. Owner:
@@ -139,7 +139,6 @@ the codebase ships with at MVP.
 | Flag | Transport | Default `local` | Default `preview` | Default `production` (MVP) | Default `production` (v1) | Owner doc | Removed when |
 |---|---|---|---|---|---|---|---|
 | `VITE_FEATURE_GOOGLE_AUTH` | build-time | `false` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Google login is GA in production for 30 days with no rollback |
-| `VITE_FEATURE_PHOTO_IMPORT` | build-time | `true` | `true` | `true` | `true` | [08](./08-import-pipelines.md) | Photo import is on in production for 30 days |
 | `VITE_FEATURE_TRANSLATION_CACHE` | build-time | `true` | `true` | `false` | `true` | [06](./06-recipe-domain.md) + [07](./07-ai-integration.md) | Translation toggle is on in production for 30 days |
 | `feature_flags.follows_enabled` | runtime | `true` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Following has been on in production for 30 days |
 | `feature_flags.public_household_pages` | runtime | `false` | `false` | `false` | `false` | [15](./15-roadmap-and-flags.md) (this doc) | v2 ships |
@@ -171,8 +170,9 @@ Going **MVP → v1**:
   *first*. The flag has no effect until both are true. Order in the
   rollout: provider config → flag flip → smoke test on a single
   household → broaden.
-- Instagram and photo import flips are pure UI — the Edge Functions
-  already exist. Before flipping, confirm
+- Instagram and photo import are both always-on at v1 — the Edge
+  Functions are deployed and the UI renders them unconditionally. Before
+  introducing new import surfaces, confirm
   [14-observability.md](./14-observability.md)'s Logtail saved queries
   cover the new flow; otherwise the SLO breach alerts won't fire on day
   one.
@@ -235,8 +235,7 @@ grep -q "## Acceptance criteria"    docs/15-roadmap-and-flags.md
 grep -q "## Verification"           docs/15-roadmap-and-flags.md
 ! grep -P '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' docs/15-roadmap-and-flags.md
 # every flag is named
-for f in VITE_FEATURE_GOOGLE_AUTH \
-         VITE_FEATURE_PHOTO_IMPORT VITE_FEATURE_TRANSLATION_CACHE \
+for f in VITE_FEATURE_GOOGLE_AUTH VITE_FEATURE_TRANSLATION_CACHE \
          follows_enabled public_household_pages; do
   grep -q "$f" docs/15-roadmap-and-flags.md || echo "missing flag: $f"
 done

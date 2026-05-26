@@ -1,4 +1,3 @@
-import { useFeatureFlag } from '@/feature-flags';
 import {
   type ImportPhotoInput,
   ImportPhotoSchema,
@@ -91,7 +90,6 @@ export const Route = createFileRoute('/h/$householdId/import')({
 function ImportPage() {
   const { householdId } = Route.useParams();
   const { t } = useTranslation();
-  const photoEnabled = useFeatureFlag('photo_import');
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-8">
@@ -99,17 +97,15 @@ function ImportPage() {
       <Tabs defaultValue="url">
         <TabsList>
           <TabsTrigger value="url">{t('import.tab_url')}</TabsTrigger>
-          {photoEnabled && <TabsTrigger value="photo">{t('import.tab_photo')}</TabsTrigger>}
+          <TabsTrigger value="photo">{t('import.tab_photo')}</TabsTrigger>
           <TabsTrigger value="manual">{t('import.tab_manual')}</TabsTrigger>
         </TabsList>
         <TabsContent value="url">
           <UrlTab householdId={householdId} />
         </TabsContent>
-        {photoEnabled && (
-          <TabsContent value="photo">
-            <PhotoTab householdId={householdId} />
-          </TabsContent>
-        )}
+        <TabsContent value="photo">
+          <PhotoTab householdId={householdId} />
+        </TabsContent>
         <TabsContent value="manual">
           <ManualTab />
         </TabsContent>
