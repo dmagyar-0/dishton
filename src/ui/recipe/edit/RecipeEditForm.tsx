@@ -67,10 +67,10 @@ export function RecipeEditForm({
 
   return (
     <form onSubmit={submit} className="space-y-8" noValidate data-dirty={isDirty || undefined}>
+      <TagsSection control={control} allowedTags={allowedTags} />
       <BasicsSection register={register} errors={errors} control={control} />
       <IngredientsSection control={control} />
       <StepsSection control={control} />
-      <TagsSection control={control} allowedTags={allowedTags} />
 
       <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t border-cream-line bg-paper/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-paper/80 sm:static sm:mx-0 sm:rounded-[var(--radius-md)] sm:border sm:bg-paper-2/60 sm:px-5">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
