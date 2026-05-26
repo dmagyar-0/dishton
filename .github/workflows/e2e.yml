@@ -1,14 +1,25 @@
 name: E2E
 
+# Disabled: this workflow can't pass as written.
+#   - No `pnpm build` step, so `pnpm preview` (started by Playwright's
+#     webServer) has no dist/ to serve.
+#   - No local Supabase stack, so signup/import/RPC calls have no backend.
+#   - `PLAYWRIGHT_BASE_URL=""` from the Vercel-resolve stub falls through
+#     `?? 'http://localhost:4173'` as an empty string (?? doesn't catch ""),
+#     so page.goto('/') gets a blank baseURL.
+#   - `NIM_MOCK_MODE=playwright` isn't read anywhere in supabase/functions/,
+#     so smoke.spec.ts's deterministic title assertion can't be satisfied by
+#     a real AI call against a fake URL.
+#   - recipe-edit.spec.ts needs alice's seeded password bumped from
+#     `test1234` to `test-password-1234`; no workflow step does that.
+# Re-enable by switching the trigger back to workflow_run after wiring up
+# the missing pieces (build artifact + supabase start + AI mock branch +
+# seed password update).
 on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   smoke:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
