@@ -62,6 +62,8 @@ jobs:
       - name: Inject build-time env vars
         run: |
           cat >> .vercel/.env.production.local <<EOF
+          VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           VITE_RELEASE_SHA=${{ github.sha }}
           VITE_SENTRY_DSN_FRONTEND=${{ secrets.SENTRY_DSN_FRONTEND }}
           EOF
