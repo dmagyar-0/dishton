@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <title>Dishton · Codebase Map</title>
+    <style>
+      :root {
+        --bg: #f6f3ec;
+        --paper: #fffdf8;
+        --ink: #2a2722;
+        --muted: #7a7367;
+        --line: #e4ddcf;
+        --shadow: 0 1px 2px rgba(40, 33, 20, 0.08), 0 8px 24px rgba(40, 33, 20, 0.08);
+        --browser: #3b6ea5;
+        --edge: #c2792b;
+        --postgres: #3f7d54;
+        --external: #8a5a9b;
+        --flow: #c2792b;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        overflow: hidden;
+        -webkit-text-size-adjust: 100%;
+      }
+      #app { display: flex; flex-direction: column; height: 100dvh; }
+
+      header {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 16px; background: var(--paper);
+        border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+        flex-wrap: wrap; z-index: 5;
+      }
+      header h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: 0.2px; white-space: nowrap; }
+      header h1 small { color: var(--muted); font-weight: 500; }
+      .grow { flex: 1 1 auto; }
+      #search {
+        font: inherit; font-size: 13px; padding: 7px 11px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--bg); color: var(--ink); min-width: 140px; outline: none;
+      }
+      #search:focus { border-color: var(--browser); }
+      .btn {
+        font: inherit; font-size: 12px; padding: 7px 11px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--bg); color: var(--ink); cursor: pointer; white-space: nowrap;
+      }
+      .btn:hover { background: #efeadd; }
+
+      #toolbar {
+        display: flex; align-items: center; gap: 8px 14px; padding: 8px 16px;
+        background: var(--paper); border-bottom: 1px solid var(--line); flex-wrap: wrap; font-size: 12px;
+      }
+      #toolbar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+      #toolbar .sep { width: 1px; height: 18px; background: var(--line); }
+      .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+      #menu-toggle { display: none; }
+
+      main { position: relative; flex: 1 1 auto; overflow: hidden; }
+      #graph { width: 100%; height: 100%; display: block; touch-action: none; background:
+        radial-gradient(circle at 1px 1px, rgba(120,110,90,0.10) 1px, transparent 0) 0 0 / 22px 22px; cursor: grab; }
+      #graph.grabbing { cursor: grabbing; }
+
+      .band-label { fill: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }
+      .band-rect { fill: rgba(255,253,248,0.55); stroke: var(--line); stroke-dasharray: 4 5; rx: 14; }
+
+      .edge { fill: none; stroke: #b9b0a0; stroke-width: 1; opacity: 0.22; transition: opacity .12s; }
+      .edge.flow { stroke: var(--flow); stroke-dasharray: 5 4; opacity: 0.3; }
+      .edge.dim { opacity: 0.05; }
+      .edge.hot { opacity: 0.95; stroke-width: 2.2; }
+      .edge-label { fill: var(--muted); font-size: 10px; opacity: 0; pointer-events: none; }
+      .edge-label.hot { opacity: 1; fill: var(--ink); }
+
+      .node { cursor: pointer; }
+      .node rect { rx: 10; stroke-width: 1.5; transition: opacity .12s; }
+      .node text { font-size: 12.5px; font-weight: 560; dominant-baseline: middle; pointer-events: none; }
+      .node .kind { font-size: 9px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; opacity: 0.7; }
+      .node.dim { opacity: 0.28; }
+      .node.sel rect { stroke-width: 3; }
+
+      /* Side panel (desktop) / bottom sheet (mobile) */
+      #panel {
+        position: absolute; top: 0; right: 0; height: 100%; width: 380px; max-width: 92vw;
+        background: var(--paper); border-left: 1px solid var(--line); box-shadow: var(--shadow);
+        transform: translateX(100%); transition: transform .2s ease; overflow-y: auto; z-index: 6;
+        padding: 18px 18px 40px;
+      }
+      #panel.open { transform: translateX(0); }
+      #panel h2 { margin: 4px 0 2px; font-size: 18px; }
+      #panel .tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px;
+        border-radius: 999px; color: #fff; letter-spacing: 0.3px; text-transform: uppercase; }
+      #panel .desc { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 12px 0; }
+      #panel h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted);
+        margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+      #panel ul { margin: 0; padding-left: 16px; font-size: 12.5px; line-height: 1.7; }
+      #panel li code { font-size: 11.5px; }
+      #panel .chip { display: inline-block; font-size: 11px; background: var(--bg); border: 1px solid var(--line);
+        border-radius: 6px; padding: 2px 7px; margin: 0 4px 4px 0; cursor: pointer; }
+      #panel .chip:hover { background: #efeadd; }
+      code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      pre.json { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+        font-size: 11.5px; line-height: 1.5; overflow-x: auto; white-space: pre; margin: 6px 0; }
+      .resp-status { font-weight: 700; }
+      .note { color: var(--muted); font-size: 11.5px; font-style: italic; }
+      .tbl { font-size: 11.5px; line-height: 1.5; margin: 0 0 12px; }
+      .tbl .tname { font-weight: 650; }
+      .tbl .cols { color: var(--muted); }
+      .tbl .rls { color: var(--postgres); }
+      #close-panel { position: absolute; top: 12px; right: 12px; border: none; background: var(--bg);
+        width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px; line-height: 1; }
+      #close-panel:hover { background: #efeadd; }
+
+      #hint { position: absolute; left: 12px; bottom: 12px; font-size: 11px; color: var(--muted);
+        background: rgba(255,253,248,0.85); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
+
+      @media (max-width: 760px) {
+        header h1 small { display: none; }
+        #toolbar { display: none; }
+        #toolbar.open { display: flex; }
+        #menu-toggle { display: inline-block; }
+        #panel {
+          top: auto; bottom: 0; right: 0; left: 0; width: 100%; max-width: 100%; height: auto;
+          max-height: 78dvh; border-left: none; border-top: 1px solid var(--line);
+          border-radius: 16px 16px 0 0; transform: translateY(100%);
+        }
+        #panel.open { transform: translateY(0); }
+        #hint { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Dishton <small>· codebase map</small></h1>
+        <input id="search" type="search" placeholder="Search modules…" autocomplete="off" />
+        <button class="btn" id="menu-toggle" aria-label="Toggle filters">Filters</button>
+        <span class="grow"></span>
+        <button class="btn" id="fit">Fit</button>
+      </header>
+      <div id="toolbar"></div>
+      <main>
+        <svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="hint">Drag to pan · scroll/pinch to zoom · click a node</div>
+        <aside id="panel">
+          <button id="close-panel" aria-label="Close">×</button>
+          <div id="panel-body"></div>
+        </aside>
+      </main>
+    </div>
+
+    <script id="viz-data" type="application/json">{"layers":[{"id":"browser","label":"Browser · React SPA","order":0},{"id":"edge","label":"Supabase Edge Functions · Deno","order":1},{"id":"postgres","label":"Supabase Postgres","order":2},{"id":"external","label":"External services","order":3}],"nodes":[{"id":"mod:domain","label":"domain","layer":"browser","kind":"module","description":"Zod schemas + pure business logic (recipe shape, units, scaling, language). No React, no I/O. Shared with Edge Functions via the _shared/domain symlink.","files":["src/domain/default-tags.ts","src/domain/fractions.ts","src/domain/index.ts","src/domain/language.ts","src/domain/quantity-parse.ts","src/domain/recipe.ts","src/domain/scale.ts","src/domain/translation-key.ts","src/domain/units/convert.ts","src/domain/units/cooking.ts","src/domain/units/format.ts","src/domain/units/graph.ts"],"details":{"domainShapes":[{"name":"Recipe","summary":"RecipeMeta + ingredients: Ingredient[] + steps: Step[]. The canonical recipe contract shared by SPA and Edge Functions."},{"name":"RecipeMeta","summary":"title, description, source_type, source_url, source_language (bcp47, default \"en\"), canonical_unit_system, servings (1..200), total_time_min, hero_image_path, tags: string[]."},{"name":"Ingredient","summary":"position, raw_text, quantity: Quantity | null, unit, ingredient_name, notes, scalable (default true), non_scalable_qty, section."},{"name":"Step","summary":"position, body, duration_min: number | null."},{"name":"Quantity","summary":"number | { numerator, denominator } — exact fractions are preserved."},{"name":"UnitSystem","summary":"enum 'metric' | 'imperial'."},{"name":"SourceType","summary":"enum 'url' | 'instagram' | 'photo' | 'manual'."},{"name":"NonScalableQty","summary":"enum 'to_taste' | 'pinch' | 'dash' | 'splash' | 'handful' | 'optional'."}]}},{"id":"mod:queries","label":"lib/queries","layer":"browser","kind":"module","description":"TanStack Query hooks wrapping supabase.from(...) / supabase.rpc(...) reads and mutations.","files":["src/lib/queries/households.ts","src/lib/queries/recipes.ts","src/lib/queries/search.ts","src/lib/queries/translations.ts"]},{"id":"mod:forms","label":"lib/forms","layer":"browser","kind":"module","description":"react-hook-form + Zod input schemas for auth, household and import forms.","files":["src/lib/forms/auth.ts","src/lib/forms/household.ts","src/lib/forms/import.ts"]},{"id":"mod:lib-imports","label":"lib/imports","layer":"browser","kind":"module","description":"ActiveImportsProvider: Realtime subscription to import_jobs, in-memory state of running imports, invokes the import Edge Functions.","files":["src/lib/imports/ActiveImportsProvider.tsx"]},{"id":"mod:lib-core","label":"lib (core)","layer":"browser","kind":"module","description":"Supabase client, Zustand auth store, i18n, photo-resize, PWA install — shared utilities.","files":["src/lib/auth-errors.ts","src/lib/auth.ts","src/lib/i18n.de.ts","src/lib/i18n.en.ts","src/lib/i18n.ts","src/lib/install-prompt.ts","src/lib/photo-resize.ts","src/lib/shortcuts.ts","src/lib/supabase.ts","src/lib/sw-update-toast.tsx","src/lib/wake-lock.ts"]},{"id":"mod:routes","label":"routes","layer":"browser","kind":"module","description":"TanStack Router file-based pages: auth, onboarding, household, recipe detail/edit, search, profile.","files":["src/routes/__root.tsx","src/routes/_guards.ts","src/routes/auth/callback.tsx","src/routes/auth/login.tsx","src/routes/auth/reset.tsx","src/routes/auth/signup.tsx","src/routes/auth/update-password.tsx","src/routes/following/index.tsx","src/routes/h/$householdId/import.tsx","src/routes/h/$householdId/index.tsx","src/routes/h/$householdId/r/$recipeId/edit.tsx","src/routes/h/$householdId/r/$recipeId/index.tsx","src/routes/h/$householdId/settings.tsx","src/routes/index.tsx","src/routes/onboarding/index.tsx","src/routes/profile.tsx","src/routes/search.tsx"]},{"id":"mod:ui-primitives","label":"ui/primitives","layer":"browser","kind":"module","description":"Radix + shadcn-style design primitives (Button, Dialog, Select, Slider, Toast, ...).","files":["src/ui/primitives/Avatar.tsx","src/ui/primitives/Badge.tsx","src/ui/primitives/Button.tsx","src/ui/primitives/Card.tsx","src/ui/primitives/Checkbox.tsx","src/ui/primitives/Combobox.tsx","src/ui/primitives/Dialog.tsx","src/ui/primitives/Drawer.tsx","src/ui/primitives/EmptyState.tsx","src/ui/primitives/IconButton.tsx","src/ui/primitives/Input.tsx","src/ui/primitives/NumberInput.tsx","src/ui/primitives/RadioGroup.tsx","src/ui/primitives/Select.tsx","src/ui/primitives/Skeleton.tsx","src/ui/primitives/Slider.tsx","src/ui/primitives/Switch.tsx","src/ui/primitives/Tabs.tsx","src/ui/primitives/Textarea.tsx","src/ui/primitives/Toast.tsx","src/ui/primitives/Tooltip.tsx","src/ui/primitives/index.ts"]},{"id":"mod:ui-recipe","label":"ui/recipe","layer":"browser","kind":"module","description":"Recipe-specific components: ingredients, servings scaler, unit/language toggles, tag picker.","files":["src/ui/recipe/ImportProgress.tsx","src/ui/recipe/IngredientsCard.tsx","src/ui/recipe/LanguageToggle.tsx","src/ui/recipe/RecipeCardDeleteButton.tsx","src/ui/recipe/ServingsScaler.tsx","src/ui/recipe/TagPicker.tsx","src/ui/recipe/UnitToggle.tsx","src/ui/recipe/edit/IngredientRowEditor.tsx","src/ui/recipe/edit/RecipeEditForm.tsx","src/ui/recipe/edit/StepRowEditor.tsx"]},{"id":"mod:ui-household","label":"ui/household","layer":"browser","kind":"module","description":"Household management sections and dialogs (members, sharing, tags, invites).","files":["src/ui/household/GeneralSection.tsx","src/ui/household/MembersSection.tsx","src/ui/household/SharingSection.tsx","src/ui/household/TagsSection.tsx","src/ui/household/dialogs/ConfirmDialog.tsx","src/ui/household/dialogs/DeleteHouseholdDialog.tsx","src/ui/household/dialogs/InviteCodeDialog.tsx","src/ui/household/dialogs/LeaveOrTransferDialog.tsx","src/ui/household/translateError.ts"]},{"id":"mod:ui-search","label":"ui/search","layer":"browser","kind":"module","description":"Search bar and tag strip.","files":["src/ui/search/SearchBar.tsx","src/ui/search/TagStrip.tsx"]},{"id":"mod:ui-shell","label":"ui/shell","layer":"browser","kind":"module","description":"App shell, navigation and the active-imports indicator.","files":["src/ui/shell/ActiveImportsIndicator.tsx","src/ui/shell/AppShell.tsx"]},{"id":"mod:ui-core","label":"ui (core)","layer":"browser","kind":"module","description":"Shared UI helpers (cn, theme).","files":["src/ui/cn.ts","src/ui/theme.ts"]},{"id":"mod:feature-flags","label":"feature-flags","layer":"browser","kind":"module","description":"Runtime + build-time feature gates (google_auth, translation_cache, follows_enabled).","files":["src/feature-flags/index.ts","src/feature-flags/registry.ts"]},{"id":"mod:observability","label":"observability","layer":"browser","kind":"module","description":"Sentry init and breadcrumb logging.","files":["src/observability/breadcrumbs.ts","src/observability/sentry.ts"]},{"id":"mod:fn-shared-ai","label":"_shared/ai","layer":"edge","kind":"module","description":"Anthropic client, prompt templates, tool schema, Zod validation wrapper and token-bucket rate budget. The only place that talks to the Anthropic API.","files":["supabase/functions/_shared/ai/client.ts","supabase/functions/_shared/ai/prompts.ts","supabase/functions/_shared/ai/rate-budget.ts","supabase/functions/_shared/ai/tool-schema.ts","supabase/functions/_shared/ai/validate.ts"]},{"id":"mod:fn-shared-scrape","label":"_shared/scrape","layer":"edge","kind":"module","description":"JSON-LD recipe extraction and lightweight HTML stripping for the AI prompt.","files":["supabase/functions/_shared/scrape/recipe-jsonld.ts","supabase/functions/_shared/scrape/strip-html.ts"]},{"id":"mod:fn-shared-core","label":"_shared (core)","layer":"edge","kind":"module","description":"JWT auth / RLS-aware client, import-runner sync-vs-background detach, structured logging, env, the domain symlink.","files":["supabase/functions/_shared/auth.ts","supabase/functions/_shared/env.ts","supabase/functions/_shared/import-runner.ts","supabase/functions/_shared/log.ts","supabase/functions/_shared/mock_fetch.ts","supabase/functions/_shared/timeout.ts"]},{"id":"fn:import-url","label":"import-url","layer":"edge","kind":"function","description":"Paste a blog/article URL → JSON-LD scrape + HTML strip → Anthropic → validated draft Recipe + import_jobs row.","files":["supabase/functions/import-url/index.ts"],"details":{"payload":{"request":{"url":"string (url)","household_id":"string (uuid)"},"responses":[{"status":200,"shape":{"job_id":"uuid","draft":"Recipe | null","needs_review":"boolean","reason":"string?","request_id":"uuid"},"note":"Synchronous result. draft is null + needs_review true when the model output failed to parse/validate."},{"status":202,"shape":{"job_id":"uuid","status":"'running'","request_id":"uuid"},"note":"Background detach — work continues; the SPA listens on import_jobs via Realtime."},{"status":429,"shape":{"error":"'rate_limit'","retry_after":60,"request_id":"uuid"},"note":"Token-bucket budget exhausted."}]}}},{"id":"fn:import-instagram","label":"import-instagram","layer":"edge","kind":"function","description":"Instagram URL → oEmbed (or OG fallback) caption + thumbnail → Anthropic → draft Recipe.","files":["supabase/functions/import-instagram/fallback.ts","supabase/functions/import-instagram/index.ts"],"details":{"payload":{"request":{"url":"string (url)","household_id":"string (uuid)"},"responses":[{"status":200,"shape":{"job_id":"uuid","draft":"Recipe | null","needs_review":"boolean","thumbnail_url":"string?","request_id":"uuid"}},{"status":202,"shape":{"job_id":"uuid","status":"'running'","request_id":"uuid"}},{"status":422,"shape":{"error":"'instagram_unavailable'"},"note":"Caption could not be fetched."},{"status":429,"shape":{"error":"'rate_limit'","retry_after":60,"request_id":"uuid"}}]}}},{"id":"fn:import-photo","label":"import-photo","layer":"edge","kind":"function","description":"Uploaded images in the imports bucket → short-lived signed URLs → Anthropic vision → draft Recipe.","files":["supabase/functions/import-photo/index.ts"],"details":{"payload":{"request":{"job_id":"string (uuid)?","household_id":"string (uuid)","paths":"string[] (1..6 storage paths)","comment":"string (\u003c=500)?"},"responses":[{"status":200,"shape":{"job_id":"uuid","draft":"Recipe | null","needs_review":"boolean","request_id":"uuid"}},{"status":202,"shape":{"job_id":"uuid","status":"'running'","request_id":"uuid"}},{"status":429,"shape":{"error":"'rate_limit'","retry_after":60,"request_id":"uuid"}}]}}},{"id":"fn:translate-recipe","label":"translate-recipe","layer":"edge","kind":"function","description":"Translation cache lookup; on miss call Anthropic, validate, upsert recipe_translations, return payload.","files":["supabase/functions/translate-recipe/index.ts"],"details":{"payload":{"request":{"recipe_id":"string (uuid)","language":"string (bcp47)"},"responses":[{"status":200,"shape":{"payload":"Recipe","cached":"boolean","request_id":"uuid"},"note":"cached true on translation-cache hit; false when freshly translated or language === source."},{"status":429,"shape":{"error":"'rate_limit'","retry_after":60,"request_id":"uuid"}},{"status":502,"shape":{"error":"'translation_failed'","reason":"string","request_id":"uuid"}}]}}},{"id":"db:tables","label":"Postgres (app schema)","layer":"postgres","kind":"db","description":"Recipes and children, households + members, follows, import_jobs, translation cache and rate budget — all gated by Row Level Security.","files":[],"details":{"dbTables":[{"name":"profiles","columns":["id","display_name","avatar_url","locale","preferred_unit_system","preferred_language"],"rls":"Self read/write (id = auth.uid())."},{"name":"households","columns":["id","name","owner_profile_id","is_personal"],"rls":"Member or follower read; owner write."},{"name":"household_members","columns":["household_id","profile_id","role"],"rls":"Members read; owner manages roles ('owner' | 'editor')."},{"name":"follows","columns":["follower_household_id","target_household_id"],"rls":"Members of the follower household read/write."},{"name":"recipes","columns":["id","household_id","title","description","source_type","source_language","canonical_unit_system","servings","total_time_min","hero_image_path","search (tsvector)"],"rls":"Member or follower read; member with owner/editor role write."},{"name":"recipe_ingredients","columns":["id","recipe_id","position","raw_text","quantity","unit","ingredient_name","notes","section"],"rls":"Inherits recipe access via household membership."},{"name":"recipe_steps","columns":["id","recipe_id","position","body","duration_min"],"rls":"Inherits recipe access via household membership."},{"name":"recipe_tags","columns":["recipe_id","tag"],"rls":"Inherits recipe access via household membership."},{"name":"recipe_translations","columns":["recipe_id","language","payload (jsonb)","source_hash"],"rls":"Member/follower read; service_role write (Edge Function cache)."},{"name":"import_jobs","columns":["id","profile_id","household_id","kind","status","phase","progress_text","payload (jsonb)","error"],"rls":"Self only (profile_id = auth.uid())."},{"name":"ai_rate_budget","columns":["tokens_used","budget_per_minute"],"rls":"service_role only (token bucket)."},{"name":"feature_flags","columns":["flag_name","enabled"],"rls":"Read by authenticated users."}]}},{"id":"ext:anthropic","label":"Anthropic API","layer":"external","kind":"external","description":"claude-haiku-4-5 (text + vision, 200K context). Reached only from _shared/ai. Structured output is forced via the extract_recipe tool and validated against the Recipe Zod schema.","files":[]},{"id":"ext:auth","label":"Supabase Auth (GoTrue)","layer":"external","kind":"external","description":"Email/password (+ feature-flagged Google OAuth). Issues the JWT carried on every request.","files":[]},{"id":"ext:storage","label":"Supabase Storage","layer":"external","kind":"external","description":"imports bucket (uploaded photos) and recipe-images bucket. Edge Functions read uploads via short-lived signed URLs.","files":[]},{"id":"ext:oembed","label":"Instagram oEmbed","layer":"external","kind":"external","description":"graph.facebook.com instagram_oembed endpoint for caption + thumbnail, with an Open Graph fallback chain.","files":[]}],"edges":[{"from":"mod:feature-flags","to":"mod:lib-core","kind":"import","weight":1},{"from":"mod:forms","to":"mod:domain","kind":"import","weight":1},{"from":"mod:lib-imports","to":"mod:lib-core","kind":"import","weight":2},{"from":"mod:lib-imports","to":"mod:observability","kind":"import","weight":1},{"from":"mod:lib-imports","to":"mod:ui-primitives","kind":"import","weight":1},{"from":"mod:queries","to":"mod:lib-core","kind":"import","weight":6},{"from":"mod:queries","to":"mod:domain","kind":"import","weight":1},{"from":"mod:routes","to":"mod:lib-core","kind":"import","weight":23},{"from":"mod:routes","to":"mod:lib-imports","kind":"import","weight":2},{"from":"mod:routes","to":"mod:ui-primitives","kind":"import","weight":41},{"from":"mod:routes","to":"mod:ui-shell","kind":"import","weight":1},{"from":"mod:routes","to":"mod:feature-flags","kind":"import","weight":1},{"from":"mod:routes","to":"mod:forms","kind":"import","weight":7},{"from":"mod:routes","to":"mod:queries","kind":"import","weight":9},{"from":"mod:routes","to":"mod:ui-household","kind":"import","weight":6},{"from":"mod:routes","to":"mod:observability","kind":"import","weight":1},{"from":"mod:routes","to":"mod:ui-recipe","kind":"import","weight":6},{"from":"mod:routes","to":"mod:domain","kind":"import","weight":3},{"from":"mod:routes","to":"mod:ui-search","kind":"import","weight":2},{"from":"mod:ui-household","to":"mod:queries","kind":"import","weight":6},{"from":"mod:ui-household","to":"mod:ui-primitives","kind":"import","weight":9},{"from":"mod:ui-household","to":"mod:ui-core","kind":"import","weight":2},{"from":"mod:ui-household","to":"mod:domain","kind":"import","weight":1},{"from":"mod:ui-primitives","to":"mod:ui-core","kind":"import","weight":21},{"from":"mod:ui-recipe","to":"mod:ui-core","kind":"import","weight":9},{"from":"mod:ui-recipe","to":"mod:domain","kind":"import","weight":4},{"from":"mod:ui-recipe","to":"mod:queries","kind":"import","weight":2},{"from":"mod:ui-recipe","to":"mod:ui-primitives","kind":"import","weight":18},{"from":"mod:ui-search","to":"mod:ui-core","kind":"import","weight":2},{"from":"mod:ui-search","to":"mod:ui-primitives","kind":"import","weight":2},{"from":"mod:ui-shell","to":"mod:lib-imports","kind":"import","weight":1},{"from":"mod:ui-shell","to":"mod:ui-core","kind":"import","weight":2},{"from":"mod:ui-shell","to":"mod:lib-core","kind":"import","weight":1},{"from":"mod:fn-shared-ai","to":"mod:fn-shared-core","kind":"import","weight":2},{"from":"mod:fn-shared-ai","to":"mod:fn-shared-scrape","kind":"import","weight":1},{"from":"mod:fn-shared-ai","to":"mod:domain","kind":"import","weight":1},{"from":"fn:import-instagram","to":"mod:fn-shared-core","kind":"import","weight":4},{"from":"fn:import-instagram","to":"mod:fn-shared-ai","kind":"import","weight":3},{"from":"fn:import-photo","to":"mod:fn-shared-core","kind":"import","weight":3},{"from":"fn:import-photo","to":"mod:fn-shared-ai","kind":"import","weight":3},{"from":"fn:import-url","to":"mod:fn-shared-core","kind":"import","weight":3},{"from":"fn:import-url","to":"mod:fn-shared-ai","kind":"import","weight":3},{"from":"fn:import-url","to":"mod:fn-shared-scrape","kind":"import","weight":2},{"from":"fn:translate-recipe","to":"mod:domain","kind":"import","weight":2},{"from":"fn:translate-recipe","to":"mod:fn-shared-core","kind":"import","weight":2},{"from":"fn:translate-recipe","to":"mod:fn-shared-ai","kind":"import","weight":3},{"from":"mod:lib-core","to":"ext:auth","kind":"flow","label":"sign in → JWT"},{"from":"mod:queries","to":"db:tables","kind":"flow","label":"supabase.from / .rpc (RLS-gated)"},{"from":"mod:lib-imports","to":"db:tables","kind":"flow","label":"Realtime: import_jobs"},{"from":"mod:lib-imports","to":"fn:import-url","kind":"flow","label":"POST { url, household_id }"},{"from":"mod:lib-imports","to":"fn:import-instagram","kind":"flow","label":"POST { url, household_id }"},{"from":"mod:lib-imports","to":"fn:import-photo","kind":"flow","label":"POST { paths[], household_id }"},{"from":"mod:queries","to":"fn:translate-recipe","kind":"flow","label":"POST { recipe_id, language }"},{"from":"fn:import-url","to":"db:tables","kind":"flow","label":"insert/update import_jobs"},{"from":"fn:import-instagram","to":"db:tables","kind":"flow","label":"insert/update import_jobs"},{"from":"fn:import-photo","to":"db:tables","kind":"flow","label":"insert/update import_jobs"},{"from":"fn:translate-recipe","to":"db:tables","kind":"flow","label":"read recipe · upsert translation cache"},{"from":"fn:import-url","to":"ext:anthropic","kind":"flow","label":"structuring prompt + extract_recipe tool"},{"from":"fn:import-instagram","to":"ext:anthropic","kind":"flow","label":"caption → structuring prompt"},{"from":"fn:import-photo","to":"ext:anthropic","kind":"flow","label":"vision prompt (images)"},{"from":"fn:translate-recipe","to":"ext:anthropic","kind":"flow","label":"translation prompt"},{"from":"fn:import-photo","to":"ext:storage","kind":"flow","label":"signed URL read (imports bucket)"},{"from":"fn:import-instagram","to":"ext:oembed","kind":"flow","label":"oEmbed: caption + thumbnail"}],"generatedAt":"2026-05-31T07:47:13.556Z"}</script>
+    <script>
+      'use strict';
+      const DATA = JSON.parse(document.getElementById('viz-data').textContent);
+      const SVGNS = 'http://www.w3.org/2000/svg';
+      const LAYER_COLOR = { browser: '#3b6ea5', edge: '#c2792b', postgres: '#3f7d54', external: '#8a5a9b' };
+      const MAXCOLS = { browser: 5, edge: 4, postgres: 1, external: 4 };
+      const KIND_LABEL = { module: 'module', function: 'edge fn', db: 'database', external: 'external' };
+
+      const NODE_W = 170, NODE_H = 54, COL_GAP = 30, ROW_GAP = 70, INTRA_GAP = 26, TOP_PAD = 56, SIDE_PAD = 60;
+
+      const nodeById = new Map(DATA.nodes.map((n) => [n.id, n]));
+      const layers = [...DATA.layers].sort((a, b) => a.order - b.order);
+
+      // ---- adjacency (derived from edges) ----
+      const outAdj = new Map(), inAdj = new Map(), nbr = new Map();
+      for (const n of DATA.nodes) { outAdj.set(n.id, []); inAdj.set(n.id, []); nbr.set(n.id, new Set()); }
+      for (const e of DATA.edges) {
+        if (!nodeById.has(e.from) || !nodeById.has(e.to)) continue;
+        outAdj.get(e.from).push(e); inAdj.get(e.to).push(e);
+        nbr.get(e.from).add(e.to); nbr.get(e.to).add(e.from);
+      }
+
+      // ---- layout: layered bands, barycenter ordering within each band ----
+      const layerNodes = new Map();
+      for (const l of layers) layerNodes.set(l.id, DATA.nodes.filter((n) => n.layer === l.id));
+
+      function barycenterOrder() {
+        const orderIndex = new Map();
+        layers.forEach((l) => layerNodes.get(l.id).forEach((n, i) => orderIndex.set(n.id, i)));
+        for (let pass = 0; pass < 4; pass++) {
+          for (const l of layers) {
+            const arr = layerNodes.get(l.id);
+            const score = new Map();
+            for (const n of arr) {
+              const neigh = [...nbr.get(n.id)].filter((m) => nodeById.get(m).layer !== l.id);
+              if (!neigh.length) { score.set(n.id, orderIndex.get(n.id)); continue; }
+              const avg = neigh.reduce((s, m) => s + (orderIndex.get(m) ?? 0), 0) / neigh.length;
+              score.set(n.id, avg);
+            }
+            arr.sort((a, b) => (score.get(a.id) - score.get(b.id)) || 0);
+            arr.forEach((n, i) => orderIndex.set(n.id, i));
+          }
+        }
+      }
+      barycenterOrder();
+
+      // Measure max row width to centre every band on a shared axis.
+      let maxRowW = 0;
+      for (const l of layers) {
+        const n = layerNodes.get(l.id).length;
+        const cols = Math.min(n, MAXCOLS[l.id] || 4);
+        if (cols > 0) maxRowW = Math.max(maxRowW, cols * NODE_W + (cols - 1) * COL_GAP);
+      }
+      const centerX = SIDE_PAD + maxRowW / 2;
+      const bands = [];
+      let y = TOP_PAD;
+      for (const l of layers) {
+        const arr = layerNodes.get(l.id);
+        const cols = Math.min(arr.length, MAXCOLS[l.id] || 4) || 1;
+        const rows = Math.ceil(arr.length / cols) || 1;
+        arr.forEach((n, i) => {
+          const r = Math.floor(i / cols);
+          const rowCount = Math.min(cols, arr.length - r * cols);
+          const rowW = rowCount * NODE_W + (rowCount - 1) * COL_GAP;
+          const startX = centerX - rowW / 2;
+          const c = i % cols;
+          n.x = startX + c * (NODE_W + COL_GAP);
+          n.y = y + r * (NODE_H + INTRA_GAP);
+        });
+        const bandH = rows * NODE_H + (rows - 1) * INTRA_GAP;
+        bands.push({ id: l.id, label: l.label, x: SIDE_PAD - 22, y: y - 30, w: maxRowW + 44, h: bandH + 44, color: LAYER_COLOR[l.id] });
+        y += bandH + ROW_GAP;
+      }
+      const worldW = maxRowW + SIDE_PAD * 2;
+      const worldH = y;
+
+      // ---- render ----
+      const svg = document.getElementById('graph');
+      const root = document.createElementNS(SVGNS, 'g');
+      svg.appendChild(root);
+      const gBands = mk('g'), gEdges = mk('g'), gEdgeLabels = mk('g'), gNodes = mk('g');
+      root.append(gBands, gEdges, gEdgeLabels, gNodes);
+      function mk(t) { return document.createElementNS(SVGNS, t); }
+      function attr(el, o) { for (const k in o) el.setAttribute(k, o[k]); return el; }
+
+      for (const b of bands) {
+        const r = attr(mk('rect'), { class: 'band-rect', x: b.x, y: b.y, width: b.w, height: b.h, rx: 14 });
+        const t = attr(mk('text'), { class: 'band-label', x: b.x + 4, y: b.y - 8 });
+        t.style.fill = b.color; t.textContent = b.label;
+        gBands.append(r, t);
+      }
+
+      function center(n) { return { x: n.x + NODE_W / 2, y: n.y + NODE_H / 2 }; }
+      function edgePath(e) {
+        const a = center(nodeById.get(e.from)), b = center(nodeById.get(e.to));
+        const my = (a.y + b.y) / 2;
+        return `M${a.x},${a.y} C${a.x},${my} ${b.x},${my} ${b.x},${b.y}`;
+      }
+      const edgeEls = [];
+      for (const e of DATA.edges) {
+        const p = attr(mk('path'), { class: 'edge ' + e.kind, d: edgePath(e) });
+        if (e.kind === 'import' && e.weight) p.style.strokeWidth = Math.min(1 + e.weight * 0.5, 5);
+        gEdges.appendChild(p);
+        let lbl = null;
+        if (e.label) {
+          const a = center(nodeById.get(e.from)), b = center(nodeById.get(e.to));
+          lbl = attr(mk('text'), { class: 'edge-label', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 3, 'text-anchor': 'middle' });
+          lbl.textContent = e.label;
+          gEdgeLabels.appendChild(lbl);
+        }
+        edgeEls.push({ e, p, lbl });
+      }
+
+      const nodeEls = new Map();
+      for (const n of DATA.nodes) {
+        const g = attr(mk('g'), { class: 'node', 'data-id': n.id });
+        const color = LAYER_COLOR[n.layer];
+        const rect = attr(mk('rect'), { x: n.x, y: n.y, width: NODE_W, height: NODE_H });
+        rect.style.fill = color + '14'; rect.style.stroke = color;
+        const kind = attr(mk('text'), { class: 'kind', x: n.x + 12, y: n.y + 16 });
+        kind.style.fill = color; kind.textContent = KIND_LABEL[n.kind] || n.kind;
+        const label = attr(mk('text'), { x: n.x + 12, y: n.y + 35 });
+        label.style.fill = '#2a2722'; label.textContent = n.label;
+        g.append(rect, kind, label);
+        g.addEventListener('click', (ev) => { ev.stopPropagation(); select(n.id); });
+        gNodes.appendChild(g);
+        nodeEls.set(n.id, g);
+      }
+
+      // ---- selection / highlight ----
+      let selected = null;
+      function select(id) {
+        selected = id;
+        const hot = new Set([id, ...nbr.get(id)]);
+        for (const [nid, g] of nodeEls) g.classList.toggle('dim', !hot.has(nid));
+        nodeEls.get(id).classList.add('sel');
+        for (const [nid, g] of nodeEls) if (nid !== id) g.classList.remove('sel');
+        for (const { e, p, lbl } of edgeEls) {
+          const on = e.from === id || e.to === id;
+          p.classList.toggle('hot', on); p.classList.toggle('dim', !on);
+          if (lbl) lbl.classList.toggle('hot', on);
+        }
+        openPanel(nodeById.get(id));
+      }
+      function clearSelect() {
+        selected = null;
+        for (const g of nodeEls.values()) g.classList.remove('dim', 'sel');
+        for (const { p, lbl } of edgeEls) { p.classList.remove('hot', 'dim'); if (lbl) lbl.classList.remove('hot'); }
+        closePanel();
+      }
+      svg.addEventListener('click', clearSelect);
+
+      // ---- side panel ----
+      const panel = document.getElementById('panel');
+      const panelBody = document.getElementById('panel-body');
+      document.getElementById('close-panel').addEventListener('click', clearSelect);
+      const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      const jsonStr = (v) => JSON.stringify(v, null, 2);
+
+      function listLinks(ids) {
+        if (!ids.length) return '<li class="note">none</li>';
+        return ids.map((id) => `<li><span class="chip" data-goto="${id}">${esc(nodeById.get(id).label)}</span></li>`).join('');
+      }
+      function openPanel(n) {
+        const color = LAYER_COLOR[n.layer];
+        const outs = outAdj.get(n.id).map((e) => e.to);
+        const ins = inAdj.get(n.id).map((e) => e.from);
+        let h = `<h2>${esc(n.label)}</h2>`;
+        h += `<span class="tag" style="background:${color}">${esc(KIND_LABEL[n.kind] || n.kind)}</span>`;
+        if (n.description) h += `<p class="desc">${esc(n.description)}</p>`;
+
+        const d = n.details || {};
+        if (d.payload) {
+          h += `<h3>Request payload</h3><pre class="json">${esc(jsonStr(d.payload.request))}</pre>`;
+          h += `<h3>Responses</h3>`;
+          for (const r of d.payload.responses) {
+            h += `<div><span class="resp-status" style="color:${color}">${r.status}</span>`;
+            h += `<pre class="json">${esc(jsonStr(r.shape))}</pre>`;
+            if (r.note) h += `<div class="note">${esc(r.note)}</div>`;
+            h += `</div>`;
+          }
+        }
+        if (d.domainShapes) {
+          h += `<h3>Zod data shapes</h3>`;
+          for (const s of d.domainShapes) h += `<div class="tbl"><span class="tname">${esc(s.name)}</span> — <span class="cols">${esc(s.summary)}</span></div>`;
+        }
+        if (d.dbTables) {
+          h += `<h3>Tables &amp; RLS</h3>`;
+          for (const t of d.dbTables) {
+            h += `<div class="tbl"><span class="tname">${esc(t.name)}</span><br>`;
+            h += `<span class="cols">${esc(t.columns.join(', '))}</span><br>`;
+            h += `<span class="rls">🔒 ${esc(t.rls)}</span></div>`;
+          }
+        }
+        h += `<h3>Imports → (${outs.length})</h3><ul>${listLinks([...new Set(outs)])}</ul>`;
+        h += `<h3>Imported by ← (${ins.length})</h3><ul>${listLinks([...new Set(ins)])}</ul>`;
+        if (n.files.length) {
+          h += `<h3>Files (${n.files.length})</h3><ul>` + n.files.map((f) => `<li><code>${esc(f)}</code></li>`).join('') + `</ul>`;
+        }
+        panelBody.innerHTML = h;
+        panelBody.querySelectorAll('[data-goto]').forEach((el) =>
+          el.addEventListener('click', () => { select(el.getAttribute('data-goto')); centerOn(el.getAttribute('data-goto')); }));
+        panel.classList.add('open');
+      }
+      function closePanel() { panel.classList.remove('open'); }
+
+      // ---- filters / toolbar ----
+      const visibleLayers = new Set(layers.map((l) => l.id));
+      const visibleKinds = new Set(['import', 'flow']);
+      const toolbar = document.getElementById('toolbar');
+      let tb = '';
+      for (const l of layers) tb += `<label><input type="checkbox" data-layer="${l.id}" checked><span class="swatch" style="background:${LAYER_COLOR[l.id]}"></span>${esc(l.label)}</label>`;
+      tb += `<span class="sep"></span>`;
+      tb += `<label><input type="checkbox" data-kind="import" checked>imports</label>`;
+      tb += `<label><input type="checkbox" data-kind="flow" checked><span class="swatch" style="background:var(--flow)"></span>data flow</label>`;
+      toolbar.innerHTML = tb;
+      toolbar.querySelectorAll('input[data-layer]').forEach((cb) => cb.addEventListener('change', () => {
+        cb.checked ? visibleLayers.add(cb.dataset.layer) : visibleLayers.delete(cb.dataset.layer); applyFilters();
+      }));
+      toolbar.querySelectorAll('input[data-kind]').forEach((cb) => cb.addEventListener('change', () => {
+        cb.checked ? visibleKinds.add(cb.dataset.kind) : visibleKinds.delete(cb.dataset.kind); applyFilters();
+      }));
+      function applyFilters() {
+        for (const [id, g] of nodeEls) g.style.display = visibleLayers.has(nodeById.get(id).layer) ? '' : 'none';
+        for (const { e, p, lbl } of edgeEls) {
+          const on = visibleKinds.has(e.kind) && visibleLayers.has(nodeById.get(e.from).layer) && visibleLayers.has(nodeById.get(e.to).layer);
+          p.style.display = on ? '' : 'none'; if (lbl) lbl.style.display = on ? '' : 'none';
+        }
+      }
+      document.getElementById('menu-toggle').addEventListener('click', () => toolbar.classList.toggle('open'));
+
+      // ---- search ----
+      document.getElementById('search').addEventListener('input', (ev) => {
+        const q = ev.target.value.trim().toLowerCase();
+        for (const [id, g] of nodeEls) {
+          if (!visibleLayers.has(nodeById.get(id).layer)) continue;
+          const match = !q || nodeById.get(id).label.toLowerCase().includes(q) || id.toLowerCase().includes(q);
+          g.classList.toggle('dim', q && !match);
+        }
+      });
+
+      // ---- pan & zoom (mouse + touch) ----
+      let view = { x: 0, y: 0, k: 1 };
+      function applyView() { root.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`); }
+      function fit() {
+        const rect = svg.getBoundingClientRect();
+        const pad = 40;
+        const k = Math.min((rect.width - pad * 2) / worldW, (rect.height - pad * 2) / worldH);
+        view.k = Math.max(0.2, Math.min(k, 1.4));
+        view.x = (rect.width - worldW * view.k) / 2;
+        view.y = pad;
+        applyView();
+      }
+      function centerOn(id) {
+        const n = nodeById.get(id); if (!n) return;
+        const rect = svg.getBoundingClientRect();
+        const c = center(n);
+        view.x = rect.width / 2 - c.x * view.k;
+        view.y = rect.height / 2 - c.y * view.k;
+        applyView();
+      }
+      document.getElementById('fit').addEventListener('click', fit);
+
+      svg.addEventListener('wheel', (ev) => {
+        ev.preventDefault();
+        const rect = svg.getBoundingClientRect();
+        const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+        const factor = Math.exp(-ev.deltaY * 0.0015);
+        zoomAt(mx, my, factor);
+      }, { passive: false });
+      function zoomAt(mx, my, factor) {
+        const nk = Math.max(0.15, Math.min(view.k * factor, 4));
+        const r = nk / view.k;
+        view.x = mx - (mx - view.x) * r;
+        view.y = my - (my - view.y) * r;
+        view.k = nk; applyView();
+      }
+
+      // Capture happens lazily on the first real drag move, never on pointerdown,
+      // so a plain click still reaches the node it landed on.
+      const pointers = new Map();
+      let pinchDist = 0, panStart = null, panning = false, captured = false;
+      svg.addEventListener('pointerdown', (ev) => {
+        pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, id: ev.pointerId });
+        if (pointers.size === 1) panStart = { x: ev.clientX - view.x, y: ev.clientY - view.y, ox: ev.clientX, oy: ev.clientY };
+        else if (pointers.size === 2) { pinchDist = twoDist(); panning = false; }
+      });
+      svg.addEventListener('pointermove', (ev) => {
+        if (!pointers.has(ev.pointerId)) return;
+        pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, id: ev.pointerId });
+        if (pointers.size === 1 && panStart) {
+          if (!panning && Math.hypot(ev.clientX - panStart.ox, ev.clientY - panStart.oy) < 4) return;
+          if (!captured) { svg.setPointerCapture(ev.pointerId); captured = true; svg.classList.add('grabbing'); }
+          panning = true;
+          view.x = ev.clientX - panStart.x; view.y = ev.clientY - panStart.y; applyView();
+        } else if (pointers.size === 2) {
+          const d = twoDist();
+          if (pinchDist > 0) {
+            const rect = svg.getBoundingClientRect();
+            const mid = twoMid();
+            zoomAt(mid.x - rect.left, mid.y - rect.top, d / pinchDist);
+          }
+          pinchDist = d;
+        }
+      });
+      function endPointer(ev) {
+        pointers.delete(ev.pointerId);
+        if (pointers.size < 2) pinchDist = 0;
+        if (pointers.size === 0) { panStart = null; panning = false; captured = false; svg.classList.remove('grabbing'); }
+      }
+      svg.addEventListener('pointerup', endPointer);
+      svg.addEventListener('pointercancel', endPointer);
+      function twoPts() { return [...pointers.values()]; }
+      function twoDist() { const [a, b] = twoPts(); return Math.hypot(a.x - b.x, a.y - b.y); }
+      function twoMid() { const [a, b] = twoPts(); return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+
+      window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') clearSelect(); });
+      window.addEventListener('resize', () => { if (!selected) fit(); });
+      fit();
+    </script>
+  </body>
+</html>
