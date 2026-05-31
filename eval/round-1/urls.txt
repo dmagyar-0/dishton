@@ -1,0 +1,12 @@
+# 10 recipe URLs covering different cuisines and recipe types.
+# Lines starting with `#` and blank lines are skipped.
+https://www.bbcgoodfood.com/recipes/easy-chocolate-cake
+https://smittenkitchen.com/2018/03/dijon-and-cognac-beef-stew/
+https://www.bonappetit.com/recipe/bas-best-chocolate-chip-cookies
+https://www.seriouseats.com/the-food-lab-classic-pizza-margherita
+https://www.foodnetwork.com/recipes/ina-garten/perfect-roast-chicken-recipe-1940592
+https://www.allrecipes.com/recipe/16354/easy-meatloaf/
+https://www.epicurious.com/recipes/food/views/classic-tomato-soup-with-grilled-cheese-croutons
+https://www.tasteofhome.com/recipes/best-ever-banana-bread/
+https://www.delish.com/cooking/recipe-ideas/a25649815/best-french-toast-recipe/
+https://www.kingarthurbaking.com/recipes/the-easiest-loaf-of-bread-youll-ever-bake-recipe

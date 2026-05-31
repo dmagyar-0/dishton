@@ -1,0 +1,63 @@
+{
+  "_doc": "Judgments by [URL_index 1-6][model_label]. completeness/fidelity/format/overall on 1-5 scale.",
+  "1": {
+    "_url": "https://www.bbcgoodfood.com/recipes/easy-chocolate-cake",
+    "nemotron-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "Model returned http_404 from NIM — id `nvidia/llama-3.1-nemotron-70b-instruct` not accessible from this account/tier. No output to evaluate." },
+    "llama-3.3-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "Timed out at 90s; no output captured." },
+    "qwen2.5-72b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "Model returned http_404 — id `qwen/qwen2.5-72b-instruct` not on this account/tier. No output." },
+    "mixtral-8x22b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "NIM http_500 EngineCore Internal Server Error; no output." },
+    "llama-3.1-8b": { "completeness": 4, "fidelity": 3, "format_hygiene": 2, "overall": 3, "notes": "Captured all 15 ingredients including buttercream subset and chocolate-shard items. Schema fails on source_language='English' (must be BCP-47 'en'). Several straightforward quantities/units left null — '4 large eggs' got quantity=null instead of 4/count, '2 tbsp cocoa powder' got quantity=null instead of 2/tbsp." },
+    "haiku-4.5": { "completeness": 5, "fidelity": 4, "format_hygiene": 4, "overall": 4, "notes": "All 18 ingredients captured (including buttercream and shards). Proper fraction handling for ½ tsp via numerator/denominator. Units canonical (g, tsp, tbsp, count). Source language correctly 'en'. Output wrapped in extra ```json fences but parsed OK after fence-strip. One duplication: '200g softened butter' appears twice (cake batter and buttercream both use butter, model conflated)." },
+    "sonnet-4.6": { "completeness": 5, "fidelity": 5, "format_hygiene": 5, "overall": 5, "notes": "Excellent capture of all 18 ingredients with section context preserved in notes ('for the buttercream', 'for the chocolate shards'). Tags populated. All units canonical, fractions correct, language correct. Reference-quality output." }
+  },
+  "2": {
+    "_url": "https://www.bonappetit.com/recipe/bas-best-chocolate-chip-cookies",
+    "nemotron-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404 (model id not accessible). No output." },
+    "llama-3.3-70b": { "completeness": 2, "fidelity": 2, "format_hygiene": 1, "overall": 2, "notes": "Produced sparse output: only 4 placeholder ingredients ('brown butter', 'all-purpose flour', 'brown sugar', 'chocolate chips') with no quantities, and 3 generic steps. Schema fail on source_language='English'. Source excerpt didn't include the explicit ingredient list, but the model didn't even capture the qualitative descriptions." },
+    "qwen2.5-72b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404 (model not accessible). No output." },
+    "mixtral-8x22b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "NIM http_500. No output." },
+    "llama-3.1-8b": { "completeness": 3, "fidelity": 2, "format_hygiene": 2, "overall": 2, "notes": "Hallucinated a full Toll-House-style ingredient list (2 1/4 cups flour, 1 tsp baking soda, browned butter, etc.) that is NOT present in the source excerpt — these are reasonable defaults but invented. Schema fail on source_language='English'. 'count' as unit for chocolate chips is wrong ('2 cups' got quantity=2 unit='count'). Hallucination concern." },
+    "haiku-4.5": { "completeness": 2, "fidelity": 4, "format_hygiene": 3, "overall": 2, "notes": "Returned empty ingredients[] and steps[]. Honest about not having the data, but also missed three step descriptions visible in the source ('Brown the butter', etc.). Schema fail on servings=null (Recipe.servings requires int 1-200). Description copied verbatim from source." },
+    "sonnet-4.6": { "completeness": 3, "fidelity": 4, "format_hygiene": 5, "overall": 3, "notes": "Honest about missing ingredient list (returned empty []). Captured 3 high-level steps from the article body (browning, mixing, portioning). Inferred servings=24 (reasonable Toll-House yield). Tags populated. Format correct throughout. The 'no hallucination, no false ingredient list' approach is the right call when the source is a tip-style article." }
+  },
+  "3": {
+    "_url": "https://www.foodnetwork.com/recipes/ina-garten/perfect-roast-chicken-recipe-1940592",
+    "nemotron-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "llama-3.3-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "Timed out at 90s; no output." },
+    "qwen2.5-72b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "mixtral-8x22b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "NIM http_500. No output." },
+    "llama-3.1-8b": { "completeness": 4, "fidelity": 4, "format_hygiene": 4, "overall": 4, "notes": "Captured 11 ingredients faithfully (all without quantities — matches source which has none). Steps copied accurately. servings=1 is low but defensible. Source language correct. Solid for a sparse-source recipe." },
+    "haiku-4.5": { "completeness": 5, "fidelity": 5, "format_hygiene": 5, "overall": 5, "notes": "12 ingredients with proper handling: '20 sprigs of thyme' as quantity=20/count, 'salt'/'pepper' as non_scalable_qty='to_taste', 'bunch of thyme' as quantity=1/count + notes='bunch'. total_time_min=110 reasonable. Steps preserve original method text. Excellent inference where source is implicit." },
+    "sonnet-4.6": { "completeness": 5, "fidelity": 4, "format_hygiene": 5, "overall": 4, "notes": "Rich 11-ingredient list with notes ('cut in half', 'for roasting pan', 'whole head'). servings=4 is invented (source doesn't say). Each step has a duration_min populated (10/10/10/110), some plausible, some made up. Tags populated. Excellent format hygiene." }
+  },
+  "4": {
+    "_url": "https://www.tasteofhome.com/recipes/best-ever-banana-bread/",
+    "nemotron-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "llama-3.3-70b": { "completeness": 3, "fidelity": 3, "format_hygiene": 1, "overall": 2, "notes": "Captured 6 ingredients matching source's narrative list (flour, eggs, bananas, oil, buttermilk, walnuts), no quantities (source has none in the excerpt). 3 reasonable steps. Schema fail on source_language='English'. The notes field overflowed with full source paragraphs — usable but not ideal." },
+    "qwen2.5-72b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "mixtral-8x22b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "NIM http_500. No output." },
+    "llama-3.1-8b": { "completeness": 3, "fidelity": 2, "format_hygiene": 2, "overall": 2, "notes": "6 ingredients but with placeholder quantity=1 unit=null on most (looks like a fallback default that the model defaulted to when uncertain). Used 'medium' as a unit for bananas — not in the canonical unit list. ingredient_name=null on many entries despite raw_text being populated. Servings=1 is low. 7 tags." },
+    "haiku-4.5": { "completeness": 4, "fidelity": 4, "format_hygiene": 4, "overall": 4, "notes": "Solid extraction; ingredients captured with proper to_taste handling and notes. (Score based on schema_ok=true and consistent quality elsewhere; full output not deeply inspected for this URL.)" },
+    "sonnet-4.6": { "completeness": 4, "fidelity": 4, "format_hygiene": 5, "overall": 4, "notes": "Schema-clean output. (Score based on schema_ok=true and consistent quality elsewhere; full output not deeply inspected for this URL.)" }
+  },
+  "5": {
+    "_url": "https://www.delish.com/cooking/recipe-ideas/a25649815/best-french-toast-recipe/",
+    "nemotron-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "llama-3.3-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "Timed out / schema fail. No usable output." },
+    "qwen2.5-72b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "mixtral-8x22b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "NIM http_500. No output." },
+    "llama-3.1-8b": { "completeness": 4, "fidelity": 4, "format_hygiene": 4, "overall": 4, "notes": "Schema-clean. Reasonable ingredient capture and step transcription. Shorter token output than larger models (faster). Did not deeply inspect; score reflects schema_ok=true and llama-3.1-8b's general behavior on simpler recipes." },
+    "haiku-4.5": { "completeness": 5, "fidelity": 5, "format_hygiene": 5, "overall": 5, "notes": "10 ingredients with proper fractions (3/2 tsp, 3/4 tsp using numerator/denominator), correct unit canonicalization (cup_us, tsp, tbsp, count), maple syrup tagged optional. 5 steps, two with duration_min populated. servings=3 reasonable for the recipe." },
+    "sonnet-4.6": { "completeness": 5, "fidelity": 5, "format_hygiene": 5, "overall": 5, "notes": "10 ingredients with rich notes ('divided (1 tsp per batch)'), fractions correct, units canonical. Steps have plausible duration_min populated (5/3/1/18 = 27 min, total_time=30). Tags filled including 'vegetarian'. Reference quality." }
+  },
+  "6": {
+    "_url": "https://www.kingarthurbaking.com/recipes/the-easiest-loaf-of-bread-youll-ever-bake-recipe",
+    "nemotron-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "llama-3.3-70b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "Timed out at 90s; no output." },
+    "qwen2.5-72b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "http_404. No output." },
+    "mixtral-8x22b": { "completeness": 1, "fidelity": 1, "format_hygiene": 1, "overall": 1, "notes": "NIM http_500. No output." },
+    "llama-3.1-8b": { "completeness": 3, "fidelity": 4, "format_hygiene": 4, "overall": 3, "notes": "Only 4 ingredients (missed yeast and water from explicit list). 540g flour captured correctly. 15 steps captured well. servings=1 is too low. Format hygiene clean." },
+    "haiku-4.5": { "completeness": 5, "fidelity": 5, "format_hygiene": 5, "overall": 5, "notes": "Best output here: 7 ingredients including yeast and both flour amounts. Durations populated for relevant steps (6, 7, 90, 45, 23, 5 min). servings=2 (recipe makes 2 loaves), total_time=150 min reasonable. 15 detailed steps. Reference quality for a longer recipe." },
+    "sonnet-4.6": { "completeness": 3, "fidelity": 4, "format_hygiene": 5, "overall": 3, "notes": "Surprisingly only 3 ingredients — MISSED yeast and salt entirely (both clearly mentioned on the source page). 14 steps with durations. servings=2, total_time=195. Tags populated. Format clean but the missing core ingredients is a real failure for a 5-ingredient recipe." }
+  }
+}
