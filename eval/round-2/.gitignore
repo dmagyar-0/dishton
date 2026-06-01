@@ -1,0 +1,10 @@
+# Cookbook photos: binary + possibly copyrighted. Supply locally (see PLAN.md).
+fixtures/images/**/*.jpg
+fixtures/images/**/*.jpeg
+fixtures/images/**/*.png
+fixtures/images/**/*.webp
+
+# Scratch run reports (smoke tests / credit-check / auto-timestamped).
+# The canonical clean runs (runs/r2.0-*.md) are committed.
+runs/_*.md
+runs/round-2-r2-0-*Z.md

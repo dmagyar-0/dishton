@@ -1,0 +1,53 @@
+{
+  "title": "Sweet Potato Cottage Pie",
+  "titleExpect": "sweet potato",
+  "verify": "DRAFT read from the photos — PLEASE CONFIRM against the book before trusting recall/bleed numbers. Most uncertain: the SAUCE row for the middle column (I read '800ml veg stock'; confirm whether chopped tomatoes belong to Sweet Potato Cottage Pie). 'expect' = ingredients that SHOULD appear in the middle column; 'forbidden' = distinctive ingredients from the Shepherdless (left) and Fishless (right) columns that must NOT appear (column bleed). Forbidden terms are matched loosely (e.g. 'wine' catches 'red wine', 'cashew' catches 'cashew nuts').",
+  "minSteps": 10,
+  "sections": [
+    "base veg",
+    "core veg",
+    "beans/lentils",
+    "sauce",
+    "seasoning",
+    "mashed potato topping",
+    "to serve"
+  ],
+  "expect": [
+    "leek",
+    "garlic",
+    "oil",
+    "green beans",
+    "carrot",
+    "parsnip",
+    "lentils",
+    "chickpeas",
+    "veg stock",
+    "thyme",
+    "tamari",
+    "chilli powder",
+    "salt",
+    "pepper",
+    "potatoes",
+    "sweet potatoes",
+    "oat milk",
+    "olive oil",
+    "coriander pesto"
+  ],
+  "forbidden": [
+    "onion",
+    "celery",
+    "celeriac",
+    "fine bean",
+    "parsley",
+    "smoked paprika",
+    "maple syrup",
+    "oyster mushroom",
+    "samphire",
+    "dulse",
+    "black bean",
+    "wine",
+    "cashew",
+    "beef",
+    "red chilli"
+  ]
+}
