@@ -102,7 +102,22 @@ For strict structured extraction into a fixed tool schema, **leave adaptive thin
 1. **Text + caption lanes:** keep `claude-haiku-4-5` (current prod). Fast, cheap, passes everything tested.
 2. **Photo / vision lane:** switch from `haiku` to **`claude-sonnet-4-6`, thinking off**. It's the only change that fixes the multi-column matrix photo, at ~$0.07/import. `opus` is equally correct but 3× the cost for no benefit. `client.ts` already carries a `lane: 'text' | 'vision'` parameter, so this is a per-lane model override, not a global switch.
 3. **Do not enable adaptive thinking** for extraction.
-4. **Optional R2.1 prompt tweak:** strengthen the topping rule so the plain-potatoes line isn't dropped from variant toppings; re-run Stage 3 to measure the lift.
+4. **Do not adopt the R2.1 "strict multi-item" prompt tweak** — tested and rejected (it raised column bleed on opus; see [R2.1](#r21--prompt-experiment-strict-multi-item-rule--rejected)).
+
+## R2.1 — prompt experiment: strict multi-item rule — rejected
+
+The one R2.0 nit was that `sonnet` (and sometimes `opus`) dropped the plain `750g potatoes` from a topping that lists *both* potatoes and sweet potatoes. R2.1 appended a sharpened rule to the system prompt (production prompt left untouched) — *"every distinct line is its own row; when a cell lists multiple items, e.g. both potatoes and sweet potatoes, emit a row for each; never drop one"* — and re-ran the photo A/B vs baseline on `sonnet` + `opus` (repeat 3).
+
+| config | variant | title | recall | real bleed | plain-potato row | seasoning |
+|---|---|---|---|---|---|---|
+| sonnet | baseline | ✅ | 100% | 0 | ❌ dropped | correct |
+| sonnet | R2.1 | ✅ | 100% | 0 | ❌ still dropped | correct |
+| opus | baseline | ✅ | 100% | 0 | ✅ kept both | correct |
+| opus | R2.1 | ✅ | **89%** | **2** | ✅ kept both | ❌ bled |
+
+**Verdict: reject.** It didn't fix the target (sonnet still dropped the plain potatoes) and it *backfired on opus*: the "never drop anything" pressure fought the "use only the middle column" instruction, so opus over-included — it pulled `chopped tomatoes`, `maple syrup` and `smoked paprika` from the **Shepherdless** column and dropped the Sweet-Potato `thyme`/`chilli powder`. For a single-variant matrix extraction, **selectivity beats exhaustiveness** — a global "include everything" rule increases column bleed. The plain-potato omission is also intermittent (opus kept both potatoes in *this* baseline run), so it's a minor cosmetic nit, not worth a prompt change that raises bleed risk. (Run: [`runs/r2.1-stage3.md`](runs/r2.1-stage3.md).)
+
+This A/B also independently **confirmed the comparator fix**: `opus` baseline now reports `bleed: 0` on live data (the earlier "black bean" false positive is gone).
 
 ## Comparator fix
 
@@ -115,4 +130,4 @@ The automated gold-diff initially reported "bleed: black bean" for `sonnet`/`opu
 
 ## Reproduce
 
-See [`PLAN.md` → How to run](PLAN.md). Raw per-run reports (with every model's full output + judge blocks) are in [`runs/`](runs/): `r2.0-stage23.md` (this analysis), `r2.0-stage1.md` (URL regression), `r2.0-baseline.md` (the first, credit-truncated pass).
+See [`PLAN.md` → How to run](PLAN.md). Raw per-run reports (with every model's full output + judge blocks) are in [`runs/`](runs/): `r2.0-stage23.md` (captions + image), `r2.0-stage1.md` (URL regression), `r2.1-stage3.md` (the R2.1 A/B), `r2.0-baseline.md` (the first, credit-truncated pass).

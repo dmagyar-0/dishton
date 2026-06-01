@@ -49,7 +49,11 @@ function mediaType(p: string): MediaType {
 // Reuse the production image prompt verbatim, then swap its placeholder URL
 // blocks for base64 blocks (local files aren't publicly fetchable). Keeping the
 // prompt text as the single source of truth avoids drift with import-photo.
-async function imageMessages(paths: string[], comment: string): Promise<AiMessage[]> {
+async function imageMessages(
+  paths: string[],
+  comment: string,
+  extraSystemRule?: string,
+): Promise<AiMessage[]> {
   const imgs = await Promise.all(
     paths.map(async (p) => ({
       media_type: mediaType(p),
@@ -62,7 +66,7 @@ async function imageMessages(paths: string[], comment: string): Promise<AiMessag
     comment,
     allowedTags: ALLOWED_TAGS,
   });
-  return msgs.map((m): AiMessage => {
+  const swapped = msgs.map((m): AiMessage => {
     if (m.role !== 'user' || typeof m.content === 'string') return m;
     let i = 0;
     const content = m.content.map((b) => {
@@ -75,6 +79,14 @@ async function imageMessages(paths: string[], comment: string): Promise<AiMessag
     });
     return { role: 'user', content };
   });
+  // Prompt-variant experiments append an extra rule to the system message,
+  // leaving the production prompt untouched.
+  if (!extraSystemRule) return swapped;
+  return swapped.map((m): AiMessage =>
+    m.role === 'system' && typeof m.content === 'string'
+      ? { role: 'system', content: `${m.content}\n${extraSystemRule}` }
+      : m
+  );
 }
 
 async function readLines(path: string): Promise<string[]> {
@@ -172,6 +184,30 @@ export async function loadCases(): Promise<EvalCase[]> {
         sourceExcerpt: `${paths.length} photos: ${
           paths.map((p) => p.split('/').pop()).join(', ')
         } — note: "${comment}"`,
+      };
+    },
+  });
+
+  // R2.1 prompt experiment: the baseline winners (sonnet/opus) extract the right
+  // column but drop the plain "750g potatoes" from a topping that lists BOTH
+  // potatoes and sweet potatoes — despite the production prompt's existing
+  // "plain potatoes in a Sweet Potato variant" line. This variant appends a
+  // sharpened multi-item rule to the system message (production prompt left
+  // untouched) to measure the lift.
+  const R21_MULTI_ITEM_RULE =
+    'Each distinct ingredient line in the chosen column/variant is its own ingredient row. When a single cell or category lists more than one ingredient (for example a topping made of BOTH potatoes AND sweet potatoes), output a separate row for every one of them — never merge two ingredients into one row, and never drop one because it seems redundant with the dish name.';
+  cases.push({
+    id: 's3-img-shepherdless-r21',
+    stage: 3,
+    kind: 'image',
+    label: 'shepherdless-pie (R2.1 prompt: strict multi-item rule)',
+    goldPath: 'eval/round-2/gold/sweet-potato-cottage-pie.json',
+    build: async () => {
+      const paths = await listImages(imgDir);
+      if (paths.length === 0) throw new Error(`no images in ${imgDir}`);
+      return {
+        messages: await imageMessages(paths, comment, R21_MULTI_ITEM_RULE),
+        sourceExcerpt: `${paths.length} photos (R2.1 strict multi-item rule) — note: "${comment}"`,
       };
     },
   });
