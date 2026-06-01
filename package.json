@@ -25,6 +25,9 @@
     "caption:eval": "deno run --env-file=.env --config eval/nim/deno.json --allow-net --allow-read --allow-env --allow-write eval/nim/caption.ts",
     "prompt:show": "deno run --config eval/nim/deno.json --allow-net --allow-read --allow-env eval/nim/show-prompt.ts",
     "test:eval": "deno test --config eval/nim/deno.json -A eval/nim",
+    "eval:round2": "deno run --env-file=.env --config eval/round-2/deno.json --allow-net --allow-read --allow-env --allow-write eval/round-2/run.ts",
+    "eval:round2:dry": "deno run --config eval/round-2/deno.json --allow-net --allow-read --allow-env --allow-write eval/round-2/run.ts --dry-run",
+    "test:eval:round2": "deno test --config eval/round-2/deno.json -A eval/round-2",
     "db:reset": "supabase db reset",
     "fn:serve": "supabase functions serve --no-verify-jwt",
     "fn:deploy": "supabase functions deploy"

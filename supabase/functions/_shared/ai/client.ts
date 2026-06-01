@@ -1,6 +1,7 @@
 // Anthropic client wrapper. Authenticates with the Anthropic SDK, retries on
 // 5xx and 429 with backoff + jitter, never on other 4xx, surfaces typed
-// errors. Single model (Haiku 4.5) handles both text and vision lanes.
+// errors. Per-lane default model: Haiku 4.5 for text, Sonnet 4.6 for vision
+// (eval round 2 found Haiku unreliable on multi-column cookbook-table photos).
 //
 // Edge-function only — never imported from the SPA bundle.
 
@@ -9,7 +10,21 @@ import { env } from '../env.ts';
 
 export type Lane = 'text' | 'vision';
 
-const DEFAULT_MODEL = 'claude-haiku-4-5';
+// Per-lane default model. Vision defaults to Sonnet 4.6: eval round 2
+// (eval/round-2/README.md) found Haiku 4.5 fails multi-column cookbook-table
+// photos (wrong dish, mixed columns, hallucinations) while Sonnet 4.6 extracts
+// them cleanly for ~$0.07/photo. Adaptive thinking did not help and is not used.
+// Override per lane via ANTHROPIC_MODEL (text) / ANTHROPIC_MODEL_VISION (vision).
+const DEFAULT_MODEL: Record<Lane, string> = {
+  text: 'claude-haiku-4-5',
+  vision: 'claude-sonnet-4-6',
+};
+
+function laneModel(lane: Lane): string {
+  const override = lane === 'vision' ? env.ANTHROPIC_MODEL_VISION : env.ANTHROPIC_MODEL;
+  return override ?? DEFAULT_MODEL[lane];
+}
+
 const MAX_OUTPUT_TOKENS = 4096;
 
 const TIMEOUT_MS: Record<Lane, number> = { text: 90_000, vision: 90_000 };
@@ -108,7 +123,7 @@ function splitSystem(messages: AiMessage[]): {
 
 export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
   const client = getClient();
-  const model = opts.model ?? env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const model = opts.model ?? laneModel(opts.lane);
   const { system, rest } = splitSystem(opts.messages);
 
   const params: Anthropic.MessageCreateParamsNonStreaming = {

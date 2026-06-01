@@ -164,7 +164,8 @@ Everything else is server-side only.
 | `VITE_FEATURE_TRANSLATION_CACHE` | Vercel + local `.env` | SPA | feature gate |
 | `VITE_SENTRY_DSN` | Vercel | SPA | optional, prod only |
 | `ANTHROPIC_API_KEY` | Supabase Functions secrets | Edge Functions | Anthropic API access |
-| `ANTHROPIC_MODEL` | Supabase Functions secrets | Edge Functions | optional override; default `claude-haiku-4-5` |
+| `ANTHROPIC_MODEL` | Supabase Functions secrets | Edge Functions | text lane; optional override, default `claude-haiku-4-5` |
+| `ANTHROPIC_MODEL_VISION` | Supabase Functions secrets | Edge Functions | vision lane; optional override, default `claude-sonnet-4-6` |
 | `IG_OEMBED_TOKEN` | Supabase Functions secrets | Edge: import-instagram | App-scoped Facebook Graph token |
 | `LOG_DRAIN_TOKEN` | Supabase Functions secrets | Edge Functions | structured-log forwarding |
 | `AI_MOCK_MODE` | local + CI only | Edge Functions | `playwright` to read fixtures instead of calling Anthropic |
