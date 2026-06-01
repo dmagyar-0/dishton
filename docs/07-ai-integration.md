@@ -58,7 +58,7 @@ const client = new Anthropic({
 });
 
 export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
-  const model = opts.model ?? env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const model = opts.model ?? laneModel(opts.lane);  // text → Haiku 4.5, vision → Sonnet 4.6
   const { system, rest } = splitSystem(opts.messages);
 
   // ... retry loop with timeout + jitter ...
@@ -86,13 +86,15 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
 
 Notes:
 
-- **Single model for both lanes.** Claude Haiku 4.5 is vision-capable, so the
-  `lane: 'text' | 'vision'` parameter no longer selects a model — it stays as
-  a budget/timeout hint. `ANTHROPIC_MODEL` env var overrides the default for
-  experimentation; production runs `claude-haiku-4-5`.
-- **No `effort` / `thinking`.** Haiku 4.5 does not support `effort`; using it
-  returns 400. Adaptive thinking is also unnecessary for structured
-  extraction. Keep the call shape simple.
+- **Per-lane model.** `lane: 'text'` runs Claude Haiku 4.5; `lane: 'vision'`
+  runs Claude Sonnet 4.6. Eval round 2 (`eval/round-2/README.md`) found Haiku
+  unreliable on multi-column cookbook-table photos (wrong dish, mixed columns,
+  hallucinations) while Sonnet extracts them cleanly for ~$0.07/photo. Override
+  per lane via `ANTHROPIC_MODEL` (text) / `ANTHROPIC_MODEL_VISION` (vision).
+- **No `effort` / `thinking`.** Haiku 4.5 does not support `effort` (400), and
+  eval round 2 found adaptive thinking gives no quality lift on extraction at
+  2–3× cost/latency — and it broke Opus on the matrix photo (token-budget
+  truncation + column bleed). Keep the call shape simple on both lanes.
 - **Prompt caching.** The system block — which carries the large, stable
   `RECIPE_JSON_SHAPE` preamble — is sent as a `TextBlockParam` with
   `cache_control: {type: 'ephemeral'}`. After the first request in a lane,
