@@ -51,3 +51,10 @@ local dev), the cross-deploy logout is a no-op.
 See [`docs/parallelization-guide.md`](docs/parallelization-guide.md) for the
 work-stream graph and the three frozen contracts (Recipe Zod schema, SQL
 schema, design tokens).
+
+## License
+
+Dishton is open source under the [GNU AGPL-3.0](./LICENSE). You can self-host
+and modify it freely; if you run a modified version as a network service you
+must publish your changes. A separate commercial license is available for
+proprietary/closed-source hosted use — see [`LICENSING.md`](./LICENSING.md).
