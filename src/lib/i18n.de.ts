@@ -63,11 +63,33 @@ export default {
     add_placeholder: 'f_ABCDEFGHIJKL',
     add_action: 'Folgen',
     add_success: 'Du folgst jetzt {{name}}',
+    add_success_generic: 'Du folgst jetzt diesem Haushalt',
     add_failed: 'Folgen fehlgeschlagen',
     empty_title: 'Noch keine Küchen abonniert',
     empty_body: 'Füge oben einen Folge-Code ein, um die Rezepte eines anderen Haushalts zu sehen.',
     followed_at: 'Folge seit {{date}}',
     open: 'Öffnen',
+    unfollow: 'Entfolgen',
+    unfollow_confirm_title: '{{name}} entfolgen?',
+    unfollow_confirm_body:
+      'Du verlierst den Lesezugriff auf ihre Rezepte. Sie können dir einen neuen Code senden, wenn du zurückwillst.',
+    unfollow_action: 'Entfolgen',
+    unfollow_success: 'Entfolgt',
+    unfollow_failed: 'Entfolgen fehlgeschlagen',
+  },
+  search: {
+    title: 'Suche',
+    nav: 'Suche',
+    placeholder: 'Rezepte suchen',
+    role_label: 'Rezeptsuche',
+    query_label: 'Suchbegriff',
+    clear: 'Suche löschen',
+    no_matches_title: 'Keine Treffer',
+    no_matches_query:
+      'Für "{{query}}" wurde nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
+    no_matches_query_tags:
+      'Für "{{query}}" wurde mit den gewählten Tags nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
+    no_matches_tags: 'Keine Rezepte passen zu den gewählten Tags. Entferne ein Tag.',
   },
   household_settings: {
     title: 'Haushaltseinstellungen',

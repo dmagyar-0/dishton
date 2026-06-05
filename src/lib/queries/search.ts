@@ -35,6 +35,9 @@ export function useRecipeSearch(q: string, householdIds: string[]) {
 export function usePopularTags(householdIds: string[]) {
   return useQuery({
     queryKey: ['popular-tags', householdIds],
+    // No accessible households means there is nothing to aggregate; skip the
+    // round-trip entirely (mirrors useRecipesAcrossHouseholds' guard).
+    enabled: householdIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('popular_tags', {
         p_household_ids: householdIds,

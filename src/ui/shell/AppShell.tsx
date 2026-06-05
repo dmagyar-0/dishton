@@ -1,3 +1,4 @@
+import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
 import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
@@ -20,6 +21,9 @@ export function AppShell() {
   const personalMembership = memberships.find((m) => m.is_personal);
   const householdId = (personalMembership ?? memberships[0])?.household_id;
   const isSolo = memberships.length === 1 && memberships[0]?.is_personal === true;
+  // FLAG: follows_enabled — only surface the Following nav entry when following
+  // is turned on (off by default in MVP production per docs/15).
+  const followsEnabled = useFeatureFlag('follows_enabled');
 
   return (
     <div className="min-h-dvh">
@@ -42,7 +46,7 @@ export function AppShell() {
             <li>
               <Link to="/search" className={NAV_CLASS}>
                 <Search size={16} strokeWidth={1.5} />
-                <span className="hidden md:inline">Search</span>
+                <span className="hidden md:inline">{t('search.nav')}</span>
               </Link>
             </li>
             {householdId && (
@@ -53,12 +57,14 @@ export function AppShell() {
                 </Link>
               </li>
             )}
-            <li>
-              <Link to="/following" className={NAV_CLASS}>
-                <Users size={16} strokeWidth={1.5} />
-                <span className="hidden md:inline">{t('nav.following')}</span>
-              </Link>
-            </li>
+            {followsEnabled && (
+              <li>
+                <Link to="/following" className={NAV_CLASS}>
+                  <Users size={16} strokeWidth={1.5} />
+                  <span className="hidden md:inline">{t('nav.following')}</span>
+                </Link>
+              </li>
+            )}
             {householdId && (
               <li>
                 <Link

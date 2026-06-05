@@ -1,30 +1,53 @@
+import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { type AddFollowInput, AddFollowSchema } from '@/lib/forms/household';
-import { useAddFollow, useFollowedHouseholds } from '@/lib/queries/households';
+import { useAddFollow, useFollowedHouseholds, useUnfollow } from '@/lib/queries/households';
+import { ConfirmDialog } from '@/ui/household/dialogs/ConfirmDialog';
 import { translateHouseholdError } from '@/ui/household/translateError';
 import { Button, Card, EmptyState, Skeleton, useToast } from '@/ui/primitives';
 import { Input } from '@/ui/primitives/Input';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { Link, createFileRoute, redirect } from '@tanstack/react-router';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../_guards';
 
 export const Route = createFileRoute('/following/')({
   beforeLoad: requireAuth,
-  component: FollowingPage,
+  component: FollowingGate,
 });
+
+// FLAG: follows_enabled — the /following surface only exists when following is
+// turned on (off by default in MVP production per docs/15). We gate at render
+// rather than in beforeLoad because the runtime flag is fetched client-side via
+// useFeatureFlag; an unauthenticated/flag-off user is redirected home. Exported
+// for the colocated flag-gating test.
+export function FollowingGate() {
+  const followsEnabled = useFeatureFlag('follows_enabled');
+  if (!followsEnabled) {
+    throw redirect({ to: '/' });
+  }
+  return <FollowingPage />;
+}
 
 function FollowingPage() {
   const { t, i18n } = useTranslation();
   const { push } = useToast();
   const memberships = useAuth((s) => s.memberships);
-  const currentHouseholdId = memberships[0]?.household_id ?? '';
+  // Canonical household for following: prefer the personal household so the
+  // list read here, the add_follow target, and AppShell all agree on a single
+  // household. A newly added follow then appears exactly where the user looks.
+  const currentHouseholdId = useMemo(
+    () => (memberships.find((m) => m.is_personal) ?? memberships[0])?.household_id ?? '',
+    [memberships],
+  );
 
   const followed = useFollowedHouseholds(currentHouseholdId);
   const addFollow = useAddFollow(currentHouseholdId);
+  const unfollow = useUnfollow(currentHouseholdId);
   const form = useForm<AddFollowInput>({ resolver: zodResolver(AddFollowSchema) });
+  const [pendingUnfollow, setPendingUnfollow] = useState<{ id: string; name: string } | null>(null);
 
   const dateFormatter = useMemo(
     () =>
@@ -47,11 +70,18 @@ function FollowingPage() {
           className="flex gap-2 items-start"
           onSubmit={form.handleSubmit(async (values) => {
             try {
-              await addFollow.mutateAsync(values.code);
+              const followedId = await addFollow.mutateAsync(values.code);
               form.reset({ code: '' });
+              // The RPC returns the followed household id; the followed list has
+              // just been invalidated, so refetch it and surface the household
+              // name when available. Fall back to a name-less message otherwise.
+              const refreshed = await followed.refetch();
+              const match = refreshed.data?.find((f) => f.followed_household_id === followedId);
               push({
                 variant: 'success',
-                title: t('following.add_success', { name: '' }),
+                title: match
+                  ? t('following.add_success', { name: match.household.name })
+                  : t('following.add_success_generic'),
               });
             } catch (err) {
               push({
@@ -115,18 +145,59 @@ function FollowingPage() {
                     })}
                   </p>
                 </div>
-                <Link
-                  to="/h/$householdId"
-                  params={{ householdId: f.followed_household_id }}
-                  className="text-saffron hover:underline font-body text-sm"
-                >
-                  {t('following.open')}
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link
+                    to="/h/$householdId"
+                    params={{ householdId: f.followed_household_id }}
+                    className="text-saffron hover:underline font-body text-sm"
+                  >
+                    {t('following.open')}
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={unfollow.isPending}
+                    onClick={() =>
+                      setPendingUnfollow({
+                        id: f.followed_household_id,
+                        name: f.household.name,
+                      })
+                    }
+                  >
+                    {t('following.unfollow')}
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={pendingUnfollow !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingUnfollow(null);
+        }}
+        title={t('following.unfollow_confirm_title', { name: pendingUnfollow?.name ?? '' })}
+        body={t('following.unfollow_confirm_body')}
+        confirmLabel={t('following.unfollow_action')}
+        variant="destructive"
+        loading={unfollow.isPending}
+        onConfirm={async () => {
+          if (!pendingUnfollow) return;
+          try {
+            await unfollow.mutateAsync(pendingUnfollow.id);
+            push({ variant: 'success', title: t('following.unfollow_success') });
+            setPendingUnfollow(null);
+          } catch (err) {
+            push({
+              variant: 'error',
+              title: t('following.unfollow_failed'),
+              description: translateHouseholdError(t, err),
+            });
+          }
+        }}
+      />
     </main>
   );
 }

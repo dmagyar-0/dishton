@@ -1,5 +1,6 @@
 import { normaliseBcp47 } from '@/domain/language';
 import { useAuth } from '@/lib/auth';
+import { applyUiLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { Button, Card, Input, Select, useToast } from '@/ui/primitives';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -76,6 +77,11 @@ function ProfilePage() {
       return;
     }
     useAuth.getState().setProfile({ ...profile, preferred_language: next });
+    // Apply the interface language immediately so the change is visible without
+    // a reload. Mirrors the auth-bootstrap call in src/lib/auth.ts, which reads
+    // the same persisted field; applyUiLanguage narrows to a supported UI
+    // language internally.
+    applyUiLanguage(next);
     push({ variant: 'success', title: t('profile.language_saved') });
   }
 

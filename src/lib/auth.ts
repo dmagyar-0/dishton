@@ -10,6 +10,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { clearUserContext, setHouseholdContext, setUserContext } from '../observability/sentry';
+import { applyUiLanguage } from './i18n';
 import { supabase } from './supabase';
 
 // Force re-auth across deploys: a session minted under build A must not survive
@@ -94,8 +95,13 @@ export async function refreshAuthDerivedState(userId: string): Promise<void> {
     throw profile.error;
   }
   if (profile.data) {
-    useAuth.getState().setProfile(profile.data as Profile);
-    setUserContext(profile.data.id);
+    const loaded = profile.data as Profile;
+    useAuth.getState().setProfile(loaded);
+    setUserContext(loaded.id);
+    // Apply the persisted interface language so a returning user lands in the
+    // language they chose, not the build-time default. Narrowed to supported
+    // UI languages inside applyUiLanguage.
+    applyUiLanguage(loaded.preferred_language);
   }
 
   const memberships = await supabase

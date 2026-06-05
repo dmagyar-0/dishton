@@ -42,7 +42,7 @@ export function useRecipesAcrossHouseholds(householdIds: string[], enabled = tru
       const { data, error } = await supabase
         .from('recipes')
         .select(
-          'id, title, description, hero_image_path, total_time_min, source_type, created_at, recipe_tags(tag)',
+          'id, household_id, title, description, hero_image_path, total_time_min, source_type, created_at, recipe_tags(tag)',
         )
         .in('household_id', householdIds)
         .order('created_at', { ascending: false })
