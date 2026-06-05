@@ -1,4 +1,4 @@
-import type { Recipe } from '@/domain/recipe';
+import type { Quantity, Recipe } from '@/domain/recipe';
 import { useAuth } from '@/lib/auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
@@ -67,12 +67,15 @@ export type FullRecipe = {
     servings: number;
     total_time_min: number | null;
     hero_image_path: string | null;
+    updated_at: string;
   };
   ingredients: {
     id: string;
     position: number;
     raw_text: string;
-    quantity: number | null;
+    // quantity is stored as jsonb and round-trips the domain Quantity union
+    // (a number or a {numerator,denominator} fraction object) or null.
+    quantity: Quantity | null;
     unit: string | null;
     ingredient_name: string | null;
     notes: string | null;
@@ -97,13 +100,23 @@ export function useDeleteRecipe(householdId: string) {
   });
 }
 
+export type UpdateRecipeArgs = {
+  draft: Recipe;
+  // Optimistic-concurrency token: the recipe's updated_at as loaded into the
+  // edit form. The update_recipe RPC raises `recipe_edit_conflict` when the row
+  // has changed since, preventing a second editor from silently clobbering the
+  // first. Pass null/undefined to skip the check (last-write-wins).
+  expectedUpdatedAt?: string | null;
+};
+
 export function useUpdateRecipe(recipeId: string, householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (draft: Recipe) => {
+    mutationFn: async ({ draft, expectedUpdatedAt }: UpdateRecipeArgs) => {
       const { error } = await supabase.rpc('update_recipe', {
         p_id: recipeId,
         p_draft: draft as never,
+        p_expected_updated_at: expectedUpdatedAt ?? null,
       });
       if (error) throw error;
       return recipeId;

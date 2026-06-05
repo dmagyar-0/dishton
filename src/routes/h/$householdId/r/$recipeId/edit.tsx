@@ -1,4 +1,4 @@
-import type { Quantity, Recipe } from '@/domain/recipe';
+import type { Recipe } from '@/domain/recipe';
 import { useHouseholdAllowedTags } from '@/lib/queries/households';
 import {
   type FullRecipe,
@@ -45,7 +45,7 @@ function mapToRecipeDraft(full: FullRecipe): Recipe {
     ingredients: full.ingredients.map((ing) => ({
       position: ing.position,
       raw_text: ing.raw_text,
-      quantity: ing.quantity as Quantity | null,
+      quantity: ing.quantity,
       unit: ing.unit,
       ingredient_name: ing.ingredient_name,
       notes: ing.notes,
@@ -134,7 +134,10 @@ function RecipeEditPage() {
 
   const handleSubmit = async (values: Recipe) => {
     try {
-      await update.mutateAsync(values);
+      await update.mutateAsync({
+        draft: values,
+        expectedUpdatedAt: recipeQ.data?.recipe.updated_at ?? null,
+      });
       dirtyRef.current = false;
       push({
         variant: 'success',

@@ -1,8 +1,9 @@
-import { convert, niceQuantity, pickDisplayUnit } from '@/domain';
+import { convert, niceQuantity, pickDisplayUnit, quantityToNumber } from '@/domain';
 import { useAuth } from '@/lib/auth';
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
+import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { type DisplayIngredient, IngredientsCard } from '@/ui/recipe/IngredientsCard';
 import { ServingsScaler } from '@/ui/recipe/ServingsScaler';
@@ -56,12 +57,15 @@ function RecipeDetailPage() {
     const ingredients = q.data.ingredients.map((ing) => {
       if (ing.quantity == null || !ing.unit)
         return { ...ing, displayValue: null, displayUnit: null };
-      const target = pickDisplayUnit(ing.unit, ing.quantity, displayUnits);
+      // quantity is the domain union (number | {numerator,denominator});
+      // collapse to a number for unit conversion + scaling.
+      const baseQty = quantityToNumber(ing.quantity);
+      const target = pickDisplayUnit(ing.unit, baseQty, displayUnits);
       try {
-        const converted = convert(ing.quantity * factor, ing.unit, target);
+        const converted = convert(baseQty * factor, ing.unit, target);
         return { ...ing, displayValue: niceQuantity(converted, target), displayUnit: target };
       } catch {
-        return { ...ing, displayValue: ing.quantity * factor, displayUnit: ing.unit };
+        return { ...ing, displayValue: baseQty * factor, displayUnit: ing.unit };
       }
     });
     return {
@@ -89,8 +93,8 @@ function RecipeDetailPage() {
     <main className="max-w-5xl mx-auto px-4 py-8">
       {displayed.recipe.hero_image_path && (
         <div className="aspect-[3/2] mb-8 overflow-hidden rounded-[var(--radius-lg)] border border-cream-line">
-          <img
-            src={displayed.recipe.hero_image_path}
+          <RecipeImage
+            path={displayed.recipe.hero_image_path}
             alt=""
             className="h-full w-full object-cover"
           />

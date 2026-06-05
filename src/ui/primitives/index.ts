@@ -44,6 +44,8 @@ export { NumberInput, parseNumeric } from './NumberInput';
 export type { NumberInputProps } from './NumberInput';
 export { RadioGroup, RadioGroupItem } from './RadioGroup';
 export type { RadioGroupItemProps, RadioGroupProps } from './RadioGroup';
+export { RecipeImage } from './RecipeImage';
+export type { RecipeImageProps } from './RecipeImage';
 export { Select } from './Select';
 export type { SelectProps } from './Select';
 export { Skeleton } from './Skeleton';

@@ -8,6 +8,7 @@ import {
   useRemoveMember,
   useRevokeInvite,
 } from '@/lib/queries/households';
+import { useImageUrl } from '@/lib/queries/storage';
 import { cn } from '@/ui/cn';
 import { Avatar, Badge, Button, Card, IconButton, Skeleton, Tag, useToast } from '@/ui/primitives';
 import { ArrowDown, ArrowUp, Mail, UserMinus, X } from 'lucide-react';
@@ -192,6 +193,8 @@ function MemberRow({
   const { push } = useToast();
   const change = useChangeMemberRole(householdId);
   const remove = useRemoveMember(householdId);
+  // Avatars live in the private recipe-images bucket and need a signed URL.
+  const avatarUrl = useImageUrl(member.profile.avatar_url);
 
   const [confirmKind, setConfirmKind] = useState<'promote' | 'demote' | 'remove' | null>(null);
 
@@ -261,11 +264,7 @@ function MemberRow({
 
   return (
     <li className="flex items-center gap-3 py-3">
-      <Avatar
-        size={36}
-        name={member.profile.display_name}
-        src={member.profile.avatar_url ?? undefined}
-      />
+      <Avatar size={36} name={member.profile.display_name} src={avatarUrl ?? undefined} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-body text-ink truncate">

@@ -40,7 +40,11 @@ enabled = true
 file_size_limit = "20MiB"
 
 [storage.buckets.recipe-images]
-public = true
+# Private: objects we store (avatars, promoted hero images) are served via
+# short-lived signed URLs generated in the SPA query layer. A public bucket
+# would make `<uid>/avatar.jpg` world-readable/enumerable and bypass the
+# storage RLS policies entirely.
+public = false
 file_size_limit = "5MiB"
 allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/avif"]
 objects_path = "./storage/recipe-images"

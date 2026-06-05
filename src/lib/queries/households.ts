@@ -371,7 +371,9 @@ export function useDeleteHousehold() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (householdId: string) => {
-      const { error } = await supabase.from('households').delete().eq('id', householdId);
+      // Routed through the SECURITY DEFINER RPC: it refuses to delete personal
+      // households (which would orphan the user) and verifies ownership.
+      const { error } = await supabase.rpc('delete_household', { p_household: householdId });
       if (error) throw error;
       const remaining = useAuth
         .getState()
@@ -419,7 +421,10 @@ export function useAddFollow(currentHouseholdId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (code: string): Promise<string> => {
-      const { data, error } = await supabase.rpc('add_follow', { p_code: code });
+      const { data, error } = await supabase.rpc('add_follow', {
+        p_code: code,
+        p_follower_household: currentHouseholdId,
+      });
       if (error) throw error;
       return data as unknown as string;
     },
