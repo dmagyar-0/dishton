@@ -45,7 +45,7 @@ export type { NumberInputProps } from './NumberInput';
 export { RadioGroup, RadioGroupItem } from './RadioGroup';
 export type { RadioGroupItemProps, RadioGroupProps } from './RadioGroup';
 export { Select } from './Select';
-export type { SelectProps } from './Select';
+export type { SelectOption, SelectProps } from './Select';
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
 export { Slider } from './Slider';

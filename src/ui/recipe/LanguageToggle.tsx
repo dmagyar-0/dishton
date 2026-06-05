@@ -19,15 +19,13 @@ export function LanguageToggle({
   label = 'Language',
 }: LanguageToggleProps) {
   return (
-    <label className={cn('inline-flex items-center gap-2', className)}>
-      <span className="sr-only">{label}</span>
-      <Select aria-label={label} value={value} onChange={(e) => onChange(e.currentTarget.value)}>
-        {options.map((opt) => (
-          <option key={opt.code} value={opt.code}>
-            {opt.native} ({opt.code})
-          </option>
-        ))}
-      </Select>
-    </label>
+    <div className={cn('inline-flex items-center gap-2', className)}>
+      <Select
+        ariaLabel={label}
+        value={value}
+        onValueChange={onChange}
+        options={options.map((opt) => ({ value: opt.code, label: `${opt.native} (${opt.code})` }))}
+      />
+    </div>
   );
 }

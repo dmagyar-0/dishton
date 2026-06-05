@@ -220,7 +220,7 @@ a sibling `.test.tsx` (see [12-testing-strategy.md](./12-testing-strategy.md)).
 | `Checkbox` | Stamp checkbox | the cooking-mode ingredient tick. |
 | `RadioGroup` | Single choice | row or column. |
 | `Switch` | Boolean | sage-on. |
-| `Select` | Dropdown | uses native `<select>` styled with Tailwind, fallback only when complexity demands custom. |
+| `Select` | Dropdown | custom themed listbox (WAI-ARIA select-only combobox): button trigger + token-styled popup, so the option list matches the theme (incl. dark mode) instead of the OS-drawn native `<select>` popup. |
 | `Combobox` | Searchable select | for tag picker. |
 | `Slider` | Single thumb | the servings scaler. |
 | `Badge` / `Tag` | Chip | tag list, status. |

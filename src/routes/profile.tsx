@@ -14,13 +14,13 @@ export const Route = createFileRoute('/profile')({
 
 // Curated set of languages we offer in the picker. Labels are in their own
 // language so the choice is recognisable regardless of UI locale.
-const LANGUAGE_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
-  { code: 'en', label: 'English' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'fr', label: 'Français' },
-  { code: 'es', label: 'Español' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'hu', label: 'Magyar' },
+const LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'fr', label: 'Français' },
+  { value: 'es', label: 'Español' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'hu', label: 'Magyar' },
 ];
 
 function ProfilePage() {
@@ -78,16 +78,11 @@ function ProfilePage() {
         </label>
         <Select
           id="preferred-language"
+          options={LANGUAGE_OPTIONS}
           value={currentLanguage}
           disabled={saving || !auth.profile}
-          onChange={(e) => void onLanguageChange(e.currentTarget.value)}
-        >
-          {LANGUAGE_OPTIONS.map((opt) => (
-            <option key={opt.code} value={opt.code}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
+          onValueChange={(v) => void onLanguageChange(v)}
+        />
         <p className="text-ink-soft text-sm">{t('profile.language_hint')}</p>
       </Card>
     </main>
