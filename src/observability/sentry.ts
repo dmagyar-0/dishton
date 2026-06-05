@@ -5,15 +5,30 @@ import * as Sentry from '@sentry/react';
 
 export function initSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN_FRONTEND;
+  // Empty DSN (local dev) is a clean no-op: no integrations are registered and
+  // no network calls are made.
   if (!dsn) return;
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
     release: import.meta.env.VITE_RELEASE_SHA ?? 'dev',
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      // Replays are captured only when an error fires (never proactively) and
+      // every text node + media element is masked so cookbook content never
+      // leaves the browser — see docs/14-observability.md.
+      Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true }),
+    ],
     tracesSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 1.0,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0.5,
   });
+}
+
+// Capture an exception explicitly (the ErrorBoundary handles React render
+// errors; this is for caught-but-noteworthy failures like a failed save).
+export function captureException(error: unknown, context?: Record<string, unknown>): void {
+  Sentry.captureException(error, context ? { extra: context } : undefined);
 }
 
 export function setUserContext(profileId: string): void {

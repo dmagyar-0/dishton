@@ -42,6 +42,29 @@ function clearStoredSha(): void {
   }
 }
 
+// Workbox runtime caches that hold per-user data (cache names mirror
+// vite.config.ts → workbox.runtimeCaching). On sign-out we drop them so the
+// next account on this device can't read the previous user's cached recipes
+// or images offline. We deliberately keep `html` and `fonts` (no user data)
+// and the precache (app shell) intact.
+const USER_DATA_CACHES = ['supabase-rest', 'recipe-images'] as const;
+
+async function clearUserScopedCaches(): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  try {
+    await Promise.all(USER_DATA_CACHES.map((name) => caches.delete(name)));
+    // Drain the BackgroundSync replay queue so a queued mutation from the
+    // signed-out user can't replay under the next account. The queue is backed
+    // by IndexedDB ('workbox-background-sync' → store 'requests'); deleting the
+    // whole DB is the simplest reliable clear and Workbox recreates it lazily.
+    const idb = (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+    idb?.deleteDatabase('workbox-background-sync');
+  } catch (err) {
+    // Cache eviction is best-effort; a failure here must not block sign-out.
+    console.error('[auth] failed to clear user-scoped caches', err);
+  }
+}
+
 export type Profile = {
   id: string;
   display_name: string;
@@ -80,6 +103,7 @@ export const useAuth = create<AuthState>((set) => ({
   setMemberships: (memberships) => set({ memberships, hydrated: true }),
   signOut: async () => {
     await supabase.auth.signOut();
+    await clearUserScopedCaches();
     clearUserContext();
     setHouseholdContext(null);
     set({ session: null, user: null, profile: null, memberships: [], hydrated: true });
@@ -181,6 +205,7 @@ function subscribeAuthChanges(): void {
       }
     } else if (event === 'SIGNED_OUT') {
       clearStoredSha();
+      await clearUserScopedCaches();
       clearUserContext();
       setHouseholdContext(null);
       useAuth.getState().setProfile(null);

@@ -4,8 +4,10 @@
 // on the user's "My Recipes" page — there is no /onboarding gate to
 // pass.
 //
-// NIM is mocked at the Edge Function boundary via NIM_MOCK_MODE=playwright,
-// which the function reads from env (see docs/12-testing-strategy.md).
+// The AI call is mocked at the Edge Function boundary via AI_MOCK_MODE
+// (set to 'playwright' in e2e.yml / locally), which the function reads from
+// env and short-circuits to a canned fixture (see docs/12-testing-strategy.md
+// and supabase/functions/_shared/ai/mock.ts).
 
 import { expect, test } from '@playwright/test';
 

@@ -58,7 +58,10 @@ rendered in `--color-aubergine` over `--color-paper`.
 import { VitePWA } from 'vite-plugin-pwa';
 
 VitePWA({
-  registerType: 'autoUpdate',
+  // 'prompt' (not 'autoUpdate'): a waiting SW stays waiting until the user
+  // clicks "Refresh" in the toast, so we never skipWaiting out from under an
+  // in-progress session. See "Service-worker update flow" below.
+  registerType: 'prompt',
   injectRegister: 'auto',
   manifestFilename: 'manifest.webmanifest',
   manifest: false, // we ship our own static file
@@ -209,10 +212,13 @@ Lock (Safari < 16.4) silently fall through.
 
 ## Service-worker update flow
 
-`registerType: 'autoUpdate'` triggers an in-place update on every navigation
-when a new service worker is detected. The SPA additionally subscribes via
-`useRegisterSW({ onNeedRefresh })` and shows a low-key toast: "A new version
-is ready. Refresh to update." Click → `updateSW(true)`.
+`registerType: 'prompt'`: when a new service worker is detected it installs and
+**waits** rather than activating itself. The SPA subscribes via
+`useRegisterSW({ onOfflineReady })`; the reactive `needRefresh` flag flips true
+and `src/lib/sw-update-toast.tsx` shows a low-key toast ("A new version is
+ready. Refresh."). Click → `updateServiceWorker(true)`, which posts
+`SKIP_WAITING` and reloads once the new SW takes control. We deliberately avoid
+`'autoUpdate'`, which would `skipWaiting` on its own and race that toast.
 
 ## Files this doc governs
 

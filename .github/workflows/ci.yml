@@ -48,6 +48,9 @@ jobs:
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm lint
+      # Fail the build if the feature-flag registry, docs/15, and .env.example
+      # drift apart (the guard promised in src/feature-flags/registry.ts).
+      - run: node scripts/check-flag-registry.mjs
 
   test-unit:
     runs-on: ubuntu-24.04
@@ -134,6 +137,11 @@ jobs:
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
+      # Source maps are emitted as 'hidden' (vite.config.ts) for upload to
+      # Sentry from the deploy workflow; they must never ship in the published
+      # artifact. Strip them here so the CI artifact carries no .map files.
+      - name: Strip source maps from CI artifact
+        run: find dist -name '*.map' -delete
       - uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -146,12 +154,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: supabase/setup-cli@v1
-        with: { version: latest }
-      - name: Check that schema changes ship with migration files
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Ensure base ref is available
+        run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref || 'main' }}:refs/remotes/origin/${{ github.event.pull_request.base.ref || 'main' }}" || git fetch --no-tags origin main
+      - name: Enforce migration policy (forward-only + new migration on schema change)
+        run: node scripts/check-migration-diff.mjs "origin/${{ github.event.pull_request.base.ref || 'main' }}"
+
+  # Single required check that gates merge: it fails unless EVERY upstream job
+  # succeeded. Set this as the sole required status check in branch protection
+  # so adding a job here automatically makes it blocking without touching repo
+  # settings. `if: always()` ensures the job runs even when a dependency fails,
+  # so we can inspect the result set and fail explicitly.
+  ci-success:
+    runs-on: ubuntu-24.04
+    if: always()
+    needs:
+      - typecheck
+      - lint
+      - test-unit
+      - test-components
+      - test-coverage
+      - test-edge
+      - test-db
+      - migration-diff
+      - build
+    steps:
+      - name: Verify all CI jobs succeeded
         run: |
-          if git diff --name-only origin/main...HEAD | grep -E '^supabase/(migrations|seed\.sql)$' > /dev/null; then
-            echo "Migration / seed change detected — verifying file presence only."
+          echo "Aggregated results: ${{ join(needs.*.result, ', ') }}"
+          if echo "${{ join(needs.*.result, ',') }}" | grep -qE 'failure|cancelled'; then
+            echo "One or more required CI jobs did not succeed."
+            exit 1
           fi
-          # Detailed db diff requires a live Supabase project; the live preview
-          # branch handles that check. This stub keeps the gate explicit.
+          echo "All required CI jobs succeeded."

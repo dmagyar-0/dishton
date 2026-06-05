@@ -24,7 +24,8 @@ paging.
 - [08-import-pipelines.md](./08-import-pipelines.md) — the import flow
   whose breadcrumbs and SLOs are defined here.
 - [13-ci-cd-and-environments.md](./13-ci-cd-and-environments.md) —
-  `SENTRY_DSN_*`, `LOGTAIL_TOKEN`, and `SENTRY_AUTH_TOKEN` secrets.
+  `SENTRY_DSN_*`, `LOG_DRAIN_TOKEN` (Better Stack / Logtail), and
+  `SENTRY_AUTH_TOKEN` secrets.
 
 ## Frontend — Sentry
 
@@ -48,12 +49,18 @@ Configuration:
 
 Source maps:
 
-- Vite emits source maps for `production` builds.
-- The `ci.yml` `build` job runs `sentry-cli sourcemaps upload` (using
-  `SENTRY_AUTH_TOKEN`) to attach maps to the release before the deploy
-  step. Source maps are not shipped to the browser; only their reference
-  comments. The `dist/` artifact has the sibling `*.map` files stripped
-  before upload to Vercel via a `pnpm build:strip-maps` step.
+- Vite emits **hidden** source maps for production builds
+  (`build.sourcemap: 'hidden'` in `vite.config.ts`): the `*.map` files are
+  written but the `//# sourceMappingURL` comment is omitted, so the maps are
+  never referenced from — or served to — the browser.
+- The `deploy.yml` workflow uploads the maps to Sentry with
+  `@sentry/cli sourcemaps inject` + `upload` (keyed to the release =
+  Git SHA), guarded by `SENTRY_AUTH_TOKEN`. When the token is absent the
+  upload step is skipped cleanly and the deploy still succeeds.
+- Immediately after the upload, the workflow strips every `*.map` from the
+  Vercel deploy artifact (`find .vercel/output -name '*.map' -delete`) so no
+  maps ship to production. The `ci.yml` `build` job likewise strips `*.map`
+  from its `dist/` artifact.
 
 Import-flow breadcrumbs:
 
@@ -265,8 +272,9 @@ runbook step links to the page or query that exposes the answer.
 
 - [ ] Sentry initialises in `src/main.tsx` before the React tree mounts
       and uses release = Git short SHA.
-- [ ] Source maps are uploaded to Sentry from `ci.yml` and stripped from
-      the deploy artifact.
+- [ ] Source maps are emitted as 'hidden', uploaded to Sentry from
+      `deploy.yml` (guarded by `SENTRY_AUTH_TOKEN`), and stripped from the
+      deploy artifact.
 - [ ] Every step of the import flow pushes a Sentry breadcrumb with
       `category: 'import'`.
 - [ ] Edge Functions emit JSON log lines with every required field

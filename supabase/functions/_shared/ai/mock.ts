@@ -6,7 +6,7 @@
 // The fixtures are embedded here (not read from e2e/fixtures/*.json) so the
 // module is self-contained and bundles cleanly with the Edge Function — the
 // e2e/ directory is not part of the deployed functions tree. They mirror
-// e2e/fixtures/nim-draft.json and e2e/fixtures/nim-translation.de.json; keep
+// e2e/fixtures/ai-draft.json and e2e/fixtures/ai-translation.de.json; keep
 // them in sync if those change.
 //
 // AI_MOCK_MODE is never set in production. env.ts lists it as OPTIONAL and the
@@ -29,7 +29,7 @@ export function isMockMode(): boolean {
   return v !== undefined && v !== '' && v !== '0' && v.toLowerCase() !== 'false';
 }
 
-// Mirrors e2e/fixtures/nim-draft.json.
+// Mirrors e2e/fixtures/ai-draft.json.
 const DRAFT_FIXTURE = {
   title: 'Tomato Tarte Tatin',
   description: 'A savoury riff on the classic, baked upside-down with caramelised tomatoes.',
@@ -56,7 +56,7 @@ const DRAFT_FIXTURE = {
   ],
 } as const;
 
-// Mirrors e2e/fixtures/nim-translation.de.json.
+// Mirrors e2e/fixtures/ai-translation.de.json.
 const TRANSLATION_DE_FIXTURE = {
   title: 'Tomaten-Tarte-Tatin',
   description: 'Eine herzhafte Variante des Klassikers, kopfüber mit karamellisierten Tomaten gebacken.',
