@@ -287,3 +287,13 @@ Deno.test('lightStripHtml handles script with newlines and complex attrs', () =>
   assertStringIncludes(out, 'after');
   assertEquals(out.includes('var s'), false);
 });
+
+Deno.test('lightStripHtml strips an unterminated <script> to end of input', () => {
+  // A truncated/malformed page with no closing </script> must not leak the
+  // script source into the model input.
+  const html = '<p>keep me</p><script>var leaked = "secret"; doEvil();';
+  const out = lightStripHtml(html);
+  assertStringIncludes(out, 'keep me');
+  assertEquals(out.includes('leaked'), false);
+  assertEquals(out.includes('doEvil'), false);
+});

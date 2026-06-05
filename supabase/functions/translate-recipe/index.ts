@@ -2,10 +2,12 @@
 // translation prompt, validate, upsert recipe_translations, return payload.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'zod';
 import { Recipe } from '../_shared/domain/recipe.ts';
 import { buildTranslationCacheKey } from '../_shared/domain/translation-key.ts';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
+import { env } from '../_shared/env.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { translatePrompt } from '../_shared/ai/prompts.ts';
@@ -15,6 +17,23 @@ const Body = z.object({
   recipe_id: z.string().uuid(),
   language: z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/),
 });
+
+// True service-role client for the cache upsert. recipe_translations grants
+// insert/update to service_role ONLY (no authenticated write policy), so the
+// write must run with the service role and WITHOUT forwarding the caller's
+// JWT — otherwise PostgREST runs it as `authenticated` and RLS silently blocks
+// it. resolveCaller's client forwards the JWT (needed for the RLS-aware reads),
+// so it can't be reused here. We do not broaden any RLS policy.
+let _admin: ReturnType<typeof createClient<unknown, 'app'>> | null = null;
+function adminClient() {
+  if (_admin === null) {
+    _admin = createClient<unknown, 'app'>(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+      db: { schema: 'app' },
+    });
+  }
+  return _admin;
+}
 
 serve(async (req: Request) => {
   const origin = req.headers.get('origin');
@@ -101,7 +120,7 @@ serve(async (req: Request) => {
     }
 
     // 3. miss → Anthropic
-    const budget = await withRateBudget(2500, () =>
+    const budget = await withRateBudget(caller.profileId, 2500, () =>
       callAndValidate({
         lane: 'text',
         messages: translatePrompt({ recipeJson: JSON.stringify(recipe), targetLanguage: body.language }),
@@ -128,8 +147,12 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. upsert via service role (RLS write requires it)
-    await caller.client
+    // 4. upsert the cache row. caller.client is service-role-keyed but forwards
+    // the member's JWT, so the write is still subject to recipe_translations
+    // RLS. A failure here only costs a cache miss (we still return the fresh
+    // translation), but we must surface it: a silently-failing cache write
+    // means every view re-pays the model. Log it rather than swallowing.
+    const cacheWrite = await adminClient()
       .from('recipe_translations')
       .upsert({
         recipe_id: body.recipe_id,
@@ -137,6 +160,21 @@ serve(async (req: Request) => {
         payload: result.recipe,
         source_hash: sourceHash,
       });
+    if (cacheWrite.error) {
+      log({
+        request_id: requestId,
+        profile_id: caller.profileId,
+        household_id: null,
+        function: 'translate-recipe',
+        event: 'cache.write_failed',
+        level: 'warn',
+        error: {
+          name: 'cache_write_failed',
+          message: cacheWrite.error.message,
+        },
+        cache_error_code: cacheWrite.error.code ?? null,
+      });
+    }
 
     logAiCall({
       request_id: requestId,

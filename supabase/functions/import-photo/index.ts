@@ -8,6 +8,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
 import {
+  type AppClient,
   HttpError,
   corsHeaders,
   getCallerPreferredLanguage,
@@ -19,6 +20,7 @@ import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
 import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
+import { isOwnedStoragePath } from '../_shared/storage-path.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
 const FIRST_RESPONSE_MS = 10_000;
@@ -28,11 +30,37 @@ const TOKENS_BASE = 2000;
 const TOKENS_PER_PHOTO = 1500;
 
 const Body = z.object({
-  job_id: z.string().uuid().optional(),
   household_id: z.string().uuid(),
   paths: z.array(z.string().min(1)).min(1).max(MAX_PHOTOS),
   comment: z.string().trim().max(500).optional(),
 });
+
+// Server-side caps on the uploaded object. The SPA enforces these too, but
+// client checks are bypassable (a caller can POST arbitrary paths). We HEAD the
+// storage object and reject anything oversized or not an image before signing.
+const MAX_OBJECT_BYTES = 12 * 1024 * 1024; // headroom over the client's 10 MB
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+// Confirm the storage object exists and is an image within the size cap.
+// storage.list() on the object's parent folder, filtered to the filename,
+// returns the object's metadata (size + mimetype). Throws HttpError on any
+// problem so the caller's existing try/catch records the job as failed.
+async function assertValidImageObject(client: AppClient, path: string): Promise<void> {
+  const slash = path.lastIndexOf('/');
+  const folder = slash >= 0 ? path.slice(0, slash) : '';
+  const name = slash >= 0 ? path.slice(slash + 1) : path;
+  const { data, error } = await client.storage
+    .from('imports')
+    .list(folder, { limit: 1, search: name });
+  if (error) throw new HttpError(404, 'object_not_found');
+  const obj = data?.find((o) => o.name === name);
+  if (!obj) throw new HttpError(404, 'object_not_found');
+  const meta = (obj.metadata ?? {}) as { size?: number; mimetype?: string };
+  const size = typeof meta.size === 'number' ? meta.size : 0;
+  if (size > MAX_OBJECT_BYTES) throw new HttpError(413, 'photo_too_large');
+  const mime = (meta.mimetype ?? '').toLowerCase();
+  if (!ALLOWED_IMAGE_TYPES.has(mime)) throw new HttpError(415, 'not_image');
+}
 
 type AiUsage = { input: number; output: number; cache_read?: number; cache_write?: number };
 type WorkResult =
@@ -82,28 +110,39 @@ serve(async (req: Request) => {
 
     const trimmedComment = body.comment?.trim() || undefined;
 
-    jobId = body.job_id ?? null;
-    if (!jobId) {
-      const { data: job, error: jobErr } = await caller.client
-        .from('import_jobs')
-        .insert({
-          profile_id: caller.profileId,
-          household_id: body.household_id,
-          kind: 'photo',
-          status: 'running',
-          phase: 'scrape',
-          payload: trimmedComment
-            ? { paths: body.paths, comment: trimmedComment }
-            : { paths: body.paths },
-        })
-        .select('id')
-        .single();
-      if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
-      jobId = job.id as string;
+    // Every path must live under the caller's own uid prefix. The signing
+    // client uses the service role and bypasses storage RLS, so without this
+    // check a caller could sign (and exfiltrate via the vision model) any
+    // other user's uploaded photo. Reject before doing any storage work.
+    for (const path of body.paths) {
+      if (!isOwnedStoragePath(path, caller.profileId)) {
+        throw new HttpError(403, 'forbidden_path');
+      }
     }
+
+    const { data: job, error: jobErr } = await caller.client
+      .from('import_jobs')
+      .insert({
+        profile_id: caller.profileId,
+        household_id: body.household_id,
+        kind: 'photo',
+        status: 'running',
+        phase: 'scrape',
+        payload: trimmedComment
+          ? { paths: body.paths, comment: trimmedComment }
+          : { paths: body.paths },
+      })
+      .select('id')
+      .single();
+    if (jobErr || !job) throw new HttpError(500, 'job_insert_failed');
+    jobId = job.id as string;
 
     const signedUrls: string[] = [];
     for (const path of body.paths) {
+      // Validate the object server-side before signing: confirm it exists and
+      // is an image within the size cap (client checks are bypassable). list()
+      // on the parent folder returns metadata (size, mimetype) for the object.
+      await assertValidImageObject(caller.client, path);
       const { data: signed, error: signErr } = await caller.client.storage
         .from('imports')
         .createSignedUrl(path, 300);
@@ -116,6 +155,7 @@ serve(async (req: Request) => {
 
     const estimatedTokens = TOKENS_BASE + TOKENS_PER_PHOTO * body.paths.length;
     const callerClient = caller.client;
+    const callerProfileId = caller.profileId;
 
     const work = async (): Promise<WorkResult> => {
       await callerClient
@@ -123,7 +163,7 @@ serve(async (req: Request) => {
         .update({ phase: 'ai', progress_text: 'Asking the model' })
         .eq('id', jobId);
 
-      const budget = await withRateBudget(estimatedTokens, () =>
+      const budget = await withRateBudget(callerProfileId, estimatedTokens, () =>
         callAndValidate({
           lane: 'vision',
           messages: structuringFromImage({
@@ -171,12 +211,12 @@ serve(async (req: Request) => {
 
     const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
       if (!value.ok) {
-        if (value.reason === 'rate_limit') {
+        if (value.reason === 'rate_limit' || value.reason === 'upstream') {
           await callerClient
             .from('import_jobs')
             .update({
               status: 'failed',
-              error: 'rate_limit',
+              error: value.reason,
               payload: {
                 paths: body.paths,
                 ...(trimmedComment ? { comment: trimmedComment } : {}),
@@ -256,6 +296,13 @@ serve(async (req: Request) => {
         return jsonResponse(
           { error: 'rate_limit', retry_after: 60, request_id: requestId },
           429,
+          cors,
+        );
+      }
+      if (value.reason === 'upstream') {
+        return jsonResponse(
+          { error: 'upstream', request_id: requestId },
+          503,
           cors,
         );
       }

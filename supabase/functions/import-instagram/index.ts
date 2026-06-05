@@ -147,6 +147,7 @@ serve(async (req: Request) => {
     const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
 
     const callerClient = caller.client;
+    const callerProfileId = caller.profileId;
     const fallbackEvents: FallbackEvent[] = [];
 
     const work = async (): Promise<WorkResult> => {
@@ -249,7 +250,7 @@ serve(async (req: Request) => {
         .update({ phase: 'ai', progress_text: 'Asking the model' })
         .eq('id', jobId);
 
-      const budget = await withRateBudget(1200, () =>
+      const budget = await withRateBudget(callerProfileId, 1200, () =>
         callAndValidate({
           lane: 'text',
           messages: structuringFromCaption({
@@ -336,12 +337,12 @@ serve(async (req: Request) => {
 
     const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
       if (!value.ok) {
-        if (value.reason === 'rate_limit') {
+        if (value.reason === 'rate_limit' || value.reason === 'upstream') {
           await callerClient
             .from('import_jobs')
             .update({
               status: 'failed',
-              error: 'rate_limit',
+              error: value.reason,
               payload: { url: body.url, latency_ms: value.latencyMs },
             })
             .eq('id', jobId);
@@ -426,6 +427,9 @@ serve(async (req: Request) => {
       }
       if (value.reason === 'instagram_unavailable') {
         throw new HttpError(422, 'instagram_unavailable');
+      }
+      if (value.reason === 'upstream') {
+        return jsonResponse({ error: 'upstream', request_id: requestId }, 503, cors);
       }
       return jsonResponse(
         {

@@ -12,7 +12,7 @@ import {
   structuringFromImage,
 } from './prompts.ts';
 import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
-import { normalizePositions } from './validate.ts';
+import { normalizePositions, sanitizeModelUrls } from './validate.ts';
 
 const RECIPE_FIELDS = [
   'title',
@@ -494,4 +494,35 @@ Deno.test('normalizePositions preserves non-position step fields', () => {
     { position: 0, body: 'preheat', duration_min: 5 },
     { position: 1, body: 'bake', duration_min: 30 },
   ]);
+});
+
+Deno.test('sanitizeModelUrls keeps http(s) source_url and hero_image_path', () => {
+  const out = sanitizeModelUrls({
+    ...baseRecipe(),
+    source_url: 'https://example.test/r',
+    hero_image_path: 'http://cdn.example.test/hero.jpg',
+  });
+  assertEquals(out.source_url, 'https://example.test/r');
+  assertEquals(out.hero_image_path, 'http://cdn.example.test/hero.jpg');
+});
+
+Deno.test('sanitizeModelUrls nulls out dangerous schemes', () => {
+  for (
+    const bad of [
+      'javascript:alert(1)',
+      'data:text/html,<script>1</script>',
+      'file:///etc/passwd',
+      'not a url',
+    ]
+  ) {
+    const out = sanitizeModelUrls({ ...baseRecipe(), hero_image_path: bad, source_url: bad });
+    assertEquals(out.hero_image_path, null, `hero_image_path should be nulled for ${bad}`);
+    assertEquals(out.source_url, null, `source_url should be nulled for ${bad}`);
+  }
+});
+
+Deno.test('sanitizeModelUrls leaves null fields null', () => {
+  const out = sanitizeModelUrls({ ...baseRecipe(), source_url: null, hero_image_path: null });
+  assertEquals(out.source_url, null);
+  assertEquals(out.hero_image_path, null);
 });

@@ -365,6 +365,8 @@ export default {
     rate_limit: 'Importer ist ausgelastet. Bitte in einer Minute erneut versuchen.',
     too_many_imports: 'Es laufen bereits fünf Importe. Warte, bis einer fertig ist.',
     fetch_failed: 'Diese URL ist nicht erreichbar.',
+    invalid_url: 'Dieser Link kann nicht importiert werden. Verwende eine öffentliche Rezept-URL.',
+    upstream: 'Der Importer ist gerade ausgelastet. Bitte in einer Minute erneut versuchen.',
     not_household_member: 'Du hast keine Berechtigung für diesen Haushalt.',
     network: 'Der Importer ist nicht erreichbar. Prüfe deine Verbindung.',
     timeout:
@@ -382,5 +384,7 @@ export default {
     photo_upload_failed:
       'Wir konnten dieses Foto nicht hochladen. Bitte gleich noch einmal versuchen.',
     object_not_found: 'Wir konnten das hochgeladene Foto nicht finden. Bitte erneut versuchen.',
+    forbidden_path: 'Dieses Foto gehört nicht zu deinem Konto.',
+    not_image: 'Diese Datei ist kein unterstütztes Bild. Verwende ein JPEG oder PNG.',
   },
 } as const;

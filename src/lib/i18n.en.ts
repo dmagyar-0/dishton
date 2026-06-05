@@ -354,6 +354,8 @@ export default {
     rate_limit: 'Importer is busy. Try again in a minute.',
     too_many_imports: 'You already have five imports running. Wait for one to finish.',
     fetch_failed: "We couldn't reach that URL. Check the link or try again.",
+    invalid_url: "That link can't be imported. Use a public recipe URL.",
+    upstream: 'The importer is busy right now. Try again in a minute.',
     not_household_member: "You don't have permission to add to this household.",
     network: "We couldn't reach the importer. Check your connection and try again.",
     timeout:
@@ -370,5 +372,7 @@ export default {
     photo_wrong_type: 'Pick a JPEG or PNG image.',
     photo_upload_failed: "We couldn't upload that photo. Try again in a moment.",
     object_not_found: "We couldn't find the uploaded photo. Try again.",
+    forbidden_path: "That photo doesn't belong to your account.",
+    not_image: 'That file is not a supported image. Use a JPEG or PNG.',
   },
 } as const;

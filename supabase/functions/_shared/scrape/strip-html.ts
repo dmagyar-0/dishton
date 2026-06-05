@@ -30,6 +30,15 @@ const BLOCK_PATTERNS = STRIP_BLOCK_TAGS.map(
   (t) => new RegExp(`<${t}\\b[^>]*>[\\s\\S]*?<\\/${t}>`, 'gi'),
 );
 
+// Unterminated-block fallback: an opening <script>/<style>/... with no matching
+// closing tag (truncated/malformed pages) isn't caught by BLOCK_PATTERNS, which
+// would leak the raw script/style text into the model input. Strip from such an
+// opening tag to end-of-input. Runs after the paired-tag pass. We only do this
+// for the script/style/svg/noscript-style noise tags, never for content tags.
+const UNTERMINATED_PATTERNS = STRIP_BLOCK_TAGS.map(
+  (t) => new RegExp(`<${t}\\b[^>]*>[\\s\\S]*$`, 'i'),
+);
+
 const VOID_PATTERN = new RegExp(
   `<(?:${STRIP_VOID_TAGS.join('|')})\\b[^>]*\\/?>`,
   'gi',
@@ -49,6 +58,7 @@ const WHITESPACE_PATTERN = /\s+/g;
 export function lightStripHtml(html: string): string {
   let out = html;
   for (const re of BLOCK_PATTERNS) out = out.replace(re, '');
+  for (const re of UNTERMINATED_PATTERNS) out = out.replace(re, '');
   out = out.replace(VOID_PATTERN, '');
   out = out.replace(COMMENT_PATTERN, '');
   out = out.replace(WHITESPACE_PATTERN, ' ').trim();

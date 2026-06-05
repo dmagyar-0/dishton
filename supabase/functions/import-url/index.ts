@@ -22,7 +22,9 @@ import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
 import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
+import { SsrfError, safeFetch } from '../_shared/scrape/ssrf-guard.ts';
 import { lightStripHtml } from '../_shared/scrape/strip-html.ts';
+import { decodeHtmlBody } from '../_shared/scrape/decode-body.ts';
 import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
@@ -36,12 +38,21 @@ const FIRST_RESPONSE_MS = 10_000;
 const CONCURRENCY_CAP = 5;
 
 async function fetchHtml(url: string): Promise<string> {
-  const res = await fetch(url, {
-    method: 'GET',
-    redirect: 'follow',
-    headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
-    signal: AbortSignal.timeout(15_000),
-  });
+  // safeFetch resolves + vets the host (and every redirect hop) against the
+  // SSRF guard before connecting; a private/loopback/link-local target throws
+  // SsrfError, which we map to a 400 invalid_url so the SPA can tell the user
+  // the link can't be imported (vs. a transient 502 they'd retry).
+  let res: Response;
+  try {
+    res = await safeFetch(url, {
+      method: 'GET',
+      headers: { 'user-agent': 'DishtonBot/0.1 (+https://dishton.app)' },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    if (e instanceof SsrfError) throw new HttpError(400, 'invalid_url', { reason: e.reason });
+    throw e;
+  }
   if (!res.ok) throw new HttpError(502, 'fetch_failed', { status: res.status });
   const ct = res.headers.get('content-type') ?? '';
   if (!ct.includes('text/html')) throw new HttpError(415, 'not_html');
@@ -58,7 +69,7 @@ async function fetchHtml(url: string): Promise<string> {
       chunks.push(value);
     }
   }
-  return new TextDecoder('utf-8').decode(concat(chunks));
+  return decodeHtmlBody(concat(chunks), ct);
 }
 
 function concat(chunks: Uint8Array[]): Uint8Array {
@@ -159,7 +170,7 @@ serve(async (req: Request) => {
         .update({ phase: 'ai', progress_text: 'Asking the model' })
         .eq('id', jobId);
 
-      const budget = await withRateBudget(4000, () =>
+      const budget = await withRateBudget(callerProfileId, 4000, () =>
         callAndValidate({
           lane: 'text',
           messages: structuringFromHtml({
@@ -226,12 +237,12 @@ serve(async (req: Request) => {
 
     const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
       if (!value.ok) {
-        if (value.reason === 'rate_limit') {
+        if (value.reason === 'rate_limit' || value.reason === 'upstream') {
           await callerClient
             .from('import_jobs')
             .update({
               status: 'failed',
-              error: 'rate_limit',
+              error: value.reason,
               payload: { url: body.url, latency_ms: value.latencyMs },
             })
             .eq('id', jobId);
@@ -305,6 +316,16 @@ serve(async (req: Request) => {
         return jsonResponse(
           { error: 'rate_limit', retry_after: 60, request_id: requestId },
           429,
+          cors,
+        );
+      }
+      if (value.reason === 'upstream') {
+        // Transient model/API failure — not a content problem. 503 so the SPA
+        // surfaces "importer busy, try again" rather than the needs_review
+        // "edit the draft" copy.
+        return jsonResponse(
+          { error: 'upstream', request_id: requestId },
+          503,
           cors,
         );
       }

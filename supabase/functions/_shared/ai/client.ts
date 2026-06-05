@@ -7,6 +7,7 @@
 
 import Anthropic from 'npm:@anthropic-ai/sdk@^0.40.0';
 import { env } from '../env.ts';
+import { isMockMode, mockAiChat } from './mock.ts';
 
 export type Lane = 'text' | 'vision';
 
@@ -75,6 +76,18 @@ function getClient(): Anthropic {
   return cachedClient;
 }
 
+// A "transient upstream" error: the model call itself failed (API error,
+// connection failure, or our client-side timeout/abort) as opposed to the
+// model returning unparseable output. Callers map this to a retriable
+// 'upstream' reason. AbortError covers our per-attempt timeout (the SDK aborts
+// the request via AbortController) and TimeoutError covers AbortSignal.timeout.
+export function isUpstreamError(err: unknown): boolean {
+  if (err instanceof Anthropic.APIError) return true;
+  if (err instanceof Anthropic.APIConnectionError) return true;
+  const name = (err as { name?: string } | null)?.name ?? '';
+  return name === 'AbortError' || name === 'TimeoutError';
+}
+
 function isRetryable(err: unknown): boolean {
   if (err instanceof Anthropic.RateLimitError) return true;
   if (err instanceof Anthropic.InternalServerError) return true;
@@ -122,6 +135,10 @@ function splitSystem(messages: AiMessage[]): {
 }
 
 export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
+  // Mock mode short-circuits before the client is created, so no network call
+  // to api.anthropic.com is ever made (and no API key is required).
+  if (isMockMode()) return Promise.resolve(mockAiChat(opts));
+
   const client = getClient();
   const model = opts.model ?? laneModel(opts.lane);
   const { system, rest } = splitSystem(opts.messages);
