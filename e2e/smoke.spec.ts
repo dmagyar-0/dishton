@@ -34,7 +34,10 @@ test.describe('dishton smoke', () => {
     // their personal household.
     await expect(page).toHaveURL(/\/h\//);
 
-    await page.getByRole('link', { name: /import/i }).click();
+    // The empty recipe list also shows an "Import a recipe" CTA, so match the
+    // nav link by its exact accessible name to stay unambiguous on every
+    // viewport (the nav link carries an aria-label even when icon-only).
+    await page.getByRole('link', { name: 'Import', exact: true }).click();
 
     await page
       .getByPlaceholder(/example\.com\/recipe/i)

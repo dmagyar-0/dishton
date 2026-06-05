@@ -35,7 +35,12 @@ export function AppShell() {
           <ul className="flex items-center gap-0 md:gap-1">
             {householdId && (
               <li>
-                <Link to="/h/$householdId" params={{ householdId }} className={NAV_CLASS}>
+                <Link
+                  to="/h/$householdId"
+                  params={{ householdId }}
+                  className={NAV_CLASS}
+                  aria-label={isSolo ? t('nav.my_recipes') : t('nav.home')}
+                >
                   <Home size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">
                     {isSolo ? t('nav.my_recipes') : t('nav.home')}
@@ -44,14 +49,19 @@ export function AppShell() {
               </li>
             )}
             <li>
-              <Link to="/search" className={NAV_CLASS}>
+              <Link to="/search" className={NAV_CLASS} aria-label={t('search.nav')}>
                 <Search size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('search.nav')}</span>
               </Link>
             </li>
             {householdId && (
               <li>
-                <Link to="/h/$householdId/import" params={{ householdId }} className={NAV_CLASS}>
+                <Link
+                  to="/h/$householdId/import"
+                  params={{ householdId }}
+                  className={NAV_CLASS}
+                  aria-label={t('nav.import')}
+                >
                   <Upload size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.import')}</span>
                 </Link>
@@ -59,7 +69,7 @@ export function AppShell() {
             )}
             {followsEnabled && (
               <li>
-                <Link to="/following" className={NAV_CLASS}>
+                <Link to="/following" className={NAV_CLASS} aria-label={t('nav.following')}>
                   <Users size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.following')}</span>
                 </Link>
@@ -72,6 +82,7 @@ export function AppShell() {
                   params={{ householdId }}
                   search={{ tab: 'general' }}
                   className={NAV_CLASS}
+                  aria-label={t('nav.household_settings')}
                 >
                   <Settings size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.household_settings')}</span>
@@ -79,7 +90,7 @@ export function AppShell() {
               </li>
             )}
             <li>
-              <Link to="/profile" className={NAV_CLASS}>
+              <Link to="/profile" className={NAV_CLASS} aria-label={t('nav.profile')}>
                 <User size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('nav.profile')}</span>
               </Link>

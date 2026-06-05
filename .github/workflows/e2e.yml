@@ -53,6 +53,17 @@ jobs:
         # `supabase db reset` re-applies every migration then runs seed.sql.
         run: supabase db reset
 
+      - name: Bump seeded user passwords for sign-in specs
+        # seed.sql sets the demo users' password to `test1234` (8 chars), but
+        # the login form requires >= 10. The signin-based specs (recipe-edit)
+        # authenticate the seeded users with `test-password-1234`, so bump them
+        # to match. Fresh-signup specs (smoke, household-members) are unaffected.
+        run: |
+          db_url="$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')"
+          psql "${db_url:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}" \
+            -v ON_ERROR_STOP=1 \
+            -c "update auth.users set encrypted_password = crypt('test-password-1234', gen_salt('bf')) where email in ('alice@example.test','bob@example.test','carol@example.test');"
+
       - name: Capture local Supabase credentials
         id: supabase
         run: |
