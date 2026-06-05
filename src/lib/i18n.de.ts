@@ -260,6 +260,21 @@ export default {
       'Beim Speichern deiner Änderungen ist etwas schiefgelaufen. Bitte gleich noch einmal versuchen.',
     edit_unsaved_confirm:
       'Du hast ungespeicherte Änderungen. Wirklich verlassen, ohne zu speichern?',
+    edit_conflict_title: 'Dieses Rezept hat sich geändert',
+    edit_conflict_body:
+      'Jemand anderes hat dieses Rezept geändert, seit du es geöffnet hast. Lade neu, um die Änderungen zu sehen, und übernimm dann deine erneut.',
+    unsaved_changes_title: 'Änderungen verwerfen?',
+    unsaved_changes_body:
+      'Du hast ungespeicherte Änderungen. Wenn du jetzt gehst, gehen sie verloren.',
+    unsaved_changes_keep: 'Weiter bearbeiten',
+    unsaved_changes_discard: 'Änderungen verwerfen',
+    load_error_title: 'Rezept konnte nicht geladen werden',
+    load_error_body:
+      'Beim Laden dieses Rezepts ist etwas schiefgelaufen. Prüfe deine Verbindung und versuche es erneut.',
+    load_error_retry: 'Erneut versuchen',
+    not_found_title: 'Rezept nicht gefunden',
+    not_found_body: 'Dieses Rezept existiert nicht oder du hast keinen Zugriff darauf.',
+    no_ingredients: 'Keine Zutaten angegeben.',
     edit_forbidden_title: 'Nur ansehen',
     edit_forbidden_body: 'Du hast keine Berechtigung, Rezepte in diesem Haushalt zu bearbeiten.',
     section_basics: 'Rezept',
@@ -278,6 +293,7 @@ export default {
     field_ingredient_quantity: 'Menge',
     field_ingredient_unit: 'Einheit',
     field_ingredient_name: 'Zutat',
+    field_ingredient_raw_text: 'Originalzeile',
     field_ingredient_notes: 'Notizen',
     field_ingredient_section: 'Abschnitt',
     field_step_body: 'Schritt',

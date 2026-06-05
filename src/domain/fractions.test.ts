@@ -1,6 +1,14 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { formatFraction, niceFraction, niceQuantity, shouldHideFraction, snap } from './fractions';
+import {
+  formatDisplayQuantity,
+  formatFraction,
+  isFractionFriendlyUnit,
+  niceFraction,
+  niceQuantity,
+  shouldHideFraction,
+  snap,
+} from './fractions';
 
 describe('snap', () => {
   it('snaps to step', () => {
@@ -23,6 +31,11 @@ describe('niceFraction', () => {
     const f = niceFraction(-1.5, 8);
     expect(formatFraction(f)).toContain('1/2');
     expect(f.whole).toBeLessThanOrEqual(0);
+  });
+  it('formats a negative mixed number with the sign on the whole part', () => {
+    expect(formatFraction(niceFraction(-1.5, 8))).toBe('-1 1/2');
+    expect(formatFraction(niceFraction(-0.5, 8))).toBe('-1/2');
+    expect(formatFraction(niceFraction(-2, 8))).toBe('-2');
   });
   it('returns whole when no remainder', () => {
     const f = niceFraction(2, 8);
@@ -56,6 +69,10 @@ describe('niceQuantity', () => {
   it('snaps tsp/tbsp/cup to 1/8 grid', () => {
     expect(niceQuantity(1.13, 'tsp')).toBeCloseTo(1.125, 5);
     expect(niceQuantity(1.5, 'cup_us')).toBe(1.5);
+  });
+  it('snaps oz/lb to 1/8 grid', () => {
+    expect(niceQuantity(1.13, 'oz')).toBeCloseTo(1.125, 5);
+    expect(niceQuantity(2.2, 'lb')).toBeCloseTo(2.25, 5);
   });
   it('snaps small ml to 5', () => {
     expect(niceQuantity(7, 'ml')).toBe(5);
@@ -120,6 +137,40 @@ describe('shouldHideFraction', () => {
   it('shows below 10', () => {
     expect(shouldHideFraction(9.99)).toBe(false);
     expect(shouldHideFraction(0)).toBe(false);
+  });
+});
+
+describe('isFractionFriendlyUnit', () => {
+  it('treats cooking-volume + imperial mass + count as fraction friendly', () => {
+    for (const u of ['tsp', 'tbsp', 'cup_us', 'cup_metric', 'oz', 'lb', 'count']) {
+      expect(isFractionFriendlyUnit(u)).toBe(true);
+    }
+  });
+  it('treats metric mass/volume + null as decimal', () => {
+    for (const u of ['g', 'kg', 'ml', 'l', 'C', null, undefined]) {
+      expect(isFractionFriendlyUnit(u)).toBe(false);
+    }
+  });
+});
+
+describe('formatDisplayQuantity', () => {
+  const dec = (v: number) => String(Number(v.toFixed(2)));
+
+  it('renders fractions for fraction-friendly units', () => {
+    expect(formatDisplayQuantity(1.5, 'cup_us', dec)).toBe('1 1/2');
+    expect(formatDisplayQuantity(0.125, 'tsp', dec)).toBe('1/8');
+    expect(formatDisplayQuantity(0.25, 'count', dec)).toBe('1/4');
+  });
+  it('renders decimals for non-fraction-friendly units', () => {
+    expect(formatDisplayQuantity(1.5, 'g', dec)).toBe('1.5');
+    expect(formatDisplayQuantity(200, 'ml', dec)).toBe('200');
+  });
+  it('drops fractions for large fraction-friendly values (>= 10)', () => {
+    expect(formatDisplayQuantity(12.5, 'cup_us', dec)).toBe('12.5');
+    expect(formatDisplayQuantity(10, 'oz', dec)).toBe('10');
+  });
+  it('passes through non-finite values', () => {
+    expect(formatDisplayQuantity(Number.NaN, 'cup_us', dec)).toBe('NaN');
   });
 });
 
