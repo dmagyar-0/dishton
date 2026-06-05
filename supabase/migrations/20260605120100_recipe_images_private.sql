@@ -6,9 +6,10 @@
 -- the owning recipe, or the object's own `<uid>/...` folder). Objects we store
 -- are now served via short-lived signed URLs minted in the SPA query layer.
 --
--- The earlier migration's CREATE was patched to public=false for fresh
--- installs; this forward UPDATE fixes databases that already provisioned the
--- bucket as public.
+-- The historical CREATE migration stays byte-identical (forward-only policy);
+-- fresh local installs get a private bucket from supabase/config.toml, while
+-- this forward UPDATE flips any database that already provisioned the bucket as
+-- public (and re-asserts private after the historical CREATE on a fresh reset).
 --
 -- Forward-only.
 

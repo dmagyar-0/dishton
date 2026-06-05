@@ -147,11 +147,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. upsert the cache row. caller.client is service-role-keyed but forwards
-    // the member's JWT, so the write is still subject to recipe_translations
-    // RLS. A failure here only costs a cache miss (we still return the fresh
-    // translation), but we must surface it: a silently-failing cache write
-    // means every view re-pays the model. Log it rather than swallowing.
+    // 4. upsert the cache row via a true service-role client (adminClient(),
+    // no forwarded JWT). recipe_translations has no authenticated INSERT/UPDATE
+    // RLS policy by design — writes are service-role only — so the member's
+    // JWT would silently fail RLS here. A failed write only costs a cache miss
+    // (we still return the fresh translation), but we must surface it: a
+    // silently-failing cache write means every view re-pays the model. Log it
+    // rather than swallowing.
     const cacheWrite = await adminClient()
       .from('recipe_translations')
       .upsert({

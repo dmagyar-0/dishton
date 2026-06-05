@@ -77,11 +77,10 @@ function ProfilePage() {
       return;
     }
     useAuth.getState().setProfile({ ...profile, preferred_language: next });
-    // Apply the interface language immediately so the change is visible without
-    // a reload. Mirrors the auth-bootstrap call in src/lib/auth.ts, which reads
-    // the same persisted field; applyUiLanguage narrows to a supported UI
-    // language internally.
-    applyUiLanguage(next);
+    // Note: preferred_language is the recipe-translation default, NOT the
+    // interface language. The UI language is driven by `locale` (see
+    // onLocaleChange / the auth bootstrap), so we do not call applyUiLanguage
+    // here.
     push({ variant: 'success', title: t('profile.language_saved') });
   }
 
@@ -98,6 +97,9 @@ function ProfilePage() {
       return;
     }
     useAuth.getState().setProfile({ ...profile, locale: next });
+    // `locale` is the interface language ("Display language"); apply it
+    // immediately so the UI switches without a reload.
+    applyUiLanguage(next);
     push({ variant: 'success', title: t('profile.saved') });
   }
 

@@ -36,7 +36,17 @@ export async function withRateBudget<T>(
 
   const reserved = await admin().rpc('app_reserve_ai_budget', { p_tokens: estimatedTokens });
   if (reserved.error) throw reserved.error;
-  if (reserved.data === false) return { status: 'rate_limit' };
+  if (reserved.data === false) {
+    // Global window is saturated. Release the per-profile reservation we just
+    // took so a user isn't charged for a call that won't happen (best-effort;
+    // the budget self-heals each window even if this refund fails).
+    const refund = await admin().rpc('app_refund_profile_ai_budget', {
+      p_profile: profileId,
+      p_tokens: estimatedTokens,
+    });
+    if (refund.error) throw refund.error;
+    return { status: 'rate_limit' };
+  }
 
   const value = await fn();
   return { status: 'ok', value };

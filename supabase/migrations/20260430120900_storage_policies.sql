@@ -9,7 +9,7 @@ set search_path = public;
 -- run yet (e.g. when migrations are applied against a stock Postgres without
 -- the Supabase storage stack initialised).
 insert into storage.buckets (id, name, public)
-  values ('recipe-images', 'recipe-images', false)
+  values ('recipe-images', 'recipe-images', true)
   on conflict (id) do nothing;
 insert into storage.buckets (id, name, public)
   values ('imports', 'imports', false)

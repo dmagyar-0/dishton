@@ -123,9 +123,11 @@ export async function refreshAuthDerivedState(userId: string): Promise<void> {
     useAuth.getState().setProfile(loaded);
     setUserContext(loaded.id);
     // Apply the persisted interface language so a returning user lands in the
-    // language they chose, not the build-time default. Narrowed to supported
-    // UI languages inside applyUiLanguage.
-    applyUiLanguage(loaded.preferred_language);
+    // language they chose, not the build-time default. The interface language
+    // is the profile `locale` ("Display language"); `preferred_language` is the
+    // recipe-translation default, a separate setting. Narrowed to supported UI
+    // languages inside applyUiLanguage.
+    applyUiLanguage(loaded.locale);
   }
 
   const memberships = await supabase

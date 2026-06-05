@@ -1,3 +1,4 @@
+import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { useFollowedHouseholds } from '@/lib/queries/households';
 import { useRecipesAcrossHouseholds } from '@/lib/queries/recipes';
@@ -37,15 +38,18 @@ function SearchPage() {
     () => (memberships.find((m) => m.is_personal) ?? memberships[0])?.household_id ?? '',
     [memberships],
   );
-  const followed = useFollowedHouseholds(canonicalHouseholdId);
+  // FLAG: follows_enabled — only widen the search scope to followed households
+  // when following is enabled, matching the /following route + nav gating.
+  const followsEnabled = useFeatureFlag('follows_enabled');
+  const followed = useFollowedHouseholds(followsEnabled ? canonicalHouseholdId : '');
   // Search and tags cover the full accessible surface: own households plus the
   // households this user follows (docs/10 — own + followed scoping). RLS still
   // strips anything the caller cannot read, so merging here is purely additive.
   const householdIds = useMemo(() => {
     const ids = new Set(memberships.map((m) => m.household_id));
-    for (const f of followed.data ?? []) ids.add(f.followed_household_id);
+    if (followsEnabled) for (const f of followed.data ?? []) ids.add(f.followed_household_id);
     return [...ids];
-  }, [memberships, followed.data]);
+  }, [memberships, followed.data, followsEnabled]);
   const tagParam = params.tag;
   const selected = useMemo(
     () => (Array.isArray(tagParam) ? tagParam : tagParam ? [tagParam] : []),

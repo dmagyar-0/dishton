@@ -3,8 +3,8 @@ import {
   convert,
   formatDisplayQuantity,
   formatNumber,
-  languageFallbackChain,
   niceQuantity,
+  normaliseBcp47,
   pickDisplayUnit,
   quantityIsEmpty,
   quantityToNumber,
@@ -25,7 +25,7 @@ import { ServingsScaler } from '@/ui/recipe/ServingsScaler';
 import { UnitToggle } from '@/ui/recipe/UnitToggle';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Pencil } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { requireAuth } from '../../../../_guards';
@@ -146,16 +146,21 @@ function RecipeDetailPage() {
   );
 
   // Resolve the display language: ?lang override -> profile preference ->
-  // recipe source language, walking the fallback chain to the first language
-  // that is either the source or already cached.
+  // recipe source language. Prefer an already-cached variant (exact, then the
+  // base of a regional code); otherwise resolve to the requested language
+  // itself so the translate effect fetches and caches it on demand, rather than
+  // silently falling back to the source language.
   const displayLanguage = useMemo(() => {
     if (!translationEnabled) return sourceLanguage;
-    const requested = search.lang ?? profile?.preferred_language ?? sourceLanguage;
-    const available = new Set([sourceLanguage, ...cachedLanguages]);
-    for (const candidate of languageFallbackChain(requested)) {
-      if (available.has(candidate)) return candidate;
-    }
-    return sourceLanguage;
+    const norm =
+      normaliseBcp47(search.lang ?? profile?.preferred_language ?? sourceLanguage) ??
+      sourceLanguage;
+    if (norm === sourceLanguage) return sourceLanguage;
+    const cached = new Set(cachedLanguages);
+    if (cached.has(norm)) return norm;
+    const base = norm.includes('-') ? (norm.split('-')[0] ?? norm) : norm;
+    if (base !== norm && cached.has(base)) return base;
+    return norm;
   }, [
     translationEnabled,
     search.lang,
@@ -174,19 +179,23 @@ function RecipeDetailPage() {
     data: translateData,
   } = translateMutation;
 
-  // On a true miss (a requested non-source language that is not yet cached),
-  // populate the cache. We only want this to fire once per language.
+  // Fetch the translated payload for any non-source display language. The
+  // translate-recipe Edge Function returns the cached payload on a hit (and only
+  // calls the model on a true miss), so this both displays already-cached
+  // translations and populates the cache on a miss. Fire once per language to
+  // avoid redundant calls when the cached-languages list resolves.
+  const requestedLangRef = useRef<string | null>(null);
   useEffect(() => {
     if (!translationEnabled) return;
     if (isSourceLanguage) return;
     if (cachedLangsQ.isLoading) return;
-    if (cachedLanguages.includes(displayLanguage)) return;
+    if (requestedLangRef.current === displayLanguage) return;
+    requestedLangRef.current = displayLanguage;
     triggerTranslate();
   }, [
     translationEnabled,
     isSourceLanguage,
     cachedLangsQ.isLoading,
-    cachedLanguages,
     displayLanguage,
     triggerTranslate,
   ]);
@@ -284,8 +293,10 @@ function RecipeDetailPage() {
   }
 
   const languageOptions = (() => {
-    const codes = Array.from(new Set([sourceLanguage, ...cachedLanguages]));
-    return codes.map((code) => ({ code, native: code }));
+    const codes = new Set([sourceLanguage, ...cachedLanguages, displayLanguage]);
+    const preferred = normaliseBcp47(profile?.preferred_language);
+    if (preferred) codes.add(preferred);
+    return Array.from(codes).map((code) => ({ code, native: code }));
   })();
 
   return (
