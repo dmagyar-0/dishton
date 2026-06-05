@@ -34,10 +34,11 @@ test.describe('dishton smoke', () => {
     // their personal household.
     await expect(page).toHaveURL(/\/h\//);
 
-    // The recipe-list body also carries import links, so scope to the header
-    // nav and match its exact accessible name (the nav link keeps an aria-label
-    // even when it renders icon-only on mobile).
-    await page.locator('header').getByRole('link', { name: 'Import', exact: true }).click();
+    // The recipe-list body also carries "Import" links (in a content <header>),
+    // so target the nav link by its aria-label — only the nav link sets one, so
+    // getByLabel is unambiguous on every viewport (it stays labelled even when
+    // it renders icon-only on mobile).
+    await page.getByLabel('Import', { exact: true }).click();
 
     await page
       .getByPlaceholder(/example\.com\/recipe/i)
