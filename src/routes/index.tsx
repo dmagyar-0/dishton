@@ -4,6 +4,9 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
   beforeLoad: () => {
     const s = useAuth.getState();
+    // Wait for the store to settle before deciding where to send the user;
+    // redirecting mid-hydration causes the login/onboarding flash on refresh.
+    if (!s.hydrated) return;
     if (!s.session) throw redirect({ to: '/auth/login' });
     // Every signed-in profile has a personal household after the
     // 20260524 migration. Prefer that one so the URL stays stable

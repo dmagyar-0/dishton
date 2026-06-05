@@ -1,20 +1,40 @@
-import { formatNumber, formatUnit } from '@/domain';
+import type { Quantity } from '@/domain';
+import { formatUnit, quantityToNumber } from '@/domain';
 import type { FullRecipe } from '@/lib/queries/recipes';
 import { cn } from '@/ui/cn';
 import { Card } from '@/ui/primitives/Card';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type DisplayIngredient = FullRecipe['ingredients'][number] & {
-  displayValue: number | null;
+  // The scaled + unit-converted quantity to render (a number, a fraction
+  // object, or null for "no quantity"). Distinct from the canonical `quantity`.
+  displayQuantity: Quantity | null;
   displayUnit: string | null;
 };
 
 export type IngredientsCardProps = {
   ingredients: DisplayIngredient[];
+  // Pure formatters injected from the domain layer so this component stays free
+  // of unit/fraction logic.
+  formatDecimal: (value: number) => string;
+  formatDisplayQuantity: (
+    value: number,
+    unit: string | null | undefined,
+    formatDecimal: (value: number) => string,
+  ) => string;
+  isTranslating?: boolean;
   className?: string;
 };
 
-export function IngredientsCard({ ingredients, className }: IngredientsCardProps) {
+export function IngredientsCard({
+  ingredients,
+  formatDecimal,
+  formatDisplayQuantity,
+  isTranslating,
+  className,
+}: IngredientsCardProps) {
+  const { t } = useTranslation();
   const groups = useMemo(() => {
     const out: { section: string | null; items: DisplayIngredient[] }[] = [];
     for (const ing of ingredients) {
@@ -29,11 +49,11 @@ export function IngredientsCard({ ingredients, className }: IngredientsCardProps
   return (
     <Card className={cn('p-5', className)}>
       <h2 className="font-display text-xl text-ink mb-4 pb-2 border-b border-saffron/30">
-        Ingredients
+        {t('recipe.ingredients')}
       </h2>
 
       {groups.length === 0 ? (
-        <p className="font-body text-sm text-ink-muted italic">No ingredients listed.</p>
+        <p className="font-body text-sm text-ink-muted italic">{t('recipe.no_ingredients')}</p>
       ) : (
         groups.map((group, gi) => {
           const headingId = group.section ? `ing-section-${gi}` : undefined;
@@ -53,7 +73,13 @@ export function IngredientsCard({ ingredients, className }: IngredientsCardProps
               )}
               <ul className="space-y-1">
                 {group.items.map((ing) => (
-                  <IngredientRow key={ing.id} ing={ing} />
+                  <IngredientRow
+                    key={ing.id}
+                    ing={ing}
+                    formatDecimal={formatDecimal}
+                    formatDisplayQuantity={formatDisplayQuantity}
+                    isTranslating={isTranslating}
+                  />
                 ))}
               </ul>
             </section>
@@ -64,9 +90,25 @@ export function IngredientsCard({ ingredients, className }: IngredientsCardProps
   );
 }
 
-function IngredientRow({ ing }: { ing: DisplayIngredient }) {
-  const hasQty = ing.displayValue != null;
-  const qtyText = hasQty ? formatNumber(ing.displayValue as number) : null;
+function IngredientRow({
+  ing,
+  formatDecimal,
+  formatDisplayQuantity,
+  isTranslating,
+}: {
+  ing: DisplayIngredient;
+  formatDecimal: IngredientsCardProps['formatDecimal'];
+  formatDisplayQuantity: IngredientsCardProps['formatDisplayQuantity'];
+  isTranslating?: boolean;
+}) {
+  const hasQty = ing.displayQuantity != null;
+  const qtyText = hasQty
+    ? formatDisplayQuantity(
+        quantityToNumber(ing.displayQuantity as Quantity),
+        ing.displayUnit,
+        formatDecimal,
+      )
+    : null;
   const unitText = ing.displayUnit ? formatUnit(ing.displayUnit) : null;
 
   return (
@@ -83,7 +125,7 @@ function IngredientRow({ ing }: { ing: DisplayIngredient }) {
             <span className="text-saffron font-semibold">{qtyText}</span>
             {unitText && (
               <>
-                <span aria-hidden>{' '}</span>
+                <span aria-hidden> </span>
                 <span className="text-ink-muted font-medium">{unitText}</span>
               </>
             )}
@@ -95,7 +137,12 @@ function IngredientRow({ ing }: { ing: DisplayIngredient }) {
         )}
       </span>
 
-      <span className="font-body text-[0.95rem] leading-snug text-ink">
+      <span
+        className={cn(
+          'font-body text-[0.95rem] leading-snug text-ink',
+          isTranslating && 'opacity-50',
+        )}
+      >
         {ing.ingredient_name ?? ing.raw_text}
         {ing.notes && (
           <span className="block font-display italic text-xs text-ink-muted mt-0.5">

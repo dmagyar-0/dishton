@@ -14,7 +14,10 @@ export default defineConfig({
     react(),
     tailwind(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate'): a waiting SW stays waiting until the user
+      // clicks "Refresh" in the toast (ServiceWorkerUpdateToast → updateSW(true)).
+      // 'autoUpdate' would skipWaiting on its own and race that toast UX.
+      registerType: 'prompt',
       injectRegister: 'auto',
       manifestFilename: 'manifest.webmanifest',
       manifest: false,
@@ -86,5 +89,9 @@ export default defineConfig({
   },
   server: { port: 5173 },
   preview: { port: 4173 },
-  build: { sourcemap: true },
+  // 'hidden' emits .map files (so the deploy step can upload them to Sentry)
+  // but omits the //# sourceMappingURL comment, so the maps are never
+  // referenced from — or served to — the browser. The deploy workflow strips
+  // the .map files from the Vercel artifact after uploading them to Sentry.
+  build: { sourcemap: 'hidden' },
 });

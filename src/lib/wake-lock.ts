@@ -17,6 +17,13 @@ async function reacquire(): Promise<void> {
         (await (
           navigator as unknown as { wakeLock?: { request: (k: string) => Promise<Sentinel> } }
         ).wakeLock?.request('screen')) ?? null;
+      // Re-add the release listener on the new sentinel; the OS releases the
+      // lock when the tab is hidden, so a reacquired lock needs its own
+      // listener to keep `sentinel` truthy/null in sync (the original
+      // listener was bound to the now-released sentinel).
+      sentinel?.addEventListener?.('release', () => {
+        sentinel = null;
+      });
     } catch {
       /* ignore */
     }

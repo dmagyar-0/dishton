@@ -40,6 +40,8 @@ with assertions(label, ok) as (
    exists(select 1 from pg_tables where schemaname='app' and tablename='import_jobs')),
   ('table app.ai_rate_budget exists',
    exists(select 1 from pg_tables where schemaname='app' and tablename='ai_rate_budget')),
+  ('table app.ai_profile_budget exists',
+   exists(select 1 from pg_tables where schemaname='app' and tablename='ai_profile_budget')),
   ('table app.feature_flags exists',
    exists(select 1 from pg_tables where schemaname='app' and tablename='feature_flags')),
 
@@ -190,6 +192,10 @@ with assertions(label, ok) as (
    (select c.relrowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname='app' and c.relname='ai_rate_budget')),
+  ('RLS enabled on app.ai_profile_budget',
+   (select c.relrowsecurity from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname='app' and c.relname='ai_profile_budget')),
   ('RLS enabled on app.feature_flags',
    (select c.relrowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
@@ -248,6 +254,10 @@ with assertions(label, ok) as (
    exists(select 1 from pg_proc p
           join pg_namespace n on n.oid = p.pronamespace
           where n.nspname='public' and p.proname='app_reserve_ai_budget')),
+  ('function public.app_reserve_profile_ai_budget exists',
+   exists(select 1 from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname='public' and p.proname='app_reserve_profile_ai_budget')),
   ('function app.reap_stuck_imports exists',
    exists(select 1 from pg_proc p
           join pg_namespace n on n.oid = p.pronamespace

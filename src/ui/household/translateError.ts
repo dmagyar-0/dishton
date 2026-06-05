@@ -2,6 +2,7 @@
 // The Postgres functions raise short snake_case messages like 'last_owner';
 // the matching i18n keys live under `household_errors.*`.
 
+import { logErrorBreadcrumb } from '@/observability/sentry';
 import type { TFunction } from 'i18next';
 
 const KNOWN = new Set([
@@ -15,6 +16,8 @@ const KNOWN = new Set([
   'invalid_or_expired_follow_code',
   'no_owned_household',
   'cannot_follow_self',
+  'cannot_delete_personal_household',
+  'household_not_found',
 ]);
 
 export type HouseholdErrorCode =
@@ -28,6 +31,8 @@ export type HouseholdErrorCode =
   | 'invalid_or_expired_follow_code'
   | 'no_owned_household'
   | 'cannot_follow_self'
+  | 'cannot_delete_personal_household'
+  | 'household_not_found'
   | null;
 
 export function householdErrorCode(err: unknown): HouseholdErrorCode {
@@ -40,7 +45,11 @@ export function householdErrorCode(err: unknown): HouseholdErrorCode {
 export function translateHouseholdError(t: TFunction, err: unknown): string {
   const code = householdErrorCode(err);
   if (code) return t(`household_errors.${code}`);
-  return extractMessage(err) ?? '';
+  // Unmapped error: never surface raw Postgres/Supabase internals to the user.
+  // Keep the raw string as a Sentry breadcrumb for debugging instead.
+  const raw = extractMessage(err);
+  if (raw) logErrorBreadcrumb('unmapped household error', { raw });
+  return t('household_errors.generic');
 }
 
 function extractMessage(err: unknown): string | null {

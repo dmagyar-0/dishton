@@ -4,11 +4,10 @@
 -- The Recipe domain schema (supabase/functions/_shared/domain/recipe.ts) and
 -- the AI prompt (supabase/functions/_shared/ai/prompts.ts) both allow a
 -- quantity to be either a JSON number (`0.5`) or a fraction object
--- (`{"numerator": 1, "denominator": 2}`). Imports therefore routinely arrive
--- in the second form. The save_recipe RPC must accept both — otherwise the
--- import flow logs `request.success` server-side but the SPA shows
--- `errors.internal` because the RPC blew up casting the JSON object to
--- numeric.
+-- (`{"numerator": 1, "denominator": 2}`). recipe_ingredients.quantity is jsonb
+-- and round-trips the union faithfully (1/2 stays 1/2, not lossy 0.5). The
+-- save_recipe RPC must accept the number form, the fraction-object form, the
+-- string-scalar form the AI sometimes emits, and null.
 
 alter table auth.users disable trigger on_auth_user_created;
 
@@ -113,20 +112,22 @@ with assertions(label, ok) as (values
   ('save_recipe returned a recipe id',
    (select recipe_id from _saved) is not null),
 
-  ('scalar quantity 200 stored as 200',
+  ('scalar quantity 200 stored as JSON number 200',
    (select quantity from app.recipe_ingredients
-     where recipe_id = (select recipe_id from _saved) and position = 0) = 200),
+     where recipe_id = (select recipe_id from _saved) and position = 0) = '200'::jsonb),
 
-  ('fraction-object 1/2 stored as 0.5',
+  ('fraction-object 1/2 round-trips as a fraction object',
    (select quantity from app.recipe_ingredients
-     where recipe_id = (select recipe_id from _saved) and position = 1) = 0.5),
+     where recipe_id = (select recipe_id from _saved) and position = 1)
+     = jsonb_build_object('numerator', 1, 'denominator', 2)),
 
   ('null quantity stored as null',
    (select quantity from app.recipe_ingredients
      where recipe_id = (select recipe_id from _saved) and position = 2) is null),
 
-  ('fraction-object 3/4 stored as 0.75',
+  ('fraction-object 3/4 round-trips as a fraction object',
    (select quantity from app.recipe_ingredients
-     where recipe_id = (select recipe_id from _saved) and position = 3) = 0.75)
+     where recipe_id = (select recipe_id from _saved) and position = 3)
+     = jsonb_build_object('numerator', 3, 'denominator', 4))
 )
 select label, ok from assertions;

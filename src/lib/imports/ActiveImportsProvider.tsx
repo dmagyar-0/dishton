@@ -60,9 +60,18 @@ type Row = {
   progress_text?: string | null;
   recipe_id: string | null;
   payload?: Record<string, unknown> | null;
+  error?: string | null;
   created_at: string;
   completed_at: string | null;
 };
+
+// Server `error` codes that have a dedicated user-facing i18n string under
+// `errors.*`. Anything else (or null) falls back to errors.internal.
+const KNOWN_FAILED_CODES = new Set(['rate_limit', 'upstream', 'timeout']);
+
+function failedErrorKey(code: string | null | undefined): string {
+  return code && KNOWN_FAILED_CODES.has(code) ? `errors.${code}` : 'errors.internal';
+}
 
 type RegisterArgs = {
   jobId: string;
@@ -217,7 +226,7 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
         ),
       });
     },
-    [navigate, originated, push, queryClient, saved, t],
+    [navigate, push, queryClient, saved, t],
   );
 
   // Subscribe once per session per profile. Re-subscribes when the user
@@ -229,6 +238,29 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
       saved.clear();
       return;
     }
+    // Backfill on mount: Realtime only delivers CHANGE events, so any
+    // awaiting_save / running / queued row that already existed before this
+    // tab subscribed (e.g. a background import that finished while every tab
+    // was closed) is invisible to the listener and would sit forever, counting
+    // against the concurrency cap. Query existing live rows once and re-drive
+    // them — re-saving any awaiting_save draft and rendering the indicator.
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from('import_jobs')
+        .select(
+          'id, household_id, kind, status, phase, progress_text, recipe_id, payload, error, created_at, completed_at',
+        )
+        .eq('profile_id', profileId)
+        .in('status', ['queued', 'running', 'awaiting_save'])
+        .order('created_at', { ascending: false });
+      if (cancelled || !data) return;
+      for (const r of data as Row[]) {
+        upsert(r, 'realtime');
+        if (r.status === 'awaiting_save') void saveFromAwaiting(r);
+      }
+    })();
+
     const channel = supabase
       .channel(`import_jobs:${profileId}`)
       .on(
@@ -257,13 +289,14 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
             push({
               variant: 'error',
               title: t('import.error_title'),
-              description: t('errors.internal'),
+              description: t(failedErrorKey(row.error)),
             });
           }
         },
       )
       .subscribe();
     return () => {
+      cancelled = true;
       void supabase.removeChannel(channel);
     };
   }, [profileId, originated, saved, upsert, saveFromAwaiting, push, t]);

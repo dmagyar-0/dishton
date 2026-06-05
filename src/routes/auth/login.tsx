@@ -44,17 +44,39 @@ function LoginPage() {
         >
           <label className="block">
             <span className="text-sm text-ink-soft">{t('auth.email')}</span>
-            <Input type="email" autoComplete="email" {...register('email')} />
-            {errors.email && <p className="text-pomegranate text-sm">{errors.email.message}</p>}
+            <Input
+              type="email"
+              autoComplete="email"
+              aria-invalid={errors.email ? true : undefined}
+              aria-describedby={errors.email ? 'login-email-error' : undefined}
+              {...register('email')}
+            />
+            {errors.email && (
+              <p id="login-email-error" role="alert" className="text-pomegranate text-sm">
+                {errors.email.message}
+              </p>
+            )}
           </label>
           <label className="block">
             <span className="text-sm text-ink-soft">{t('auth.password')}</span>
-            <Input type="password" autoComplete="current-password" {...register('password')} />
+            <Input
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={errors.password ? true : undefined}
+              aria-describedby={errors.password ? 'login-password-error' : undefined}
+              {...register('password')}
+            />
             {errors.password && (
-              <p className="text-pomegranate text-sm">{errors.password.message}</p>
+              <p id="login-password-error" role="alert" className="text-pomegranate text-sm">
+                {errors.password.message}
+              </p>
             )}
           </label>
-          {serverError && <p className="text-pomegranate text-sm">{serverError}</p>}
+          {serverError && (
+            <p role="alert" aria-live="assertive" className="text-pomegranate text-sm">
+              {serverError}
+            </p>
+          )}
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {t('auth.submit_login')}
           </Button>

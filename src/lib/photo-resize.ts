@@ -17,7 +17,10 @@ export async function resizeForUpload(file: File): Promise<File> {
   if (typeof createImageBitmap !== 'function') return file;
 
   try {
-    const bitmap = await createImageBitmap(file);
+    // imageOrientation: 'from-image' applies the EXIF orientation tag so the
+    // resized JPEG is upright. Without it, photos taken in portrait on phones
+    // (which store landscape pixels + a rotation flag) upload sideways.
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
     try {
       const { width, height } = bitmap;
       const longEdge = Math.max(width, height);

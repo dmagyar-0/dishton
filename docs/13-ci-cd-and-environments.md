@@ -105,30 +105,52 @@ Jobs (one job per concern, parallelised on the same Linux runner image
    `pnpm test:db`. Tears down on completion.
 9. **`build`** — `pnpm build` (Vite production bundle). Uploads `dist/` as
    an artifact for the deploy workflow to consume.
-10. **`migration-diff`** — runs `supabase db diff -f /tmp/diff.sql` against
-    the PR branch's Supabase preview branch and asserts the file is empty
-    *unless* the PR includes a corresponding `supabase/migrations/*.sql`.
-    Fails the build if local-only schema changes leaked in without a
-    migration file.
+10. **`migration-diff`** — runs `node scripts/check-migration-diff.mjs`
+    against the PR base. It enforces the migration policy deterministically
+    from the git diff: existing migration files are immutable (forward-only),
+    and any change to `supabase/seed.sql` or to an existing migration must be
+    accompanied by a **newly added** migration file. **Limitation:** it cannot
+    detect a schema change that exists only in a developer's local database and
+    was never written to a file (there is nothing in the diff to catch). A live
+    `supabase db diff` against the per-PR preview branch is the backstop for
+    that case; this gate guarantees the file-level invariants on every PR.
+11. **`ci-success`** — an aggregation job that `needs` every other job and
+    fails unless all of them succeed. This is the single status check to mark
+    **required** in branch protection, so adding a job to the graph makes it
+    blocking without changing repo settings.
 
-A failure in any job blocks merge.
+A failure in any job blocks merge (enforced via the `ci-success` aggregate).
 
 ### `e2e.yml`
 
-Triggers: `pull_request` to `main`, after `ci.yml` completes successfully
-(`workflow_run` filter).
+Triggers: `pull_request` to `main`, and `push` to `main`.
 
-Steps:
+**Approach (chosen): run against a fully local stack, not a Vercel preview
+URL.** Resolving the Vercel preview URL from a `workflow_run`-triggered job is
+brittle (the deployment URL is not in that event's context, and the original
+job silently passed with an empty base URL). Instead the job stands up a
+deterministic, self-contained environment so it can never pass vacuously:
 
-1. Resolve the Vercel preview URL for the PR via the Vercel GitHub
-   integration's deployment status webhook (read from
-   `github.event.deployment_status.target_url`).
-2. Set `AI_MOCK_MODE=playwright` in the preview environment so the Edge
-   Function reads `e2e/fixtures/ai-draft.json` instead of calling Anthropic.
-3. Run `pnpm test:e2e --reporter=github` against the resolved URL.
-4. Upload Playwright traces and videos as artifacts on failure.
+1. Start a real local Supabase stack (`supabase start`) — Postgres, Auth,
+   Storage, and Edge Functions — and apply migrations + seed via
+   `supabase db reset`.
+2. Write `AI_MOCK_MODE=playwright` into `supabase/functions/.env` so the
+   served Edge Functions short-circuit the Anthropic call to the canned
+   fixtures in `e2e/fixtures/ai-draft.json` /
+   `e2e/fixtures/ai-translation.de.json` (mirrored in
+   `supabase/functions/_shared/ai/mock.ts`). No `ANTHROPIC_API_KEY` is needed.
+3. Read the local API URL + anon key from `supabase status -o env`, fail the
+   job loudly if the anon key cannot be resolved, and build the SPA against
+   them.
+4. Run `pnpm test:e2e`; `playwright.config.ts` boots `pnpm preview` and points
+   the suite at `http://localhost:4173` (desktop Chrome + Pixel 5 mobile
+   projects).
+5. Upload the Playwright report as an artifact on failure.
 
-A failure blocks merge but does not block the preview deployment itself.
+**Limitation:** this exercises the app against a fresh local stack rather than
+the actual Vercel preview deployment, so it does not catch Vercel-specific
+edge config (headers/rewrites) — those are covered by `vercel.json` review and
+the production smoke after deploy. A failure here blocks merge.
 
 ### `deploy.yml`
 
@@ -183,18 +205,19 @@ environments need it. Names are exact.
 | `SUPABASE_ANON_KEY` | SPA anon JWT for RLS-bound calls | yes | yes | yes | same as above |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin (Edge Functions only) | yes | yes | yes | Supabase Dashboard env per project; never in Vercel |
 | `SUPABASE_ACCESS_TOKEN` | CLI auth in CI | no | yes | yes | GitHub Actions secret `SUPABASE_ACCESS_TOKEN` |
-| `SUPABASE_PROJECT_REF` | Tells `supabase link` which project | no | yes | yes | GitHub Actions secrets `SUPABASE_PROJECT_REF_PREVIEW`, `SUPABASE_PROJECT_REF_PROD` |
+| `SUPABASE_PROJECT_REF_PROD` / `SUPABASE_PROJECT_REF_PREVIEW` | Tells `supabase link` which project (one per environment) | no | yes | yes | GitHub Actions secrets `SUPABASE_PROJECT_REF_PREVIEW`, `SUPABASE_PROJECT_REF_PROD` |
 | `ANTHROPIC_API_KEY` | Anthropic API auth for Edge Functions | yes | yes | yes | Supabase Dashboard function secrets per project |
 | `ANTHROPIC_MODEL` | Text lane; optional override, default `claude-haiku-4-5` | no | optional | optional | Supabase Dashboard function secrets per project |
 | `ANTHROPIC_MODEL_VISION` | Vision lane; optional override, default `claude-sonnet-4-6` | no | optional | optional | Supabase Dashboard function secrets per project |
 | `SENTRY_DSN_FRONTEND` | SPA error reporting | no (off) | yes | yes | Vercel env |
 | `SENTRY_DSN_FUNCTIONS` | Edge Function error reporting | no (off) | yes | yes | Supabase Dashboard function secrets |
 | `SENTRY_AUTH_TOKEN` | Source-map upload during build | no | yes | yes | GitHub Actions secret |
-| `LOGTAIL_TOKEN` | Log drain target (see [14-observability.md](./14-observability.md)) | no | yes | yes | Supabase Dashboard log-drain config |
+| `LOG_DRAIN_TOKEN` | Log drain target (Better Stack / Logtail; see [14-observability.md](./14-observability.md)) | no | yes | yes | Supabase Dashboard log-drain config |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | Sentry org + project for source-map upload | no | yes | yes | GitHub Actions secret |
 | `VERCEL_TOKEN` | CI deploys to Vercel | no | yes | yes | GitHub Actions secret |
 | `VERCEL_ORG_ID` | Vercel org scoping | no | yes | yes | GitHub Actions secret |
 | `VERCEL_PROJECT_ID` | Vercel project scoping | no | yes | yes | GitHub Actions secret |
-| `INSTAGRAM_OEMBED_TOKEN` | If/when IG oEmbed needs auth (feature-flagged) | no | yes | yes | Supabase Dashboard function secrets |
+| `IG_OEMBED_TOKEN` | If/when IG oEmbed needs auth (feature-flagged) | no | yes | yes | Supabase Dashboard function secrets |
 
 Naming rules:
 
@@ -263,7 +286,9 @@ migration file to "fix" it; write a follow-up.
 - [ ] `deploy.yml` runs `supabase db push`, `supabase functions deploy`,
       and `vercel deploy --prod` in that order on every push to `main`.
 - [ ] `vercel.json` contains a single SPA fallback rewrite to `index.html`
-      and no other rewrites.
+      (no other rewrites) plus a `headers` block setting a Content-Security-
+      Policy, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, and
+      `Permissions-Policy`.
 - [ ] No workflow uses `--no-verify`, `--force`, or `--skip-hooks`.
 - [ ] Rollback procedure for both code-only and schema cases is captured
       in this doc.
@@ -288,7 +313,7 @@ done
 # every secret is named
 for s in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
          SUPABASE_ACCESS_TOKEN ANTHROPIC_API_KEY SENTRY_DSN_FRONTEND \
-         SENTRY_DSN_FUNCTIONS LOGTAIL_TOKEN VERCEL_TOKEN; do
+         SENTRY_DSN_FUNCTIONS LOG_DRAIN_TOKEN VERCEL_TOKEN; do
   grep -q "$s" docs/13-ci-cd-and-environments.md || echo "missing secret: $s"
 done
 # Vercel chosen, alternatives mentioned

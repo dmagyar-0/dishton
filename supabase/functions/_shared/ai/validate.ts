@@ -10,7 +10,7 @@
 // stays deterministic and budget-bounded (one ai_call's worth of headroom).
 
 import { Recipe, type Recipe as RecipeType } from '../domain/recipe.ts';
-import { aiChat, type AiCallOpts, type AiResult } from './client.ts';
+import { type AiCallOpts, type AiResult, aiChat, isUpstreamError } from './client.ts';
 import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 
 export type ValidationResult =
@@ -32,6 +32,30 @@ export function normalizePositions(recipe: RecipeType): RecipeType {
     ...recipe,
     ingredients: recipe.ingredients.map((ing, i) => ({ ...ing, position: i })),
     steps: recipe.steps.map((step, i) => ({ ...step, position: i })),
+  };
+}
+
+// Drop any URL the model produced that isn't plain http(s). Scraped pages and
+// IG captions are untrusted input; a prompt-injected page could coax the model
+// into emitting a `javascript:` / `data:` / `file:` URL in source_url or
+// hero_image_path. hero_image_path is later fetched and displayed, so a bad
+// scheme there is the dangerous one. We null out anything that isn't http(s).
+function safeHttpUrl(value: string | null): string | null {
+  if (value === null) return null;
+  let u: URL;
+  try {
+    u = new URL(value);
+  } catch {
+    return null;
+  }
+  return u.protocol === 'http:' || u.protocol === 'https:' ? value : null;
+}
+
+export function sanitizeModelUrls(recipe: RecipeType): RecipeType {
+  return {
+    ...recipe,
+    source_url: safeHttpUrl(recipe.source_url),
+    hero_image_path: safeHttpUrl(recipe.hero_image_path),
   };
 }
 
@@ -60,7 +84,9 @@ function interpret(result: AiResult): Interpreted {
       .join('\n');
     return { ok: false, reason: 'schema', raw, errors };
   }
-  return { ok: true, recipe: normalizePositions(safe.data), raw };
+  // Strip non-http(s) URLs the model may have been coaxed into emitting before
+  // the draft is persisted or displayed.
+  return { ok: true, recipe: sanitizeModelUrls(normalizePositions(safe.data)), raw };
 }
 
 function repairInstruction(errors: string): string {
@@ -81,7 +107,17 @@ function sumUsage(a: AiResult['usage'], b: AiResult['usage']): AiResult['usage']
 }
 
 export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResult> {
-  const first = await aiChat({ ...opts, ...TOOL_FIELDS });
+  let first: AiResult;
+  try {
+    first = await aiChat({ ...opts, ...TOOL_FIELDS });
+  } catch (err) {
+    // Anthropic API errors, connection failures, and timeouts/aborts are not a
+    // bad recipe — they're a transient upstream problem. Surface them as a
+    // typed 'upstream' reason so the worker writes a retriable error and the
+    // SPA shows "importer busy" rather than "couldn't parse this page".
+    if (isUpstreamError(err)) return { ok: false, reason: 'upstream', raw: '' };
+    throw err;
+  }
   const firstParsed = interpret(first);
   if (firstParsed.ok) {
     return {
@@ -102,15 +138,21 @@ export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResul
   // One bounded repair turn. Replay the original prompt, show the model the
   // draft it produced (as a prior assistant turn so roles still alternate)
   // and the exact Zod errors, then force another tool call.
-  const repair = await aiChat({
-    ...opts,
-    ...TOOL_FIELDS,
-    messages: [
-      ...opts.messages,
-      { role: 'assistant', content: firstParsed.raw },
-      { role: 'user', content: repairInstruction(firstParsed.errors) },
-    ],
-  });
+  let repair: AiResult;
+  try {
+    repair = await aiChat({
+      ...opts,
+      ...TOOL_FIELDS,
+      messages: [
+        ...opts.messages,
+        { role: 'assistant', content: firstParsed.raw },
+        { role: 'user', content: repairInstruction(firstParsed.errors) },
+      ],
+    });
+  } catch (err) {
+    if (isUpstreamError(err)) return { ok: false, reason: 'upstream', raw: '' };
+    throw err;
+  }
   const usage = sumUsage(first.usage, repair.usage);
   const repairParsed = interpret(repair);
   if (repairParsed.ok) {

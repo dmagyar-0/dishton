@@ -13,7 +13,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Dishton is mobile-first (docs/00, docs/11), so we exercise both a desktop
+  // and a mobile viewport. Pixel 5 emulation covers the small-screen layout
+  // and touch interactions that desktop Chrome would never surface.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+  ],
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {

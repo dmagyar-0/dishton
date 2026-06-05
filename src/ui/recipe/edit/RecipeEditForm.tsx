@@ -1,10 +1,12 @@
-import type { Ingredient, Recipe, Step } from '@/domain/recipe';
+import { normaliseBcp47 } from '@/domain';
+import { type Ingredient, Recipe, type Step } from '@/domain/recipe';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
 import { RadioGroup, RadioGroupItem } from '@/ui/primitives/RadioGroup';
 import { Textarea } from '@/ui/primitives/Textarea';
 import { TagPicker } from '@/ui/recipe/TagPicker';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus } from 'lucide-react';
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
@@ -54,11 +56,16 @@ export function RecipeEditForm({
   } = useForm<Recipe>({
     defaultValues,
     mode: 'onBlur',
+    // Validate against the frozen Recipe contract client-side: source_language
+    // (BCP-47), source_url (URL), ingredient raw_text (min 1), etc.
+    resolver: zodResolver(Recipe),
   });
 
   const submit = handleSubmit(async (values) => {
     const normalized: Recipe = {
       ...values,
+      // Coerce a loose language input to the DB-accepted xx / xx-YY form.
+      source_language: normaliseBcp47(values.source_language) ?? values.source_language,
       ingredients: values.ingredients.map((ing, i) => ({ ...ing, position: i })),
       steps: values.steps.map((s, i) => ({ ...s, position: i })),
     };
@@ -191,7 +198,24 @@ function BasicsSection({
           />
         </Field>
         <Field label={t('recipe.field_source_language')} error={errors.source_language?.message}>
-          <Input {...register('source_language')} className="font-mono uppercase" />
+          <Controller
+            control={control}
+            name="source_language"
+            render={({ field }) => (
+              <Input
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value)}
+                // Normalise to the DB-accepted xx / xx-YY form on blur so the
+                // value validates against the Bcp47 schema (e.g. "en_us" ->
+                // "en-US").
+                onBlur={() => {
+                  field.onChange(normaliseBcp47(field.value) ?? field.value);
+                  field.onBlur();
+                }}
+                className="font-mono uppercase"
+              />
+            )}
+          />
         </Field>
       </div>
     </Card>

@@ -1,3 +1,4 @@
+import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
 import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
@@ -20,6 +21,9 @@ export function AppShell() {
   const personalMembership = memberships.find((m) => m.is_personal);
   const householdId = (personalMembership ?? memberships[0])?.household_id;
   const isSolo = memberships.length === 1 && memberships[0]?.is_personal === true;
+  // FLAG: follows_enabled — only surface the Following nav entry when following
+  // is turned on (off by default in MVP production per docs/15).
+  const followsEnabled = useFeatureFlag('follows_enabled');
 
   return (
     <div className="min-h-dvh">
@@ -31,7 +35,12 @@ export function AppShell() {
           <ul className="flex items-center gap-0 md:gap-1">
             {householdId && (
               <li>
-                <Link to="/h/$householdId" params={{ householdId }} className={NAV_CLASS}>
+                <Link
+                  to="/h/$householdId"
+                  params={{ householdId }}
+                  className={NAV_CLASS}
+                  aria-label={isSolo ? t('nav.my_recipes') : t('nav.home')}
+                >
                   <Home size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">
                     {isSolo ? t('nav.my_recipes') : t('nav.home')}
@@ -40,25 +49,32 @@ export function AppShell() {
               </li>
             )}
             <li>
-              <Link to="/search" className={NAV_CLASS}>
+              <Link to="/search" className={NAV_CLASS} aria-label={t('search.nav')}>
                 <Search size={16} strokeWidth={1.5} />
-                <span className="hidden md:inline">Search</span>
+                <span className="hidden md:inline">{t('search.nav')}</span>
               </Link>
             </li>
             {householdId && (
               <li>
-                <Link to="/h/$householdId/import" params={{ householdId }} className={NAV_CLASS}>
+                <Link
+                  to="/h/$householdId/import"
+                  params={{ householdId }}
+                  className={NAV_CLASS}
+                  aria-label={t('nav.import')}
+                >
                   <Upload size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.import')}</span>
                 </Link>
               </li>
             )}
-            <li>
-              <Link to="/following" className={NAV_CLASS}>
-                <Users size={16} strokeWidth={1.5} />
-                <span className="hidden md:inline">{t('nav.following')}</span>
-              </Link>
-            </li>
+            {followsEnabled && (
+              <li>
+                <Link to="/following" className={NAV_CLASS} aria-label={t('nav.following')}>
+                  <Users size={16} strokeWidth={1.5} />
+                  <span className="hidden md:inline">{t('nav.following')}</span>
+                </Link>
+              </li>
+            )}
             {householdId && (
               <li>
                 <Link
@@ -66,6 +82,7 @@ export function AppShell() {
                   params={{ householdId }}
                   search={{ tab: 'general' }}
                   className={NAV_CLASS}
+                  aria-label={t('nav.household_settings')}
                 >
                   <Settings size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.household_settings')}</span>
@@ -73,7 +90,7 @@ export function AppShell() {
               </li>
             )}
             <li>
-              <Link to="/profile" className={NAV_CLASS}>
+              <Link to="/profile" className={NAV_CLASS} aria-label={t('nav.profile')}>
                 <User size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('nav.profile')}</span>
               </Link>

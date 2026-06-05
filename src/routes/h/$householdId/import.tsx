@@ -50,15 +50,20 @@ const KNOWN_ERROR_KEYS = [
   'rate_limit',
   'too_many_imports',
   'fetch_failed',
+  'invalid_url',
   'not_html',
   'source_too_large',
   'parse_failed',
   'schema_failed',
   'instagram_unavailable',
   'internal',
+  'upstream',
   'network',
   'timeout',
   'object_not_found',
+  'forbidden_path',
+  'not_image',
+  'photo_too_large',
 ] as const;
 type ErrorKey = (typeof KNOWN_ERROR_KEYS)[number];
 

@@ -1,35 +1,155 @@
 name: E2E
 
+# Runs the Playwright smoke suite against a fully local stack: a real Supabase
+# instance (Postgres + Auth + Storage + Edge Functions) seeded from migrations,
+# plus the production SPA bundle served via `pnpm preview`. The AI call is
+# stubbed at the Edge Function boundary with AI_MOCK_MODE so no Anthropic key
+# is needed and runs are deterministic and free.
+#
+# Triggers on pull_request (so it gates merges) and on push to main. It does
+# NOT silently pass with an empty base URL — the local preview is the base URL,
+# and the suite fails loudly if the app or stack does not come up.
 on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
+  pull_request:
     branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   smoke:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
+    env:
+      # Local stack defaults. `supabase start` always binds the API gateway to
+      # 54321 and prints a fixed demo anon key; we read the real values from
+      # `supabase status` below and overwrite these before building.
+      VITE_SUPABASE_URL: http://127.0.0.1:54321
+      VITE_SUPABASE_ANON_KEY: ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Resolve Vercel preview URL
-        id: vercel
+
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+
+      - name: Provision Edge Function env (AI mock)
+        # The served Edge Functions read their environment from
+        # supabase/functions/.env. AI_MOCK_MODE makes them short-circuit the
+        # Anthropic call. ANTHROPIC_API_KEY is a REQUIRED var in _shared/env.ts
+        # (validated eagerly on first access in resolveCaller), so provide a
+        # dummy — mock mode never makes a real Anthropic request. SUPABASE_URL /
+        # SUPABASE_SERVICE_ROLE_KEY are auto-injected by the local runtime.
         run: |
-          # The Vercel GitHub integration sets a deployment_status webhook.
-          # Workflows triggered via workflow_run inherit github.event.workflow_run
-          # context but not the original deployment URL — wire this up via the
-          # repository's Vercel integration secret VERCEL_TOKEN + a deployments
-          # API call. For a side project, falling back to a local preview is
-          # acceptable.
-          echo "url=" >> $GITHUB_OUTPUT
-      - run: pnpm test:e2e
+          mkdir -p supabase/functions
+          {
+            echo "AI_MOCK_MODE=playwright"
+            echo "ANTHROPIC_API_KEY=sk-ant-mock-e2e-not-used"
+          } >> supabase/functions/.env
+
+      - name: Materialize shared domain into functions tree
+        # supabase/functions/_shared/domain is a symlink → src/domain. The
+        # symlink target falls outside the functions bundle, so the edge runtime
+        # (supabase functions serve) fails its module graph with "Module not
+        # found .../_shared/domain/recipe.ts". Replace it with a real copy,
+        # mirroring the deploy workflow.
+        run: |
+          rm -f supabase/functions/_shared/domain
+          cp -R src/domain supabase/functions/_shared/domain
+
+      - name: Start local Supabase stack
+        run: supabase start
+
+      - name: Apply migrations + seed
+        # `supabase db reset` re-applies every migration then runs seed.sql.
+        # The CLI's container restart occasionally returns a transient 502 from
+        # the local gateway; retry a couple of times before failing the job.
+        run: |
+          for attempt in 1 2 3; do
+            if supabase db reset; then
+              exit 0
+            fi
+            echo "supabase db reset failed (attempt ${attempt}); retrying in 10s..." >&2
+            sleep 10
+          done
+          echo "supabase db reset failed after 3 attempts" >&2
+          exit 1
+
+      - name: Bump seeded user passwords for sign-in specs
+        # seed.sql sets the demo users' password to `test1234` (8 chars), but
+        # the login form requires >= 10. The signin-based specs (recipe-edit)
+        # authenticate the seeded users with `test-password-1234`, so bump them
+        # to match. Fresh-signup specs (smoke, household-members) are unaffected.
+        run: |
+          db_url="$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')"
+          psql "${db_url:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}" \
+            -v ON_ERROR_STOP=1 \
+            -c "update auth.users set encrypted_password = crypt('test-password-1234', gen_salt('bf')) where email in ('alice@example.test','bob@example.test','carol@example.test');"
+
+      - name: Capture local Supabase credentials
+        id: supabase
+        run: |
+          # `supabase status -o env` emits API_URL / ANON_KEY as shell-style
+          # assignments; fold the ones we need into the job env for the build.
+          status="$(supabase status -o env)"
+          # Key names vary across CLI versions (API_URL / SUPABASE_URL,
+          # ANON_KEY / SUPABASE_ANON_KEY); accept either spelling.
+          api_url="$(echo "$status" | grep -E '^(API_URL|SUPABASE_URL)=' | head -1 | cut -d= -f2- | tr -d '"')"
+          anon_key="$(echo "$status" | grep -E '^(ANON_KEY|SUPABASE_ANON_KEY)=' | head -1 | cut -d= -f2- | tr -d '"')"
+          if [ -z "$anon_key" ]; then
+            echo "Failed to resolve local Supabase ANON_KEY — aborting." >&2
+            exit 1
+          fi
+          echo "VITE_SUPABASE_URL=${api_url:-http://127.0.0.1:54321}" >> "$GITHUB_ENV"
+          echo "VITE_SUPABASE_ANON_KEY=${anon_key}" >> "$GITHUB_ENV"
+
+      - name: Build SPA against the local stack
+        run: pnpm build
+
+      - name: Run Playwright smoke suite
+        # PLAYWRIGHT_BASE_URL is unset, so playwright.config.ts boots
+        # `pnpm preview` itself and points the tests at http://localhost:4173.
+        #
+        # `supabase start` serves the Edge Functions but does NOT load
+        # supabase/functions/.env, so AI_MOCK_MODE never reaches them. Mirror
+        # the documented local loop (supabase start + `pnpm fn:serve`) by
+        # serving the functions with the env file for the duration of the run —
+        # this is what makes URL import work fully offline against the canned
+        # AI fixtures. Backgrounded inside this step so it outlives nothing.
+        run: |
+          supabase functions serve --no-verify-jwt --env-file supabase/functions/.env \
+            > /tmp/fn-serve.log 2>&1 &
+          FN_PID=$!
+          echo "Waiting for Edge Functions to serve..."
+          for i in $(seq 1 60); do
+            if grep -qi "serving functions" /tmp/fn-serve.log; then
+              echo "Edge Functions are serving."
+              break
+            fi
+            if ! kill -0 "$FN_PID" 2>/dev/null; then
+              echo "supabase functions serve exited early:" >&2
+              cat /tmp/fn-serve.log >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          sleep 3
+          set +e
+          pnpm test:e2e
+          status=$?
+          set -e
+          kill "$FN_PID" 2>/dev/null || true
+          echo "----- supabase functions serve log -----"
+          tail -n 50 /tmp/fn-serve.log || true
+          exit $status
         env:
-          NIM_MOCK_MODE: playwright
-          PLAYWRIGHT_BASE_URL: ${{ steps.vercel.outputs.url }}
+          CI: 'true'
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

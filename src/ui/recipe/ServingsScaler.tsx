@@ -13,6 +13,7 @@ const SNAP_PILLS = [2, 4, 6, 8] as const;
 const MIN_RATIO = 0.25;
 const MAX_RATIO = 4;
 const STEP = 0.25;
+const MAX_PILL = Math.max(...SNAP_PILLS);
 
 export function ServingsScaler({
   servings,
@@ -21,11 +22,19 @@ export function ServingsScaler({
   className,
 }: ServingsScalerProps) {
   const safeDefault = defaultServings <= 0 ? 1 : defaultServings;
+  // The slider works in ratio of the recipe default, but the pills are
+  // absolute target servings. Widen the ratio bounds so the slider and numeric
+  // input can always reach every pill (and the current value) regardless of
+  // the recipe's base servings — otherwise an 8-serving pill on a 1-serving
+  // recipe would clamp and never line up.
+  const maxServings = Math.max(Math.round(safeDefault * MAX_RATIO), MAX_PILL, servings);
+  const maxRatio = maxServings / safeDefault;
+  const minRatio = Math.min(MIN_RATIO, servings / safeDefault);
   const ratio = servings / safeDefault;
-  const clampedRatio = Math.min(MAX_RATIO, Math.max(MIN_RATIO, ratio));
+  const clampedRatio = Math.min(maxRatio, Math.max(minRatio, ratio));
 
   const setRatio = (next: number) => {
-    const value = Math.max(MIN_RATIO, Math.min(MAX_RATIO, next));
+    const value = Math.max(minRatio, Math.min(maxRatio, next));
     const computed = Math.round(value * safeDefault * 100) / 100;
     onChange(computed);
   };
@@ -56,8 +65,8 @@ export function ServingsScaler({
       </div>
       <Slider
         aria-label="Servings ratio"
-        min={MIN_RATIO}
-        max={MAX_RATIO}
+        min={minRatio}
+        max={maxRatio}
         step={STEP}
         value={[clampedRatio]}
         onValueChange={(values) => {
@@ -70,7 +79,7 @@ export function ServingsScaler({
           value={servings}
           onValueChange={(value) => onChange(value)}
           min={1}
-          max={Math.round(safeDefault * MAX_RATIO)}
+          max={maxServings}
           step={1}
         />
         <span className="font-body text-sm text-ink-soft">servings</span>

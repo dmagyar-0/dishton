@@ -4,8 +4,10 @@
 // on the user's "My Recipes" page — there is no /onboarding gate to
 // pass.
 //
-// NIM is mocked at the Edge Function boundary via NIM_MOCK_MODE=playwright,
-// which the function reads from env (see docs/12-testing-strategy.md).
+// The AI call is mocked at the Edge Function boundary via AI_MOCK_MODE
+// (set to 'playwright' in e2e.yml / locally), which the function reads from
+// env and short-circuits to a canned fixture (see docs/12-testing-strategy.md
+// and supabase/functions/_shared/ai/mock.ts).
 
 import { expect, test } from '@playwright/test';
 
@@ -32,15 +34,22 @@ test.describe('dishton smoke', () => {
     // their personal household.
     await expect(page).toHaveURL(/\/h\//);
 
-    await page.getByRole('link', { name: /import/i }).click();
+    // The recipe-list body also carries "Import" links (in a content <header>),
+    // so target the nav link by its aria-label — only the nav link sets one, so
+    // getByLabel is unambiguous on every viewport (it stays labelled even when
+    // it renders icon-only on mobile).
+    await page.getByLabel('Import', { exact: true }).click();
 
     await page
       .getByPlaceholder(/example\.com\/recipe/i)
       .fill('https://example.test/tomato-tarte-tatin');
     await page.getByRole('button', { name: /^import$/i }).click();
 
-    // Draft preview JSON should land in the page; from there the user moves
-    // to a draft-edit modal in a follow-up flow.
-    await expect(page.locator('pre')).toContainText('Tomato Tarte Tatin');
+    // A successful import saves the recipe and navigates to its detail page.
+    // In mock mode the importer skips the network fetch and the AI returns the
+    // canned "Tomato Tarte Tatin" draft, so we land on the recipe with that
+    // title as the page heading.
+    await page.waitForURL(/\/h\/[^/]+\/r\//, { timeout: 20_000 });
+    await expect(page.getByRole('heading', { name: 'Tomato Tarte Tatin' })).toBeVisible();
   });
 });

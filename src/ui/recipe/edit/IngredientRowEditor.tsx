@@ -145,11 +145,11 @@ export function IngredientRowEditor({
 
       <div className="ml-10 flex items-center justify-between gap-2">
         <Input
-          placeholder={t('recipe.field_ingredient_name')}
+          placeholder={t('recipe.field_ingredient_raw_text')}
           value={value.raw_text}
           onChange={(e) => onChange({ raw_text: e.target.value })}
           className="flex-1 text-sm text-ink-soft"
-          aria-label="Raw text"
+          aria-label={t('recipe.field_ingredient_raw_text')}
         />
         <IconButton
           label={t('recipe.remove_row')}

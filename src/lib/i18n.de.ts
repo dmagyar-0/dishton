@@ -31,6 +31,17 @@ export default {
       continue: 'Weiter',
       expired: 'Dieser Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.',
       request_new: 'Neuen Reset-Link anfordern',
+      trouble:
+        'Dein Reset-Link wird noch vorbereitet. Falls es zu lange dauert, ist er möglicherweise abgelaufen.',
+    },
+    reset: {
+      submit: 'Reset-Link senden',
+      sent: 'Falls ein Konto zu dieser E-Mail existiert, haben wir einen Reset-Link gesendet. Sieh in deinem Postfach nach.',
+      retry:
+        'Wir konnten die Reset-E-Mail gerade nicht senden. Prüfe deine Verbindung und versuche es erneut.',
+    },
+    callback: {
+      signing_in: 'Du wirst angemeldet…',
     },
   },
   household: {
@@ -52,15 +63,45 @@ export default {
     add_placeholder: 'f_ABCDEFGHIJKL',
     add_action: 'Folgen',
     add_success: 'Du folgst jetzt {{name}}',
+    add_success_generic: 'Du folgst jetzt diesem Haushalt',
     add_failed: 'Folgen fehlgeschlagen',
     empty_title: 'Noch keine Küchen abonniert',
     empty_body: 'Füge oben einen Folge-Code ein, um die Rezepte eines anderen Haushalts zu sehen.',
     followed_at: 'Folge seit {{date}}',
     open: 'Öffnen',
+    unfollow: 'Entfolgen',
+    unfollow_confirm_title: '{{name}} entfolgen?',
+    unfollow_confirm_body:
+      'Du verlierst den Lesezugriff auf ihre Rezepte. Sie können dir einen neuen Code senden, wenn du zurückwillst.',
+    unfollow_action: 'Entfolgen',
+    unfollow_success: 'Entfolgt',
+    unfollow_failed: 'Entfolgen fehlgeschlagen',
+  },
+  search: {
+    title: 'Suche',
+    nav: 'Suche',
+    placeholder: 'Rezepte suchen',
+    role_label: 'Rezeptsuche',
+    query_label: 'Suchbegriff',
+    clear: 'Suche löschen',
+    no_matches_title: 'Keine Treffer',
+    no_matches_query:
+      'Für "{{query}}" wurde nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
+    no_matches_query_tags:
+      'Für "{{query}}" wurde mit den gewählten Tags nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
+    no_matches_tags: 'Keine Rezepte passen zu den gewählten Tags. Entferne ein Tag.',
   },
   household_settings: {
     title: 'Haushaltseinstellungen',
     subtitle: 'Tags und Voreinstellungen, die alle in diesem Haushalt teilen.',
+    no_access_title: 'Kein Zugriff',
+    no_access_body:
+      'Du bist kein Mitglied dieses Haushalts, daher sind seine Einstellungen für dich nicht verfügbar.',
+    go_home: 'Zurück zu deinen Rezepten',
+    load_error_title: 'Einstellungen konnten nicht geladen werden',
+    load_error_body:
+      'Beim Laden dieses Haushalts ging etwas schief. Prüfe deine Verbindung und versuche es erneut.',
+    load_error_retry: 'Erneut versuchen',
     solo: {
       title: 'Einstellungen',
       subtitle: 'Tags anpassen und jemanden einladen, deine Rezepte zu teilen.',
@@ -111,7 +152,10 @@ export default {
       invite_title: 'Per Code einladen',
       invite_help:
         'Erzeuge einen Code oder einen Einladungslink. Codes laufen nach 7 Tagen ab und funktionieren einmalig.',
+      invite_owner_only: 'Nur Besitzer:innen können Einladungscodes für diesen Haushalt erzeugen.',
       generate_invite: 'Einladungscode erzeugen',
+      generate_failed: 'Einladungscode konnte nicht erzeugt werden',
+      load_error: 'Mitgliederliste konnte nicht geladen werden.',
       invite_generated_title: 'Schick das an deinen Gast',
       invite_generated_body:
         'Code in Dishton einfügen oder Einladungslink öffnen, um als Editor:in beizutreten.',
@@ -217,11 +261,23 @@ export default {
     },
   },
   profile: {
+    save: 'Speichern',
+    saved: 'Profil aktualisiert',
+    save_failed: 'Änderungen konnten nicht gespeichert werden',
+    units_label: 'Bevorzugte Einheiten',
+    units_metric: 'Metrisch',
+    units_imperial: 'Imperial',
+    locale_label: 'Anzeigesprache',
+    locale_hint: 'Ändert die Sprache der Dishton-Oberfläche.',
     language_label: 'Rezeptsprache',
     language_hint:
       'Neue Importe werden in diese Sprache übersetzt. Gespeicherte Rezepte bleiben unverändert.',
     language_saved: 'Sprache aktualisiert',
     language_save_failed: 'Sprache konnte nicht gespeichert werden',
+    sign_out: 'Abmelden',
+    sign_out_all: 'Von allen Geräten abmelden',
+    sign_out_all_hint: 'Meldet dich auf allen Geräten ab, auf denen du angemeldet bist.',
+    sign_out_all_failed: 'Abmeldung von allen Sitzungen fehlgeschlagen',
   },
   recipe: {
     list_title: 'Rezepte',
@@ -260,6 +316,21 @@ export default {
       'Beim Speichern deiner Änderungen ist etwas schiefgelaufen. Bitte gleich noch einmal versuchen.',
     edit_unsaved_confirm:
       'Du hast ungespeicherte Änderungen. Wirklich verlassen, ohne zu speichern?',
+    edit_conflict_title: 'Dieses Rezept hat sich geändert',
+    edit_conflict_body:
+      'Jemand anderes hat dieses Rezept geändert, seit du es geöffnet hast. Lade neu, um die Änderungen zu sehen, und übernimm dann deine erneut.',
+    unsaved_changes_title: 'Änderungen verwerfen?',
+    unsaved_changes_body:
+      'Du hast ungespeicherte Änderungen. Wenn du jetzt gehst, gehen sie verloren.',
+    unsaved_changes_keep: 'Weiter bearbeiten',
+    unsaved_changes_discard: 'Änderungen verwerfen',
+    load_error_title: 'Rezept konnte nicht geladen werden',
+    load_error_body:
+      'Beim Laden dieses Rezepts ist etwas schiefgelaufen. Prüfe deine Verbindung und versuche es erneut.',
+    load_error_retry: 'Erneut versuchen',
+    not_found_title: 'Rezept nicht gefunden',
+    not_found_body: 'Dieses Rezept existiert nicht oder du hast keinen Zugriff darauf.',
+    no_ingredients: 'Keine Zutaten angegeben.',
     edit_forbidden_title: 'Nur ansehen',
     edit_forbidden_body: 'Du hast keine Berechtigung, Rezepte in diesem Haushalt zu bearbeiten.',
     section_basics: 'Rezept',
@@ -278,6 +349,7 @@ export default {
     field_ingredient_quantity: 'Menge',
     field_ingredient_unit: 'Einheit',
     field_ingredient_name: 'Zutat',
+    field_ingredient_raw_text: 'Originalzeile',
     field_ingredient_notes: 'Notizen',
     field_ingredient_section: 'Abschnitt',
     field_step_body: 'Schritt',
@@ -360,11 +432,17 @@ export default {
     invalid_or_expired_follow_code: 'Dieser Folge-Code ist ungültig oder abgelaufen.',
     no_owned_household: 'Du musst einen Haushalt besitzen, bevor du einem anderen folgen kannst.',
     cannot_follow_self: 'Ein Haushalt kann sich nicht selbst folgen.',
+    cannot_delete_personal_household:
+      'Dein persönlicher Bereich kann nicht gelöscht werden – dort liegen deine eigenen Rezepte.',
+    household_not_found: 'Diesen Haushalt gibt es nicht mehr.',
+    generic: 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
   },
   errors: {
     rate_limit: 'Importer ist ausgelastet. Bitte in einer Minute erneut versuchen.',
     too_many_imports: 'Es laufen bereits fünf Importe. Warte, bis einer fertig ist.',
     fetch_failed: 'Diese URL ist nicht erreichbar.',
+    invalid_url: 'Dieser Link kann nicht importiert werden. Verwende eine öffentliche Rezept-URL.',
+    upstream: 'Der Importer ist gerade ausgelastet. Bitte in einer Minute erneut versuchen.',
     not_household_member: 'Du hast keine Berechtigung für diesen Haushalt.',
     network: 'Der Importer ist nicht erreichbar. Prüfe deine Verbindung.',
     timeout:
@@ -382,5 +460,7 @@ export default {
     photo_upload_failed:
       'Wir konnten dieses Foto nicht hochladen. Bitte gleich noch einmal versuchen.',
     object_not_found: 'Wir konnten das hochgeladene Foto nicht finden. Bitte erneut versuchen.',
+    forbidden_path: 'Dieses Foto gehört nicht zu deinem Konto.',
+    not_image: 'Diese Datei ist kein unterstütztes Bild. Verwende ein JPEG oder PNG.',
   },
 } as const;

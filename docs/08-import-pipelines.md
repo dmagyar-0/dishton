@@ -61,7 +61,7 @@ UI in charge of authoritative writes.
             const scraped = extractRecipeJsonLd(dom.document);  // Recipe @type only
             const stripped = lightStripHtml(html);              // drops script/style/head/svg
 [Edge]    estimatedTokens = 4000
-          withRateBudget(4000, () =>
+          withRateBudget(profileId, 4000, () =>
             callAndValidate({
               lane: 'text',
               messages: structuringFromHtml({ html: stripped,
@@ -267,24 +267,59 @@ The SPA always calls this RPC for both AI-derived and manual saves.
 
 ## Concurrency
 
-A user may have at most **2** in-flight imports at once. Enforcement:
+A user may have at most **5** in-flight imports at once. "In-flight" counts
+rows in `queued`, `running`, or `awaiting_save` (an `awaiting_save` row is a
+completed-but-unsaved background draft and still occupies a slot until the SPA
+saves it or the reaper expires it). Enforcement:
 
-- Client guard: `useImportJobs()` Zustand slice tracks pending; "Import"
-  button disabled while count >= 2.
-- Server check at the start of every Edge Function:
+- Client guard: the active-imports provider tracks live rows; the import UI
+  reflects them via the shell pill.
+- Server check at the start of every Edge Function (after calling the reaper):
 
 ```sql
 select count(*) from app.import_jobs
-where profile_id = auth.uid() and status = 'running';
+where profile_id = auth.uid()
+  and status in ('queued', 'running', 'awaiting_save');
 ```
 
-If `>= 2`, return 409 with body `{ error: 'too_many_imports' }`.
+If `>= 5`, return 409 with body `{ error: 'too_many_imports' }`.
+
+### Reaper
+
+`app.reap_stuck_imports()` (called at the start of every import function) frees
+slots that would otherwise wedge the cap:
+
+- `running` rows older than **10 minutes** → `failed` / `error='timeout'`. The
+  threshold comfortably exceeds the worst-case worker wall clock (AI client:
+  3 attempts x 90 s + 1+2+4 s backoff ~= 4.6 min, plus scrape/save overhead).
+- `awaiting_save` rows older than **30 minutes** → `failed` /
+  `error='abandoned'`. A live tab re-drives `awaiting_save` rows within seconds
+  (Realtime event or the on-mount backfill in `ActiveImportsProvider`), so only
+  genuinely orphaned drafts are reaped. The draft survives in `payload.draft`,
+  so nothing is lost server-side.
+
+### SSRF guard (URL import)
+
+`import-url` fetches a user-supplied URL via `_shared/scrape/ssrf-guard.ts`,
+which rejects non-http(s) schemes and any hostname that resolves to a private /
+loopback / link-local / reserved range (re-validated on every redirect hop). A
+blocked target returns `400 { error: 'invalid_url' }`.
+
+### AI budget
+
+Token reservation enforces two windows (see [07-ai-integration.md](./07-ai-integration.md)):
+a per-profile budget (`public.app_reserve_profile_ai_budget`) checked first, then
+the global bucket (`public.app_reserve_ai_budget`). Either denial → `429`.
 
 ## Error matrix
 
 | Failure | HTTP | UI copy |
 |---|---|---|
 | Network: source URL unreachable | 502 | "We couldn't reach that URL. Check the link or try again." |
+| URL blocked by SSRF guard (private host / bad scheme) | 400 | "That link can't be imported. Use a public recipe URL." |
+| AI/upstream failure (API error, connection, timeout) | 503 | "The importer is busy right now. Try again in a minute." |
+| Photo path not owned by caller | 403 | "That photo doesn't belong to your account." |
+| Uploaded object not an image (server-side check) | 415 | "That file is not a supported image. Use a JPEG or PNG." |
 | Source ≥ 5 MB | 413 | "That source is too large. Use a shorter article." |
 | AI parse failure (twice) | 200 + `needs_review` | "We couldn't parse this automatically. Edit the draft below." |
 | AI schema failure | 200 + `needs_review` | same as above |
@@ -293,7 +328,7 @@ If `>= 2`, return 409 with body `{ error: 'too_many_imports' }`.
 | Photo too large | 413 | "Image is over 10 MB. Reduce size and try again." |
 | Auth missing/expired | 401 | global session-expired toast |
 | Not a household member | 403 | "You don't have permission to add to this household." |
-| Two imports already running | 409 | "You already have two imports running. Wait for one to finish." |
+| Five imports already in flight | 409 | "You already have five imports running. Wait for one to finish." |
 
 All errors include `request_id` so users can quote it when filing a bug.
 

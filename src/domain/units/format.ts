@@ -13,8 +13,10 @@ export function formatUnit(key: string, locale: Bcp47 | string = 'en'): string {
 /** Render a numeric value with at most `frac` decimals, dropping trailing zeros. */
 export function formatNumber(value: number, frac = 2): string {
   if (!Number.isFinite(value)) return String(value);
-  const rounded = Number(value.toFixed(frac));
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  // toFixed rounds to `frac` decimals; Number() then strips trailing zeros so
+  // 1.50 -> "1.5" and 2.00 -> "2". Values with more precision are rounded, not
+  // truncated, which is the right behaviour for display.
+  return String(Number(value.toFixed(frac)));
 }
 
 /** Combined "qty unit" display, with a single space separator. */

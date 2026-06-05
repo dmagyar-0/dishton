@@ -8,6 +8,7 @@ import {
   useRemoveMember,
   useRevokeInvite,
 } from '@/lib/queries/households';
+import { useImageUrl } from '@/lib/queries/storage';
 import { cn } from '@/ui/cn';
 import { Avatar, Badge, Button, Card, IconButton, Skeleton, Tag, useToast } from '@/ui/primitives';
 import { ArrowDown, ArrowUp, Mail, UserMinus, X } from 'lucide-react';
@@ -64,7 +65,7 @@ export function MembersSection({
     } catch (err) {
       push({
         variant: 'error',
-        title: t('household_settings.members.revoke_failed'),
+        title: t('household_settings.members.generate_failed'),
         description: translateHouseholdError(t, err),
       });
     }
@@ -80,6 +81,20 @@ export function MembersSection({
           </div>
 
           {members.isLoading && <Skeleton className="h-32" />}
+
+          {members.isError && (
+            <div className="space-y-2">
+              <p className="text-ink-soft text-sm">{t('household_settings.members.load_error')}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void members.refetch()}
+              >
+                {t('household_settings.load_error_retry')}
+              </Button>
+            </div>
+          )}
 
           {members.data && members.data.length === 0 && (
             <p className="text-ink-soft text-sm">{t('household_settings.members.empty')}</p>
@@ -119,16 +134,22 @@ export function MembersSection({
               : t('household_settings.members.invite_help')}
           </p>
         </div>
-        <div>
-          <Button
-            type="button"
-            onClick={() => void generate()}
-            loading={createInvite.isPending}
-            leftIcon={<Mail size={16} strokeWidth={1.5} />}
-          >
-            {t('household_settings.members.generate_invite')}
-          </Button>
-        </div>
+        {isOwner ? (
+          <div>
+            <Button
+              type="button"
+              onClick={() => void generate()}
+              loading={createInvite.isPending}
+              leftIcon={<Mail size={16} strokeWidth={1.5} />}
+            >
+              {t('household_settings.members.generate_invite')}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-ink-soft text-sm">
+            {t('household_settings.members.invite_owner_only')}
+          </p>
+        )}
 
         {invites.data && invites.data.length > 0 && (
           <div className="space-y-2 pt-2 border-t border-cream-line">
@@ -192,6 +213,8 @@ function MemberRow({
   const { push } = useToast();
   const change = useChangeMemberRole(householdId);
   const remove = useRemoveMember(householdId);
+  // Avatars live in the private recipe-images bucket and need a signed URL.
+  const avatarUrl = useImageUrl(member.profile.avatar_url);
 
   const [confirmKind, setConfirmKind] = useState<'promote' | 'demote' | 'remove' | null>(null);
 
@@ -261,11 +284,7 @@ function MemberRow({
 
   return (
     <li className="flex items-center gap-3 py-3">
-      <Avatar
-        size={36}
-        name={member.profile.display_name}
-        src={member.profile.avatar_url ?? undefined}
-      />
+      <Avatar size={36} name={member.profile.display_name} src={avatarUrl ?? undefined} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-body text-ink truncate">

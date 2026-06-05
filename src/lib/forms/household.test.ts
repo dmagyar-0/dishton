@@ -22,8 +22,12 @@ describe('RedeemInviteSchema', () => {
   it('accepts 8-char base32 codes', () => {
     expect(() => RedeemInviteSchema.parse({ code: 'ABCDE234' })).not.toThrow();
   });
-  it('rejects lowercase, wrong length, or non-base32 chars', () => {
-    expect(() => RedeemInviteSchema.parse({ code: 'abcde234' })).toThrow();
+  it('normalizes lowercase and surrounding whitespace to canonical uppercase', () => {
+    expect(RedeemInviteSchema.parse({ code: 'abcde234' }).code).toBe('ABCDE234');
+    expect(RedeemInviteSchema.parse({ code: '  abcde234  ' }).code).toBe('ABCDE234');
+    expect(RedeemInviteSchema.parse({ code: 'AbCdE234' }).code).toBe('ABCDE234');
+  });
+  it('rejects wrong length or non-base32 chars', () => {
     expect(() => RedeemInviteSchema.parse({ code: 'ABCDE23' })).toThrow();
     expect(() => RedeemInviteSchema.parse({ code: 'ABCDE018' })).toThrow();
   });
@@ -32,6 +36,12 @@ describe('RedeemInviteSchema', () => {
 describe('AddFollowSchema', () => {
   it('accepts f_<base32-12>', () => {
     expect(() => AddFollowSchema.parse({ code: 'f_ABCDE234FGHJ' })).not.toThrow();
+  });
+  it('normalizes lowercase input while keeping the literal f_ prefix', () => {
+    // A fully-lowercase paste must succeed and come back canonical.
+    expect(AddFollowSchema.parse({ code: 'f_abcde234fghj' }).code).toBe('f_ABCDE234FGHJ');
+    expect(AddFollowSchema.parse({ code: 'F_ABCDE234FGHJ' }).code).toBe('f_ABCDE234FGHJ');
+    expect(AddFollowSchema.parse({ code: '  f_abcde234fghj  ' }).code).toBe('f_ABCDE234FGHJ');
   });
   it('rejects without prefix or wrong length', () => {
     expect(() => AddFollowSchema.parse({ code: 'ABCDE234FGHJ' })).toThrow();

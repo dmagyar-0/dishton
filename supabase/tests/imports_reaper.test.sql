@@ -48,16 +48,19 @@ insert into app.household_members (household_id, profile_id, role) values
    '00000000-0000-0000-0000-0000000000b2','editor')
 on conflict do nothing;
 
--- Four jobs with explicit created_at:
---   J1 = A, running, 7 min old      -> should be reaped (threshold is 5 min)
---   J2 = A, running, 1 min old      -> should be left alone
---   J3 = A, done,    7 min old      -> should be left alone
---   J4 = B, running, 7 min old      -> RLS hides from A's reaper
+-- Jobs with explicit created_at (running threshold is 10 min, awaiting_save
+-- threshold is 30 min):
+--   J1 = A, running,       12 min old -> should be reaped (timeout)
+--   J2 = A, running,        1 min old -> should be left alone
+--   J3 = A, done,          12 min old -> should be left alone
+--   J4 = B, running,       12 min old -> RLS hides from A's reaper
+--   J5 = A, awaiting_save, 35 min old -> should be reaped (abandoned)
+--   J6 = A, awaiting_save,  5 min old -> should be left alone
 insert into app.import_jobs (id, profile_id, household_id, kind, status, created_at) values
   ('11111111-0000-0000-0000-000000000001',
    '00000000-0000-0000-0000-0000000000a1',
    'cccccccc-0000-0000-0000-0000000000aa',
-   'manual','running', now() - interval '7 minutes'),
+   'manual','running', now() - interval '12 minutes'),
   ('11111111-0000-0000-0000-000000000002',
    '00000000-0000-0000-0000-0000000000a1',
    'cccccccc-0000-0000-0000-0000000000aa',
@@ -65,11 +68,19 @@ insert into app.import_jobs (id, profile_id, household_id, kind, status, created
   ('11111111-0000-0000-0000-000000000003',
    '00000000-0000-0000-0000-0000000000a1',
    'cccccccc-0000-0000-0000-0000000000aa',
-   'manual','done',    now() - interval '7 minutes'),
+   'manual','done',    now() - interval '12 minutes'),
   ('11111111-0000-0000-0000-000000000004',
    '00000000-0000-0000-0000-0000000000b2',
    'cccccccc-0000-0000-0000-0000000000aa',
-   'manual','running', now() - interval '7 minutes')
+   'manual','running', now() - interval '12 minutes'),
+  ('11111111-0000-0000-0000-000000000005',
+   '00000000-0000-0000-0000-0000000000a1',
+   'cccccccc-0000-0000-0000-0000000000aa',
+   'url','awaiting_save', now() - interval '35 minutes'),
+  ('11111111-0000-0000-0000-000000000006',
+   '00000000-0000-0000-0000-0000000000a1',
+   'cccccccc-0000-0000-0000-0000000000aa',
+   'url','awaiting_save', now() - interval '5 minutes')
 on conflict (id) do nothing;
 
 create temporary table _t_state(reaped_count int) on commit drop;
@@ -89,8 +100,8 @@ begin
 end $$;
 
 with assertions(label, ok) as (values
-  ('reap_stuck_imports returns 1 (only A''s stale running row)',
-   (select reaped_count from _t_state) = 1),
+  ('reap_stuck_imports returns 2 (A''s stale running + stale awaiting_save)',
+   (select reaped_count from _t_state) = 2),
 
   ('J1 (A, stale running) is now failed',
    (select status from app.import_jobs
@@ -115,6 +126,17 @@ with assertions(label, ok) as (values
 
   ('J4 (B, stale running) is NOT reaped by A',
    (select status from app.import_jobs
-     where id = '11111111-0000-0000-0000-000000000004') = 'running')
+     where id = '11111111-0000-0000-0000-000000000004') = 'running'),
+
+  ('J5 (A, stale awaiting_save) is now failed',
+   (select status from app.import_jobs
+     where id = '11111111-0000-0000-0000-000000000005') = 'failed'),
+  ('J5 carries error=abandoned',
+   (select error from app.import_jobs
+     where id = '11111111-0000-0000-0000-000000000005') = 'abandoned'),
+
+  ('J6 (A, fresh awaiting_save) is left alone',
+   (select status from app.import_jobs
+     where id = '11111111-0000-0000-0000-000000000006') = 'awaiting_save')
 )
 select label, ok from assertions;

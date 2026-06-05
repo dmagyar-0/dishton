@@ -7,6 +7,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    # Exposed at job scope so step-level `if:` conditions can read it (step
+    # `env:` is not evaluated until after `if:`).
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -72,6 +76,22 @@ jobs:
         run: npx --yes vercel@53.2.0 build --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # Upload source maps to Sentry for this release BEFORE stripping them from
+      # the artifact. Vite emits 'hidden' source maps (no sourceMappingURL in
+      # the shipped JS), so they are uploaded here and never served to the
+      # browser. Skipped cleanly when SENTRY_AUTH_TOKEN is absent so an
+      # un-configured environment still deploys.
+      - name: Upload source maps to Sentry
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        run: |
+          npx --yes @sentry/cli@2 sourcemaps inject .vercel/output
+          npx --yes @sentry/cli@2 sourcemaps upload \
+            --release "${{ github.sha }}" \
+            .vercel/output
+        env:
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
       - name: Strip source maps from deploy artifact
         run: find .vercel/output -name '*.map' -delete

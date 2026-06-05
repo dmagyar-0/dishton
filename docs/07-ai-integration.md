@@ -25,7 +25,8 @@ never leaves the Edge Function process.
     ai/
       client.ts          — Anthropic client wrapper
       prompts.ts         — typed prompt templates
-      rate-budget.ts     — withRateBudget(estimate, fn)
+      rate-budget.ts     — withRateBudget(profileId, estimate, fn)
+      mock.ts            — AI_MOCK_MODE canned-fixture short-circuit
       validate.ts        — Zod-bridge + re-prompt-once helper
       _test.ts           — RECIPE_JSON_SHAPE parity test
     domain/              — symlink to /home/user/dishton/src/domain
@@ -233,9 +234,17 @@ const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 export async function withRateBudget<T>(
+  profileId: string,
   estimatedTokens: number,
   fn: () => Promise<T>,
 ): Promise<{ status: 'ok' | 'rate_limit'; value?: T }> {
+  // Per-profile window first (caps any single user), then the global bucket.
+  const perProfile = await admin.rpc('app_reserve_profile_ai_budget', {
+    p_profile: profileId,
+    p_tokens: estimatedTokens,
+  });
+  if (perProfile.error) throw perProfile.error;
+  if (perProfile.data === false) return { status: 'rate_limit' };
   const reserved = await admin.rpc('app_reserve_ai_budget', { p_tokens: estimatedTokens });
   if (reserved.error) throw reserved.error;
   if (reserved.data === false) return { status: 'rate_limit' };
@@ -244,9 +253,18 @@ export async function withRateBudget<T>(
 }
 ```
 
-The Postgres function does the atomic update (defined in the
-`*_imports.sql` migration referenced in [04-data-model.md](./04-data-model.md));
-`budget_per_minute` defaults to 60 000 tokens, tunable per environment.
+The Postgres functions do the atomic updates (defined in the `*_imports.sql`
+and `*_per_profile_ai_budget.sql` migrations referenced in
+[04-data-model.md](./04-data-model.md)); the global `budget_per_minute` defaults
+to 60 000 tokens and the per-profile default is 20 000 tokens/min, both tunable
+per environment.
+
+### AI_MOCK_MODE
+
+When the `AI_MOCK_MODE` env var is set (e.g. `1` or `playwright`), `aiChat`
+short-circuits to canned fixtures in `_shared/ai/mock.ts` and makes NO network
+call to api.anthropic.com — no API key required. Used by e2e / local runs. It
+is never set in production.
 
 `estimatedTokens` per lane:
 

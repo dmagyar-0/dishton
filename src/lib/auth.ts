@@ -9,6 +9,8 @@
 
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
+import { clearUserContext, setHouseholdContext, setUserContext } from '../observability/sentry';
+import { applyUiLanguage } from './i18n';
 import { supabase } from './supabase';
 
 // Force re-auth across deploys: a session minted under build A must not survive
@@ -37,6 +39,29 @@ function clearStoredSha(): void {
     localStorage.removeItem(BUILD_SHA_KEY);
   } catch {
     /* private mode / storage disabled */
+  }
+}
+
+// Workbox runtime caches that hold per-user data (cache names mirror
+// vite.config.ts → workbox.runtimeCaching). On sign-out we drop them so the
+// next account on this device can't read the previous user's cached recipes
+// or images offline. We deliberately keep `html` and `fonts` (no user data)
+// and the precache (app shell) intact.
+const USER_DATA_CACHES = ['supabase-rest', 'recipe-images'] as const;
+
+async function clearUserScopedCaches(): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  try {
+    await Promise.all(USER_DATA_CACHES.map((name) => caches.delete(name)));
+    // Drain the BackgroundSync replay queue so a queued mutation from the
+    // signed-out user can't replay under the next account. The queue is backed
+    // by IndexedDB ('workbox-background-sync' → store 'requests'); deleting the
+    // whole DB is the simplest reliable clear and Workbox recreates it lazily.
+    const idb = (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+    idb?.deleteDatabase('workbox-background-sync');
+  } catch (err) {
+    // Cache eviction is best-effort; a failure here must not block sign-out.
+    console.error('[auth] failed to clear user-scoped caches', err);
   }
 }
 
@@ -78,18 +103,42 @@ export const useAuth = create<AuthState>((set) => ({
   setMemberships: (memberships) => set({ memberships, hydrated: true }),
   signOut: async () => {
     await supabase.auth.signOut();
+    await clearUserScopedCaches();
+    clearUserContext();
+    setHouseholdContext(null);
     set({ session: null, user: null, profile: null, memberships: [], hydrated: true });
   },
 }));
 
 export async function refreshAuthDerivedState(userId: string): Promise<void> {
   const profile = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-  if (profile.data) useAuth.getState().setProfile(profile.data as Profile);
+  if (profile.error) {
+    // A transient failure here must not be treated as "user has no profile".
+    // Re-throw so the caller can decide whether to keep prior state instead of
+    // silently flipping the store into a logged-out-looking shape.
+    throw profile.error;
+  }
+  if (profile.data) {
+    const loaded = profile.data as Profile;
+    useAuth.getState().setProfile(loaded);
+    setUserContext(loaded.id);
+    // Apply the persisted interface language so a returning user lands in the
+    // language they chose, not the build-time default. The interface language
+    // is the profile `locale` ("Display language"); `preferred_language` is the
+    // recipe-translation default, a separate setting. Narrowed to supported UI
+    // languages inside applyUiLanguage.
+    applyUiLanguage(loaded.locale);
+  }
 
   const memberships = await supabase
     .from('household_members')
     .select('household_id, role, households!inner(is_personal)')
     .eq('profile_id', userId);
+  if (memberships.error) {
+    // Likewise: do not clear memberships to [] on a transient error, which
+    // would wrongly bounce the user to /onboarding. Surface it instead.
+    throw memberships.error;
+  }
   const rows =
     (memberships.data as Array<{
       household_id: string;
@@ -128,7 +177,16 @@ export async function bootstrapAuth(): Promise<void> {
 
   useAuth.getState().setSession(data.session);
   if (data.session?.user) {
-    await refreshAuthDerivedState(data.session.user.id);
+    try {
+      await refreshAuthDerivedState(data.session.user.id);
+    } catch (err) {
+      // Profile/membership fetch failed transiently. We keep the restored
+      // session but must still flip `hydrated` so guards stop waiting; an empty
+      // memberships list here is "unknown", not "zero", so guards treat a live
+      // session conservatively (see requireHousehold).
+      console.error('[auth] failed to load derived state', err);
+      useAuth.getState().setMemberships([]);
+    }
   } else {
     useAuth.getState().setMemberships([]);
   }
@@ -141,9 +199,17 @@ function subscribeAuthChanges(): void {
     useAuth.getState().setSession(session);
     if (event === 'SIGNED_IN' && session?.user) {
       if (BUILD_SHA) writeStoredSha(BUILD_SHA);
-      await refreshAuthDerivedState(session.user.id);
+      try {
+        await refreshAuthDerivedState(session.user.id);
+      } catch (err) {
+        console.error('[auth] failed to refresh derived state on sign-in', err);
+        useAuth.getState().setMemberships([]);
+      }
     } else if (event === 'SIGNED_OUT') {
       clearStoredSha();
+      await clearUserScopedCaches();
+      clearUserContext();
+      setHouseholdContext(null);
       useAuth.getState().setProfile(null);
       useAuth.getState().setMemberships([]);
     }

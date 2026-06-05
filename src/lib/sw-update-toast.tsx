@@ -5,25 +5,22 @@
 // virtual at build time.
 // @ts-expect-error virtual module from vite-plugin-pwa
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useEffect } from 'react';
 
 export function ServiceWorkerUpdateToast() {
+  // With registerType: 'prompt' (see vite.config.ts) a freshly-installed SW
+  // stays in the `waiting` state and `needRefresh` flips to true. We surface
+  // the toast below; clicking "Refresh" calls updateServiceWorker(true), which
+  // posts SKIP_WAITING and reloads once the new SW takes control. There is no
+  // imperative work to do in onNeedRefresh — the reactive `needRefresh` flag
+  // drives the render.
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onNeedRefresh() {
-      // toast surfacing handled by the JSX below
-    },
     onOfflineReady() {
       /* noop — we have a static offline.html */
     },
   });
-
-  useEffect(() => {
-    if (!needRefresh) return undefined;
-    return () => {};
-  }, [needRefresh]);
 
   if (!needRefresh) return null;
   return (

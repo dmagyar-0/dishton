@@ -1,8 +1,10 @@
+import { isTypingIntoInput } from '@/lib/shortcuts';
 import { cn } from '@/ui/cn';
 import { IconButton } from '@/ui/primitives/IconButton';
 import { Input } from '@/ui/primitives/Input';
 import { Search as SearchIcon, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type SearchBarProps = {
   value: string;
@@ -17,8 +19,9 @@ export function SearchBar({
   onChange,
   loading = false,
   className,
-  placeholder = 'Search recipes',
+  placeholder,
 }: SearchBarProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLInputElement>(null);
   const [local, setLocal] = useState(value);
 
@@ -34,10 +37,13 @@ export function SearchBar({
   }, [local, value, onChange]);
 
   useEffect(() => {
+    // `s` focuses the search box per src/lib/shortcuts.ts. Reuse the central
+    // isTypingIntoInput guard so the binding stays consistent with the rest of
+    // the shortcut registry, and ignore meta/ctrl so browser combos (e.g.
+    // Cmd+S / Ctrl+S) are never intercepted.
     function onKey(e: KeyboardEvent) {
-      const t = e.target as HTMLElement | null;
-      const tag = t?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || (t as HTMLElement)?.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingIntoInput(e)) return;
       if (e.key === 's') {
         e.preventDefault();
         ref.current?.focus();
@@ -51,7 +57,7 @@ export function SearchBar({
     <div
       className={cn('relative flex items-center gap-2', className)}
       role="search"
-      aria-label="Recipes search"
+      aria-label={t('search.role_label')}
     >
       <SearchIcon
         size={18}
@@ -62,9 +68,9 @@ export function SearchBar({
         ref={ref}
         value={local}
         onChange={(e) => setLocal((e.target as HTMLInputElement).value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('search.placeholder')}
         className="pl-8 pr-10 w-full"
-        aria-label="Search query"
+        aria-label={t('search.query_label')}
         type="search"
       />
       {loading && (
@@ -75,7 +81,7 @@ export function SearchBar({
       )}
       {local !== '' && (
         <IconButton
-          label="Clear search"
+          label={t('search.clear')}
           onClick={() => {
             setLocal('');
             onChange('');

@@ -103,13 +103,15 @@ insert into app.recipes (
    'manual','it','metric',12,1440)
 on conflict (id) do nothing;
 
+-- quantity is jsonb (the domain `number | {numerator,denominator}` union), so
+-- numeric values are written as JSON numbers.
 insert into app.recipe_ingredients (recipe_id, position, raw_text, quantity, unit, ingredient_name) values
-  ('33333333-3333-3333-3333-333333333333',0,'500 g cherry tomatoes',500,'g','cherry tomatoes'),
-  ('33333333-3333-3333-3333-333333333333',1,'1 sheet puff pastry',1,'count','puff pastry'),
-  ('33333333-3333-3333-3333-333333333333',2,'2 tbsp olive oil',2,'tbsp','olive oil'),
-  ('44444444-4444-4444-4444-444444444444',0,'10 lemons',10,'count','lemons'),
-  ('44444444-4444-4444-4444-444444444444',1,'1 l vodka',1,'l','vodka'),
-  ('44444444-4444-4444-4444-444444444444',2,'700 g sugar',700,'g','sugar')
+  ('33333333-3333-3333-3333-333333333333',0,'500 g cherry tomatoes','500'::jsonb,'g','cherry tomatoes'),
+  ('33333333-3333-3333-3333-333333333333',1,'1 sheet puff pastry','1'::jsonb,'count','puff pastry'),
+  ('33333333-3333-3333-3333-333333333333',2,'2 tbsp olive oil','2'::jsonb,'tbsp','olive oil'),
+  ('44444444-4444-4444-4444-444444444444',0,'10 lemons','10'::jsonb,'count','lemons'),
+  ('44444444-4444-4444-4444-444444444444',1,'1 l vodka','1'::jsonb,'l','vodka'),
+  ('44444444-4444-4444-4444-444444444444',2,'700 g sugar','700'::jsonb,'g','sugar')
 on conflict do nothing;
 
 insert into app.recipe_steps (recipe_id, position, body, duration_min) values

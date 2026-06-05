@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Recipe } from './recipe';
-import { quantityToNumber, scale, scaleToServings } from './scale';
+import { quantityIsEmpty, quantityToNumber, scale, scaleToServings } from './scale';
 
 const base: Recipe = {
   title: 'Test',
@@ -58,6 +58,21 @@ describe('quantityToNumber', () => {
   });
   it('reduces fraction object to a number', () => {
     expect(quantityToNumber({ numerator: 3, denominator: 4 })).toBe(0.75);
+  });
+});
+
+describe('quantityIsEmpty', () => {
+  it('treats null/undefined as empty', () => {
+    expect(quantityIsEmpty(null)).toBe(true);
+    expect(quantityIsEmpty(undefined)).toBe(true);
+  });
+  it('treats 0 and 0/n as empty', () => {
+    expect(quantityIsEmpty(0)).toBe(true);
+    expect(quantityIsEmpty({ numerator: 0, denominator: 4 })).toBe(true);
+  });
+  it('treats real amounts as non-empty', () => {
+    expect(quantityIsEmpty(1.5)).toBe(false);
+    expect(quantityIsEmpty({ numerator: 1, denominator: 3 })).toBe(false);
   });
 });
 

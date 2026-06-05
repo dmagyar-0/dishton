@@ -1,4 +1,6 @@
+import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
+import { useFollowedHouseholds } from '@/lib/queries/households';
 import { useRecipesAcrossHouseholds } from '@/lib/queries/recipes';
 import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
 import { Card } from '@/ui/primitives/Card';
@@ -7,6 +9,7 @@ import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { requireAuth } from './_guards';
 
@@ -24,10 +27,29 @@ export const Route = createFileRoute('/search')({
 type SearchParams = z.infer<typeof Search>;
 
 function SearchPage() {
+  const { t } = useTranslation();
   const params = Route.useSearch() as SearchParams;
   const nav = Route.useNavigate();
   const memberships = useAuth((s) => s.memberships);
-  const householdIds = useMemo(() => memberships.map((m) => m.household_id), [memberships]);
+  // Canonical household for the follow scope: prefer the personal household so
+  // search scoping lines up with the /following list and AppShell (both keyed
+  // on the personal household). Follows are created against this household.
+  const canonicalHouseholdId = useMemo(
+    () => (memberships.find((m) => m.is_personal) ?? memberships[0])?.household_id ?? '',
+    [memberships],
+  );
+  // FLAG: follows_enabled — only widen the search scope to followed households
+  // when following is enabled, matching the /following route + nav gating.
+  const followsEnabled = useFeatureFlag('follows_enabled');
+  const followed = useFollowedHouseholds(followsEnabled ? canonicalHouseholdId : '');
+  // Search and tags cover the full accessible surface: own households plus the
+  // households this user follows (docs/10 — own + followed scoping). RLS still
+  // strips anything the caller cannot read, so merging here is purely additive.
+  const householdIds = useMemo(() => {
+    const ids = new Set(memberships.map((m) => m.household_id));
+    if (followsEnabled) for (const f of followed.data ?? []) ids.add(f.followed_household_id);
+    return [...ids];
+  }, [memberships, followed.data, followsEnabled]);
   const tagParam = params.tag;
   const selected = useMemo(
     () => (Array.isArray(tagParam) ? tagParam : tagParam ? [tagParam] : []),
@@ -55,7 +77,7 @@ function SearchPage() {
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="font-display text-3xl">Search</h1>
+      <h1 className="font-display text-3xl">{t('search.title')}</h1>
       <SearchBar
         value={q}
         loading={sourceFetching}
@@ -84,11 +106,13 @@ function SearchPage() {
       {!sourceLoading && filtered.length === 0 && (searchActive || selected.length > 0) && (
         <Card className="p-6">
           <EmptyState
-            title="No matches"
+            title={t('search.no_matches_title')}
             description={
               searchActive
-                ? `Nothing matched "${q}"${selected.length > 0 ? ' with the selected tags' : ''}. Try a different word or clear the filters.`
-                : 'No recipes match the selected tags. Try removing a tag.'
+                ? selected.length > 0
+                  ? t('search.no_matches_query_tags', { query: q })
+                  : t('search.no_matches_query', { query: q })
+                : t('search.no_matches_tags')
             }
             action={null}
           />

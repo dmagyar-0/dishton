@@ -39,8 +39,9 @@ export type Database = {
     Functions: {
       redeem_invite: { Args: { p_code: string }; Returns: string };
       create_invite: { Args: { p_household: string }; Returns: string };
-      add_follow: { Args: { p_code: string }; Returns: string };
+      add_follow: { Args: { p_code: string; p_follower_household: string }; Returns: string };
       create_follow_code: { Args: { p_household: string }; Returns: string };
+      delete_household: { Args: { p_household: string }; Returns: void };
       leave_household: { Args: { p_household: string }; Returns: void };
       leave_household_with_recipes: { Args: { p_household: string }; Returns: string };
       transfer_ownership: {
@@ -53,7 +54,10 @@ export type Database = {
         Returns: { tag: string; n: number }[];
       };
       save_recipe: { Args: { p_household: string; p_draft: Json }; Returns: string };
-      update_recipe: { Args: { p_id: string; p_draft: Json }; Returns: void };
+      update_recipe: {
+        Args: { p_id: string; p_draft: Json; p_expected_updated_at: string | null };
+        Returns: void;
+      };
       promote_hero_image: {
         Args: { p_recipe: string; p_import_path: string };
         Returns: void;

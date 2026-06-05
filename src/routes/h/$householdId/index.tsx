@@ -5,6 +5,7 @@ import { Badge } from '@/ui/primitives/Badge';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
+import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { Link, createFileRoute } from '@tanstack/react-router';
@@ -79,8 +80,8 @@ function RecipeListPage() {
                 <Card className="p-0 overflow-hidden h-full">
                   {r.hero_image_path && (
                     <div className="aspect-[16/10] w-full overflow-hidden border-b border-cream-line">
-                      <img
-                        src={r.hero_image_path}
+                      <RecipeImage
+                        path={r.hero_image_path}
                         alt=""
                         className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
                       />

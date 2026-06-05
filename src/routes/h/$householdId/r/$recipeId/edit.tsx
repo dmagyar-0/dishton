@@ -1,4 +1,4 @@
-import type { Quantity, Recipe } from '@/domain/recipe';
+import type { Recipe } from '@/domain/recipe';
 import { useHouseholdAllowedTags } from '@/lib/queries/households';
 import {
   type FullRecipe,
@@ -45,7 +45,7 @@ function mapToRecipeDraft(full: FullRecipe): Recipe {
     ingredients: full.ingredients.map((ing) => ({
       position: ing.position,
       raw_text: ing.raw_text,
-      quantity: ing.quantity as Quantity | null,
+      quantity: ing.quantity,
       unit: ing.unit,
       ingredient_name: ing.ingredient_name,
       notes: ing.notes,
@@ -104,8 +104,31 @@ function RecipeEditPage() {
     );
   }
 
+  if (recipeQ.isError) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-12">
+        <Card className="space-y-3 text-center">
+          <h1 className="font-display text-2xl text-ink">{t('recipe.load_error_title')}</h1>
+          <p className="text-ink-soft">{t('recipe.load_error_body')}</p>
+          <div className="pt-2">
+            <Button variant="ghost" onClick={() => recipeQ.refetch()}>
+              {t('recipe.load_error_retry')}
+            </Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
   if (!recipeQ.data) {
-    return <main className="p-8 text-ink-soft">Recipe not found.</main>;
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-12">
+        <Card className="space-y-3 text-center">
+          <h1 className="font-display text-2xl text-ink">{t('recipe.not_found_title')}</h1>
+          <p className="text-ink-soft">{t('recipe.not_found_body')}</p>
+        </Card>
+      </main>
+    );
   }
 
   if (!canEdit) {
@@ -134,7 +157,10 @@ function RecipeEditPage() {
 
   const handleSubmit = async (values: Recipe) => {
     try {
-      await update.mutateAsync(values);
+      await update.mutateAsync({
+        draft: values,
+        expectedUpdatedAt: recipeQ.data?.recipe.updated_at ?? null,
+      });
       dirtyRef.current = false;
       push({
         variant: 'success',
@@ -150,6 +176,17 @@ function RecipeEditPage() {
         (e as { message?: string } | null)?.message?.trim() ||
         (e as { details?: string } | null)?.details?.trim() ||
         null;
+      // The update_recipe RPC raises `recipe_edit_conflict` when the row has
+      // changed since the form loaded. Surface a clear reload prompt instead of
+      // the generic save-failed toast.
+      if (detail?.includes('recipe_edit_conflict')) {
+        push({
+          variant: 'error',
+          title: t('recipe.edit_conflict_title'),
+          description: t('recipe.edit_conflict_body'),
+        });
+        return;
+      }
       push({
         variant: 'error',
         title: t('recipe.edit_failed_title'),
@@ -196,9 +233,9 @@ function RecipeEditPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('recipe.edit_unsaved_confirm')}</DialogTitle>
+            <DialogTitle>{t('recipe.unsaved_changes_title')}</DialogTitle>
             <DialogDescription className="text-ink-soft">
-              {t('recipe.edit_failed_body')}
+              {t('recipe.unsaved_changes_body')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -206,13 +243,13 @@ function RecipeEditPage() {
               variant="ghost"
               onClick={() => blocker.status === 'blocked' && blocker.reset?.()}
             >
-              {t('recipe.edit_cancel')}
+              {t('recipe.unsaved_changes_keep')}
             </Button>
             <Button
               variant="destructive"
               onClick={() => blocker.status === 'blocked' && blocker.proceed?.()}
             >
-              {t('recipe.edit_action')}
+              {t('recipe.unsaved_changes_discard')}
             </Button>
           </DialogFooter>
         </DialogContent>
