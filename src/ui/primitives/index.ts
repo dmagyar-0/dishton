@@ -47,7 +47,7 @@ export type { RadioGroupItemProps, RadioGroupProps } from './RadioGroup';
 export { RecipeImage } from './RecipeImage';
 export type { RecipeImageProps } from './RecipeImage';
 export { Select } from './Select';
-export type { SelectProps } from './Select';
+export type { SelectOption, SelectProps } from './Select';
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
 export { Slider } from './Slider';

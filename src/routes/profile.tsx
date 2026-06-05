@@ -15,13 +15,13 @@ export const Route = createFileRoute('/profile')({
 
 // Curated set of languages we offer in the picker. Labels are in their own
 // language so the choice is recognisable regardless of UI locale.
-const LANGUAGE_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
-  { code: 'en', label: 'English' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'fr', label: 'Français' },
-  { code: 'es', label: 'Español' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'hu', label: 'Magyar' },
+const LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'fr', label: 'Français' },
+  { value: 'es', label: 'Español' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'hu', label: 'Magyar' },
 ];
 
 function ProfilePage() {
@@ -172,12 +172,13 @@ function ProfilePage() {
           <Select
             id="profile-units"
             value={currentUnits}
+            options={[
+              { value: 'metric', label: t('profile.units_metric') },
+              { value: 'imperial', label: t('profile.units_imperial') },
+            ]}
             disabled={saving || !auth.profile}
-            onChange={(e) => void onUnitsChange(e.currentTarget.value)}
-          >
-            <option value="metric">{t('profile.units_metric')}</option>
-            <option value="imperial">{t('profile.units_imperial')}</option>
-          </Select>
+            onValueChange={(v) => void onUnitsChange(v)}
+          />
         </div>
 
         <div className="space-y-2">
@@ -187,15 +188,10 @@ function ProfilePage() {
           <Select
             id="profile-locale"
             value={currentLocale}
+            options={LANGUAGE_OPTIONS}
             disabled={saving || !auth.profile}
-            onChange={(e) => void onLocaleChange(e.currentTarget.value)}
-          >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.code} value={opt.code}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
+            onValueChange={(v) => void onLocaleChange(v)}
+          />
           <p className="text-ink-soft text-sm">{t('profile.locale_hint')}</p>
         </div>
 
@@ -206,15 +202,10 @@ function ProfilePage() {
           <Select
             id="preferred-language"
             value={currentLanguage}
+            options={LANGUAGE_OPTIONS}
             disabled={saving || !auth.profile}
-            onChange={(e) => void onLanguageChange(e.currentTarget.value)}
-          >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.code} value={opt.code}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
+            onValueChange={(v) => void onLanguageChange(v)}
+          />
           <p className="text-ink-soft text-sm">{t('profile.language_hint')}</p>
         </div>
       </Card>
