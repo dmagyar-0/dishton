@@ -46,6 +46,16 @@ jobs:
           mkdir -p supabase/functions
           echo "AI_MOCK_MODE=playwright" >> supabase/functions/.env
 
+      - name: Materialize shared domain into functions tree
+        # supabase/functions/_shared/domain is a symlink → src/domain. The
+        # symlink target falls outside the functions bundle, so the edge runtime
+        # (supabase functions serve) fails its module graph with "Module not
+        # found .../_shared/domain/recipe.ts". Replace it with a real copy,
+        # mirroring the deploy workflow.
+        run: |
+          rm -f supabase/functions/_shared/domain
+          cp -R src/domain supabase/functions/_shared/domain
+
       - name: Start local Supabase stack
         run: supabase start
 
@@ -139,5 +149,3 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
-
-# (CI nudge: re-trigger Actions for the E2E env-serve fix)
