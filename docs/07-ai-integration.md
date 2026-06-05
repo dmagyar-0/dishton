@@ -169,38 +169,49 @@ of a future Recipe field being added but not advertised to the model.
 
 ## Validation pipeline
 
+The model is forced to answer through the `extract_recipe` tool
+(`tool-schema.ts`), so structured JSON arrives as `tool_input` — there is no
+free-form text to parse and no JSON-parse re-prompt. `reason: 'parse'` now
+means only the degenerate case where the model returned no tool call at all.
+
+When the tool returns a well-formed object that nonetheless fails
+`Recipe.safeParse`, `callAndValidate` makes **one** bounded repair turn: it
+replays the prompt, shows the model the draft it produced (as a prior
+assistant turn so roles still alternate) plus the exact Zod issues, and forces
+a corrected tool call. The loop is capped at a single extra request, so the
+call stays deterministic and budget-bounded. Usage is summed across both calls.
+
 ```ts
 // supabase/functions/_shared/ai/validate.ts
 import { Recipe } from '../domain/recipe.ts';
 import { aiChat, type AiCallOpts, type AiResult } from './client.ts';
+import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 
-export type ValidationResult =
-  | { ok: true; recipe: import('../domain/recipe.ts').Recipe;
-      usage: AiResult['usage']; model: string; raw: string }
-  | { ok: false; reason: 'parse'|'schema'|'rate_limit'|'upstream'; raw: string };
+const TOOL_FIELDS = {
+  tools: [EXTRACT_RECIPE_TOOL],
+  tool_choice: { type: 'tool', name: EXTRACT_RECIPE_TOOL.name },
+};
 
 export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResult> {
-  const first = await aiChat(opts);
-  let parsed = tryParseJson(first.content);
-  if (!parsed.ok) {
-    // one re-prompt with the parse error
-    const retry = await aiChat({
-      ...opts,
-      messages: [
-        ...opts.messages,
-        { role: 'assistant', content: first.content },
-        { role: 'user', content:
-          `Your previous response was not valid JSON: ${parsed.error}.
-Return ONLY a single JSON object that matches the schema. No commentary.` },
-      ],
-    });
-    parsed = tryParseJson(retry.content);
-    if (!parsed.ok) return { ok: false, reason: 'parse', raw: retry.content };
-    /* sum usage */
-  }
-  const safe = Recipe.safeParse(parsed.value);
-  if (!safe.success) return { ok: false, reason: 'schema', raw: JSON.stringify(parsed.value) };
-  return { ok: true, recipe: safe.data, usage: first.usage, model: first.model, raw: first.content };
+  const first = await aiChat({ ...opts, ...TOOL_FIELDS });
+  const parsed = interpret(first);                  // tool_input → Recipe.safeParse
+  if (parsed.ok) return { ok: true, /* recipe, usage, model, raw */ };
+  if (parsed.reason === 'parse') return { ok: false, reason: 'parse', raw: parsed.raw };
+
+  // One bounded schema-repair turn: feed the Zod issues back, force the tool again.
+  const repair = await aiChat({
+    ...opts,
+    ...TOOL_FIELDS,
+    messages: [
+      ...opts.messages,
+      { role: 'assistant', content: parsed.raw },
+      { role: 'user', content: repairInstruction(parsed.errors) },
+    ],
+  });
+  const repaired = interpret(repair);
+  return repaired.ok
+    ? { ok: true, /* recipe, usage: sum(first, repair), model: repair.model, raw */ }
+    : { ok: false, reason: repaired.reason, raw: repaired.raw };
 }
 ```
 
@@ -323,8 +334,11 @@ this is what the E2E smoke uses (see
 ## Acceptance criteria
 
 - [ ] `aiChat` retries on 5xx and 429 only, with backoff `1s/2s/4s` plus jitter.
-- [ ] One re-prompt occurs on JSON parse failure; a second failure surfaces
-      `reason: 'parse'`.
+- [ ] The model is forced to call `extract_recipe`; output arrives as
+      `tool_input`. A response with no tool call surfaces `reason: 'parse'`.
+- [ ] On a `Recipe.safeParse` failure, exactly one repair turn fires (feeding
+      the Zod issues back); a second failure surfaces `reason: 'schema'`. Usage
+      is summed across both calls.
 - [ ] `Recipe.safeParse` is the only Zod entry point — no other code path
       writes a Recipe to the DB without going through it.
 - [ ] `withRateBudget` returns `'rate_limit'` when reservation fails; the Edge

@@ -1,14 +1,27 @@
 // Bridges AI output to the canonical Recipe schema. The model is forced to
 // call the `extract_recipe` tool, so the parsed JSON arrives as structured
 // data; we no longer parse free-form text or retry on JSON errors.
+//
+// When the forced tool call returns a well-formed object that nonetheless
+// fails Recipe.safeParse, we make ONE bounded repair turn: replay the prompt,
+// show the model the draft it produced plus the exact Zod errors, and force a
+// corrected tool call. This recovers drafts that would otherwise drop straight
+// to needs_review. The loop is capped at a single extra request so the call
+// stays deterministic and budget-bounded (one ai_call's worth of headroom).
 
 import { Recipe, type Recipe as RecipeType } from '../domain/recipe.ts';
-import { aiChat, type AiCallOpts, type AiResult, isUpstreamError } from './client.ts';
+import { type AiCallOpts, type AiResult, aiChat, isUpstreamError } from './client.ts';
 import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 
 export type ValidationResult =
   | { ok: true; recipe: RecipeType; usage: AiResult['usage']; model: string; raw: string }
   | { ok: false; reason: 'parse' | 'schema' | 'rate_limit' | 'upstream'; raw: string };
+
+// Force the model to answer through the tool, every call.
+const TOOL_FIELDS = {
+  tools: [EXTRACT_RECIPE_TOOL],
+  tool_choice: { type: 'tool', name: EXTRACT_RECIPE_TOOL.name },
+} satisfies Pick<AiCallOpts, 'tools' | 'tool_choice'>;
 
 // The recipe view renders steps as `position + 1`, so positions must be
 // 0-indexed and contiguous. The model sometimes returns 1-based positions
@@ -46,46 +59,110 @@ export function sanitizeModelUrls(recipe: RecipeType): RecipeType {
   };
 }
 
+type Interpreted =
+  | { ok: true; recipe: RecipeType; raw: string }
+  | { ok: false; reason: 'parse'; raw: string }
+  | { ok: false; reason: 'schema'; raw: string; errors: string };
+
+// Turn a raw aiChat result into a parsed outcome. `parse` means the model
+// didn't invoke the tool at all (no candidate to repair); `schema` means it
+// returned an object that failed Recipe.safeParse (repairable — carries the
+// Zod errors to feed back).
+function interpret(result: AiResult): Interpreted {
+  if (result.tool_input === undefined) {
+    // Forced tool_choice should make this branch effectively unreachable, but
+    // if Anthropic ever returns a text-only response (e.g. tool-call failure),
+    // surface it as a parse error rather than crashing.
+    return { ok: false, reason: 'parse', raw: result.content };
+  }
+  const raw = JSON.stringify(result.tool_input);
+  const safe = Recipe.safeParse(result.tool_input);
+  if (!safe.success) {
+    const errors = safe.error.issues
+      .slice(0, 20)
+      .map((iss) => `- ${iss.path.length ? iss.path.join('.') : '(root)'}: ${iss.message}`)
+      .join('\n');
+    return { ok: false, reason: 'schema', raw, errors };
+  }
+  // Strip non-http(s) URLs the model may have been coaxed into emitting before
+  // the draft is persisted or displayed.
+  return { ok: true, recipe: sanitizeModelUrls(normalizePositions(safe.data)), raw };
+}
+
+function repairInstruction(errors: string): string {
+  return `The recipe you extracted failed schema validation with these problems:
+
+${errors}
+
+Call the extract_recipe tool again with a corrected recipe. Fix only the fields named above; keep every other field identical to what you returned. Make sure each required field is present and every value matches the types and enums in the tool schema.`;
+}
+
+function sumUsage(a: AiResult['usage'], b: AiResult['usage']): AiResult['usage'] {
+  return {
+    input: a.input + b.input,
+    output: a.output + b.output,
+    cache_read: (a.cache_read ?? 0) + (b.cache_read ?? 0) || undefined,
+    cache_write: (a.cache_write ?? 0) + (b.cache_write ?? 0) || undefined,
+  };
+}
+
 export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResult> {
-  let result: AiResult;
+  let first: AiResult;
   try {
-    result = await aiChat({
-      ...opts,
-      tools: [EXTRACT_RECIPE_TOOL],
-      tool_choice: { type: 'tool', name: EXTRACT_RECIPE_TOOL.name },
-    });
+    first = await aiChat({ ...opts, ...TOOL_FIELDS });
   } catch (err) {
     // Anthropic API errors, connection failures, and timeouts/aborts are not a
     // bad recipe — they're a transient upstream problem. Surface them as a
     // typed 'upstream' reason so the worker writes a retriable error and the
     // SPA shows "importer busy" rather than "couldn't parse this page".
-    if (isUpstreamError(err)) {
-      return { ok: false, reason: 'upstream', raw: '' };
-    }
+    if (isUpstreamError(err)) return { ok: false, reason: 'upstream', raw: '' };
     throw err;
   }
-
-  if (result.tool_input === undefined) {
-    // Forced tool_choice should make this branch effectively unreachable, but
-    // if Anthropic ever returns a text-only response (e.g. tool-call failure),
-    // surface it as a parse error rather than crashing.
+  const firstParsed = interpret(first);
+  if (firstParsed.ok) {
     return {
-      ok: false,
-      reason: 'parse',
-      raw: result.content,
+      ok: true,
+      recipe: firstParsed.recipe,
+      usage: first.usage,
+      model: first.model,
+      raw: firstParsed.raw,
     };
   }
 
-  const safe = Recipe.safeParse(result.tool_input);
-  const raw = JSON.stringify(result.tool_input);
-  if (!safe.success) {
-    return { ok: false, reason: 'schema', raw };
+  // A missing tool call ('parse') means the model didn't invoke the tool at
+  // all — a repair turn has nothing to work from, so surface it immediately.
+  if (firstParsed.reason === 'parse') {
+    return { ok: false, reason: 'parse', raw: firstParsed.raw };
   }
-  return {
-    ok: true,
-    recipe: sanitizeModelUrls(normalizePositions(safe.data)),
-    usage: result.usage,
-    model: result.model,
-    raw,
-  };
+
+  // One bounded repair turn. Replay the original prompt, show the model the
+  // draft it produced (as a prior assistant turn so roles still alternate)
+  // and the exact Zod errors, then force another tool call.
+  let repair: AiResult;
+  try {
+    repair = await aiChat({
+      ...opts,
+      ...TOOL_FIELDS,
+      messages: [
+        ...opts.messages,
+        { role: 'assistant', content: firstParsed.raw },
+        { role: 'user', content: repairInstruction(firstParsed.errors) },
+      ],
+    });
+  } catch (err) {
+    if (isUpstreamError(err)) return { ok: false, reason: 'upstream', raw: '' };
+    throw err;
+  }
+  const usage = sumUsage(first.usage, repair.usage);
+  const repairParsed = interpret(repair);
+  if (repairParsed.ok) {
+    return {
+      ok: true,
+      recipe: repairParsed.recipe,
+      usage,
+      model: repair.model,
+      raw: repairParsed.raw,
+    };
+  }
+  return { ok: false, reason: repairParsed.reason, raw: repairParsed.raw };
 }
