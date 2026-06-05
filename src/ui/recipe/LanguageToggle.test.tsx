@@ -11,18 +11,24 @@ const OPTS = [
 ];
 
 describe('LanguageToggle', () => {
-  it('renders a select with all options', () => {
+  it('renders the selected language with its code', () => {
     render(<LanguageToggle value="en" options={OPTS} onChange={() => {}} />);
-    const sel = screen.getByRole('combobox', { name: 'Language' });
-    expect(sel).toHaveValue('en');
-    expect(sel.children).toHaveLength(3);
+    expect(screen.getByRole('combobox', { name: 'Language' })).toHaveTextContent('English (en)');
   });
 
-  it('fires onChange with new code', async () => {
+  it('lists every option when opened', async () => {
+    const user = userEvent.setup();
+    render(<LanguageToggle value="en" options={OPTS} onChange={() => {}} />);
+    await user.click(screen.getByRole('combobox', { name: 'Language' }));
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+  });
+
+  it('fires onChange with the new code', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<LanguageToggle value="en" options={OPTS} onChange={onChange} />);
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Language' }), 'fr');
+    await user.click(screen.getByRole('combobox', { name: 'Language' }));
+    await user.click(screen.getByRole('option', { name: 'Français (fr)' }));
     expect(onChange).toHaveBeenCalledWith('fr');
   });
 });

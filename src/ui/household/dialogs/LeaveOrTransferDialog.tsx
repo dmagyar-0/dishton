@@ -194,17 +194,17 @@ export function LeaveOrTransferDialog({
                 </label>
                 <Select
                   id="transfer-target"
+                  options={[
+                    { value: '', label: '—' },
+                    ...otherMembers.map((m) => ({
+                      value: m.profile_id,
+                      label: m.profile.display_name,
+                    })),
+                  ]}
                   value={pickedProfile}
-                  onChange={(e) => setPickedProfile(e.target.value)}
+                  onValueChange={setPickedProfile}
                   disabled={isPending}
-                >
-                  <option value="">—</option>
-                  {otherMembers.map((m) => (
-                    <option key={m.profile_id} value={m.profile_id}>
-                      {m.profile.display_name}
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
             ) : (
               <p className="text-ink-soft text-sm">
