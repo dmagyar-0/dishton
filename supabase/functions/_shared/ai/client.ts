@@ -71,7 +71,22 @@ function getClient(): Anthropic {
   if (cachedClient) return cachedClient;
   // SDK retries are disabled so our own retry loop is the single source of
   // truth — keeps log lines and timing correlate-able with attempt counts.
-  cachedClient = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 0 });
+  // The fetch indirection routes every request through the *current*
+  // globalThis.fetch at call time (rather than the reference the SDK captures
+  // at import) so test-time fetch mocks (_shared/mock_fetch.ts) intercept SDK
+  // traffic. Behaviour-neutral in production, where globalThis.fetch is the
+  // platform fetch.
+  // The SDK's Fetch type is keyed to node-fetch's Request/Response; bridge to
+  // the platform fetch through `unknown`. The wrapper itself uses Deno DOM
+  // types, so the call is type-safe.
+  type SdkFetch = NonNullable<ConstructorParameters<typeof Anthropic>[0]>['fetch'];
+  const fetchThroughGlobal = ((input: RequestInfo | URL, init?: RequestInit) =>
+    globalThis.fetch(input, init)) as unknown as SdkFetch;
+  cachedClient = new Anthropic({
+    apiKey: env.ANTHROPIC_API_KEY,
+    maxRetries: 0,
+    fetch: fetchThroughGlobal,
+  });
   return cachedClient;
 }
 
