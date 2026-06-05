@@ -51,7 +51,18 @@ jobs:
 
       - name: Apply migrations + seed
         # `supabase db reset` re-applies every migration then runs seed.sql.
-        run: supabase db reset
+        # The CLI's container restart occasionally returns a transient 502 from
+        # the local gateway; retry a couple of times before failing the job.
+        run: |
+          for attempt in 1 2 3; do
+            if supabase db reset; then
+              exit 0
+            fi
+            echo "supabase db reset failed (attempt ${attempt}); retrying in 10s..." >&2
+            sleep 10
+          done
+          echo "supabase db reset failed after 3 attempts" >&2
+          exit 1
 
       - name: Bump seeded user passwords for sign-in specs
         # seed.sql sets the demo users' password to `test1234` (8 chars), but
