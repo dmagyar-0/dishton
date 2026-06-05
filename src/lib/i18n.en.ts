@@ -32,6 +32,15 @@ export default {
       expired:
         'This password reset link is invalid or has expired. Request a new one and try again.',
       request_new: 'Request a new reset link',
+      trouble: 'Still preparing your reset link. If this is taking too long, it may have expired.',
+    },
+    reset: {
+      submit: 'Send reset link',
+      sent: "If an account exists for that email, we've sent a reset link. Check your inbox.",
+      retry: "We couldn't send the reset email just now. Check your connection and try again.",
+    },
+    callback: {
+      signing_in: 'Signing you in…',
     },
   },
   household: {
@@ -62,6 +71,14 @@ export default {
   household_settings: {
     title: 'Household settings',
     subtitle: 'Tags and preferences shared with everyone in this household.',
+    no_access_title: 'No access',
+    no_access_body:
+      "You're not a member of this household, so its settings aren't available to you.",
+    go_home: 'Back to your recipes',
+    load_error_title: "Couldn't load these settings",
+    load_error_body:
+      'Something went wrong fetching this household. Check your connection and retry.',
+    load_error_retry: 'Retry',
     solo: {
       title: 'Settings',
       subtitle: 'Tweak tags and invite someone to share your recipes.',
@@ -111,7 +128,10 @@ export default {
       action_menu: 'Member actions',
       invite_title: 'Invite by code',
       invite_help: 'Generate a code or share link. Codes expire after 7 days and work once.',
+      invite_owner_only: 'Only owners can generate invite codes for this household.',
       generate_invite: 'Generate invite code',
+      generate_failed: "Couldn't generate an invite code",
+      load_error: "Couldn't load the member list.",
       invite_generated_title: 'Send this to your guest',
       invite_generated_body:
         'They can paste the code into Dishton or open the share link to join as an editor.',
@@ -215,10 +235,22 @@ export default {
     },
   },
   profile: {
+    save: 'Save',
+    saved: 'Profile updated',
+    save_failed: "Couldn't save your changes",
+    units_label: 'Preferred units',
+    units_metric: 'Metric',
+    units_imperial: 'Imperial',
+    locale_label: 'Display language',
+    locale_hint: 'Changes the language of Dishton’s interface.',
     language_label: 'Recipe language',
     language_hint: 'New imports are translated into this language. Saved recipes are unaffected.',
     language_saved: 'Language updated',
     language_save_failed: "Couldn't save your language preference",
+    sign_out: 'Sign out',
+    sign_out_all: 'Sign out of all sessions',
+    sign_out_all_hint: 'Signs you out on every device where you’re logged in.',
+    sign_out_all_failed: "Couldn't sign out of all sessions",
   },
   recipe: {
     list_title: 'Recipes',
@@ -363,6 +395,10 @@ export default {
     invalid_or_expired_follow_code: 'That follow code is invalid or expired.',
     no_owned_household: 'You need to own a household before you can follow another one.',
     cannot_follow_self: "A household can't follow itself.",
+    cannot_delete_personal_household:
+      "Your personal space can't be deleted — it's where your own recipes live.",
+    household_not_found: 'That household no longer exists.',
+    generic: 'Something went wrong. Please try again.',
   },
   errors: {
     rate_limit: 'Importer is busy. Try again in a minute.',

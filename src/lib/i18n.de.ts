@@ -31,6 +31,17 @@ export default {
       continue: 'Weiter',
       expired: 'Dieser Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.',
       request_new: 'Neuen Reset-Link anfordern',
+      trouble:
+        'Dein Reset-Link wird noch vorbereitet. Falls es zu lange dauert, ist er möglicherweise abgelaufen.',
+    },
+    reset: {
+      submit: 'Reset-Link senden',
+      sent: 'Falls ein Konto zu dieser E-Mail existiert, haben wir einen Reset-Link gesendet. Sieh in deinem Postfach nach.',
+      retry:
+        'Wir konnten die Reset-E-Mail gerade nicht senden. Prüfe deine Verbindung und versuche es erneut.',
+    },
+    callback: {
+      signing_in: 'Du wirst angemeldet…',
     },
   },
   household: {
@@ -61,6 +72,14 @@ export default {
   household_settings: {
     title: 'Haushaltseinstellungen',
     subtitle: 'Tags und Voreinstellungen, die alle in diesem Haushalt teilen.',
+    no_access_title: 'Kein Zugriff',
+    no_access_body:
+      'Du bist kein Mitglied dieses Haushalts, daher sind seine Einstellungen für dich nicht verfügbar.',
+    go_home: 'Zurück zu deinen Rezepten',
+    load_error_title: 'Einstellungen konnten nicht geladen werden',
+    load_error_body:
+      'Beim Laden dieses Haushalts ging etwas schief. Prüfe deine Verbindung und versuche es erneut.',
+    load_error_retry: 'Erneut versuchen',
     solo: {
       title: 'Einstellungen',
       subtitle: 'Tags anpassen und jemanden einladen, deine Rezepte zu teilen.',
@@ -111,7 +130,10 @@ export default {
       invite_title: 'Per Code einladen',
       invite_help:
         'Erzeuge einen Code oder einen Einladungslink. Codes laufen nach 7 Tagen ab und funktionieren einmalig.',
+      invite_owner_only: 'Nur Besitzer:innen können Einladungscodes für diesen Haushalt erzeugen.',
       generate_invite: 'Einladungscode erzeugen',
+      generate_failed: 'Einladungscode konnte nicht erzeugt werden',
+      load_error: 'Mitgliederliste konnte nicht geladen werden.',
       invite_generated_title: 'Schick das an deinen Gast',
       invite_generated_body:
         'Code in Dishton einfügen oder Einladungslink öffnen, um als Editor:in beizutreten.',
@@ -217,11 +239,23 @@ export default {
     },
   },
   profile: {
+    save: 'Speichern',
+    saved: 'Profil aktualisiert',
+    save_failed: 'Änderungen konnten nicht gespeichert werden',
+    units_label: 'Bevorzugte Einheiten',
+    units_metric: 'Metrisch',
+    units_imperial: 'Imperial',
+    locale_label: 'Anzeigesprache',
+    locale_hint: 'Ändert die Sprache der Dishton-Oberfläche.',
     language_label: 'Rezeptsprache',
     language_hint:
       'Neue Importe werden in diese Sprache übersetzt. Gespeicherte Rezepte bleiben unverändert.',
     language_saved: 'Sprache aktualisiert',
     language_save_failed: 'Sprache konnte nicht gespeichert werden',
+    sign_out: 'Abmelden',
+    sign_out_all: 'Von allen Geräten abmelden',
+    sign_out_all_hint: 'Meldet dich auf allen Geräten ab, auf denen du angemeldet bist.',
+    sign_out_all_failed: 'Abmeldung von allen Sitzungen fehlgeschlagen',
   },
   recipe: {
     list_title: 'Rezepte',
@@ -376,6 +410,10 @@ export default {
     invalid_or_expired_follow_code: 'Dieser Folge-Code ist ungültig oder abgelaufen.',
     no_owned_household: 'Du musst einen Haushalt besitzen, bevor du einem anderen folgen kannst.',
     cannot_follow_self: 'Ein Haushalt kann sich nicht selbst folgen.',
+    cannot_delete_personal_household:
+      'Dein persönlicher Bereich kann nicht gelöscht werden – dort liegen deine eigenen Rezepte.',
+    household_not_found: 'Diesen Haushalt gibt es nicht mehr.',
+    generic: 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
   },
   errors: {
     rate_limit: 'Importer ist ausgelastet. Bitte in einer Minute erneut versuchen.',

@@ -20,6 +20,16 @@ export function setUserContext(profileId: string): void {
   Sentry.setUser({ id: profileId });
 }
 
-export function setHouseholdContext(householdId: string): void {
+export function clearUserContext(): void {
+  Sentry.setUser(null);
+}
+
+export function setHouseholdContext(householdId: string | null): void {
   Sentry.setTag('household_id', householdId);
+}
+
+// Record a low-noise breadcrumb so unmapped errors keep their raw context in
+// Sentry without surfacing internal strings to the user.
+export function logErrorBreadcrumb(message: string, data?: Record<string, unknown>): void {
+  Sentry.addBreadcrumb({ category: 'error', level: 'warning', message, data });
 }

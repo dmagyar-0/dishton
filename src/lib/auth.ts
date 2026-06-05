@@ -9,6 +9,7 @@
 
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
+import { clearUserContext, setHouseholdContext, setUserContext } from '../observability/sentry';
 import { supabase } from './supabase';
 
 // Force re-auth across deploys: a session minted under build A must not survive
@@ -78,18 +79,34 @@ export const useAuth = create<AuthState>((set) => ({
   setMemberships: (memberships) => set({ memberships, hydrated: true }),
   signOut: async () => {
     await supabase.auth.signOut();
+    clearUserContext();
+    setHouseholdContext(null);
     set({ session: null, user: null, profile: null, memberships: [], hydrated: true });
   },
 }));
 
 export async function refreshAuthDerivedState(userId: string): Promise<void> {
   const profile = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-  if (profile.data) useAuth.getState().setProfile(profile.data as Profile);
+  if (profile.error) {
+    // A transient failure here must not be treated as "user has no profile".
+    // Re-throw so the caller can decide whether to keep prior state instead of
+    // silently flipping the store into a logged-out-looking shape.
+    throw profile.error;
+  }
+  if (profile.data) {
+    useAuth.getState().setProfile(profile.data as Profile);
+    setUserContext(profile.data.id);
+  }
 
   const memberships = await supabase
     .from('household_members')
     .select('household_id, role, households!inner(is_personal)')
     .eq('profile_id', userId);
+  if (memberships.error) {
+    // Likewise: do not clear memberships to [] on a transient error, which
+    // would wrongly bounce the user to /onboarding. Surface it instead.
+    throw memberships.error;
+  }
   const rows =
     (memberships.data as Array<{
       household_id: string;
@@ -128,7 +145,16 @@ export async function bootstrapAuth(): Promise<void> {
 
   useAuth.getState().setSession(data.session);
   if (data.session?.user) {
-    await refreshAuthDerivedState(data.session.user.id);
+    try {
+      await refreshAuthDerivedState(data.session.user.id);
+    } catch (err) {
+      // Profile/membership fetch failed transiently. We keep the restored
+      // session but must still flip `hydrated` so guards stop waiting; an empty
+      // memberships list here is "unknown", not "zero", so guards treat a live
+      // session conservatively (see requireHousehold).
+      console.error('[auth] failed to load derived state', err);
+      useAuth.getState().setMemberships([]);
+    }
   } else {
     useAuth.getState().setMemberships([]);
   }
@@ -141,9 +167,16 @@ function subscribeAuthChanges(): void {
     useAuth.getState().setSession(session);
     if (event === 'SIGNED_IN' && session?.user) {
       if (BUILD_SHA) writeStoredSha(BUILD_SHA);
-      await refreshAuthDerivedState(session.user.id);
+      try {
+        await refreshAuthDerivedState(session.user.id);
+      } catch (err) {
+        console.error('[auth] failed to refresh derived state on sign-in', err);
+        useAuth.getState().setMemberships([]);
+      }
     } else if (event === 'SIGNED_OUT') {
       clearStoredSha();
+      clearUserContext();
+      setHouseholdContext(null);
       useAuth.getState().setProfile(null);
       useAuth.getState().setMemberships([]);
     }

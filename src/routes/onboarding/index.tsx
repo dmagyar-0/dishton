@@ -21,7 +21,10 @@ export const Route = createFileRoute('/onboarding/')({
   validateSearch: (search: Record<string, unknown>): { code?: string } => {
     const raw = typeof search.code === 'string' ? search.code : undefined;
     if (!raw) return {};
-    return /^[A-Z2-7]{8}$/.test(raw) ? { code: raw } : {};
+    // Accept lowercase/mixed-case codes from pasted links and normalize to the
+    // canonical uppercase form the redeem RPC and schema expect.
+    const normalized = raw.trim().toUpperCase();
+    return /^[A-Z2-7]{8}$/.test(normalized) ? { code: normalized } : {};
   },
   component: OnboardingPage,
 });
@@ -94,16 +97,24 @@ function OnboardingPage() {
           <Input
             placeholder={t('household.invite_placeholder')}
             autoFocus={!!prefilledCode}
+            aria-invalid={redeem.formState.errors.code ? true : undefined}
+            aria-describedby={redeem.formState.errors.code ? 'redeem-code-error' : undefined}
             {...redeem.register('code')}
           />
           {redeem.formState.errors.code && (
-            <p className="text-pomegranate text-sm">{redeem.formState.errors.code.message}</p>
+            <p id="redeem-code-error" role="alert" className="text-pomegranate text-sm">
+              {redeem.formState.errors.code.message}
+            </p>
           )}
           <Button type="submit" className="w-full">
             {t('household.redeem')}
           </Button>
         </form>
-        {serverError && <p className="text-pomegranate text-sm mt-3">{serverError}</p>}
+        {serverError && (
+          <p role="alert" aria-live="assertive" className="text-pomegranate text-sm mt-3">
+            {serverError}
+          </p>
+        )}
       </Card>
     </main>
   );

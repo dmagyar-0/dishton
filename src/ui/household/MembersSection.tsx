@@ -65,7 +65,7 @@ export function MembersSection({
     } catch (err) {
       push({
         variant: 'error',
-        title: t('household_settings.members.revoke_failed'),
+        title: t('household_settings.members.generate_failed'),
         description: translateHouseholdError(t, err),
       });
     }
@@ -81,6 +81,20 @@ export function MembersSection({
           </div>
 
           {members.isLoading && <Skeleton className="h-32" />}
+
+          {members.isError && (
+            <div className="space-y-2">
+              <p className="text-ink-soft text-sm">{t('household_settings.members.load_error')}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void members.refetch()}
+              >
+                {t('household_settings.load_error_retry')}
+              </Button>
+            </div>
+          )}
 
           {members.data && members.data.length === 0 && (
             <p className="text-ink-soft text-sm">{t('household_settings.members.empty')}</p>
@@ -120,16 +134,22 @@ export function MembersSection({
               : t('household_settings.members.invite_help')}
           </p>
         </div>
-        <div>
-          <Button
-            type="button"
-            onClick={() => void generate()}
-            loading={createInvite.isPending}
-            leftIcon={<Mail size={16} strokeWidth={1.5} />}
-          >
-            {t('household_settings.members.generate_invite')}
-          </Button>
-        </div>
+        {isOwner ? (
+          <div>
+            <Button
+              type="button"
+              onClick={() => void generate()}
+              loading={createInvite.isPending}
+              leftIcon={<Mail size={16} strokeWidth={1.5} />}
+            >
+              {t('household_settings.members.generate_invite')}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-ink-soft text-sm">
+            {t('household_settings.members.invite_owner_only')}
+          </p>
+        )}
 
         {invites.data && invites.data.length > 0 && (
           <div className="space-y-2 pt-2 border-t border-cream-line">

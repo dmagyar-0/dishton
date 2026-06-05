@@ -49,24 +49,52 @@ function SignupPage() {
         >
           <label className="block">
             <span className="text-sm text-ink-soft">{t('auth.display_name')}</span>
-            <Input {...register('display_name')} />
+            <Input
+              aria-invalid={errors.display_name ? true : undefined}
+              aria-describedby={errors.display_name ? 'signup-name-error' : undefined}
+              {...register('display_name')}
+            />
             {errors.display_name && (
-              <p className="text-pomegranate text-sm">{errors.display_name.message}</p>
+              <p id="signup-name-error" role="alert" className="text-pomegranate text-sm">
+                {errors.display_name.message}
+              </p>
             )}
           </label>
           <label className="block">
             <span className="text-sm text-ink-soft">{t('auth.email')}</span>
-            <Input type="email" autoComplete="email" {...register('email')} />
-            {errors.email && <p className="text-pomegranate text-sm">{errors.email.message}</p>}
+            <Input
+              type="email"
+              autoComplete="email"
+              aria-invalid={errors.email ? true : undefined}
+              aria-describedby={errors.email ? 'signup-email-error' : undefined}
+              {...register('email')}
+            />
+            {errors.email && (
+              <p id="signup-email-error" role="alert" className="text-pomegranate text-sm">
+                {errors.email.message}
+              </p>
+            )}
           </label>
           <label className="block">
             <span className="text-sm text-ink-soft">{t('auth.password')}</span>
-            <Input type="password" autoComplete="new-password" {...register('password')} />
+            <Input
+              type="password"
+              autoComplete="new-password"
+              aria-invalid={errors.password ? true : undefined}
+              aria-describedby={errors.password ? 'signup-password-error' : undefined}
+              {...register('password')}
+            />
             {errors.password && (
-              <p className="text-pomegranate text-sm">{errors.password.message}</p>
+              <p id="signup-password-error" role="alert" className="text-pomegranate text-sm">
+                {errors.password.message}
+              </p>
             )}
           </label>
-          {serverError && <p className="text-pomegranate text-sm">{serverError}</p>}
+          {serverError && (
+            <p role="alert" aria-live="assertive" className="text-pomegranate text-sm">
+              {serverError}
+            </p>
+          )}
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {t('auth.submit_signup')}
           </Button>

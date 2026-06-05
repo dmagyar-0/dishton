@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/observability/sentry', () => ({
+  logErrorBreadcrumb: vi.fn(),
+}));
+
 import { authErrorCopy } from './auth-errors';
 
 describe('authErrorCopy', () => {
@@ -9,8 +14,10 @@ describe('authErrorCopy', () => {
     expect(authErrorCopy('User already registered')).toBe('That email already has an account.');
   });
 
-  it('passes through unknown messages', () => {
-    expect(authErrorCopy('Some other error')).toBe('Some other error');
+  it('returns a generic copy for unmapped messages instead of leaking raw text', () => {
+    // Raw Postgres/Supabase internals must never reach the user.
+    expect(authErrorCopy('relation "x" does not exist')).toBe('Something went wrong. Try again.');
+    expect(authErrorCopy('Some other error')).toBe('Something went wrong. Try again.');
   });
 
   it('returns a generic copy for null / undefined', () => {

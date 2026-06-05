@@ -1,12 +1,14 @@
 import { supabase } from '@/lib/supabase';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const Route = createFileRoute('/auth/callback')({
   component: CallbackPage,
 });
 
 function CallbackPage() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +41,8 @@ function CallbackPage() {
     };
   }, [nav]);
   return (
-    <main className="min-h-dvh grid place-items-center text-ink-soft">Signing you in&hellip;</main>
+    <main className="min-h-dvh grid place-items-center text-ink-soft">
+      {t('auth.callback.signing_in')}
+    </main>
   );
 }
