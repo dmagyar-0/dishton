@@ -45,8 +45,11 @@ test.describe('dishton smoke', () => {
       .fill('https://example.test/tomato-tarte-tatin');
     await page.getByRole('button', { name: /^import$/i }).click();
 
-    // Draft preview JSON should land in the page; from there the user moves
-    // to a draft-edit modal in a follow-up flow.
-    await expect(page.locator('pre')).toContainText('Tomato Tarte Tatin');
+    // A successful import saves the recipe and navigates to its detail page.
+    // In mock mode the importer skips the network fetch and the AI returns the
+    // canned "Tomato Tarte Tatin" draft, so we land on the recipe with that
+    // title as the page heading.
+    await page.waitForURL(/\/h\/[^/]+\/r\//, { timeout: 20_000 });
+    await expect(page.getByRole('heading', { name: 'Tomato Tarte Tatin' })).toBeVisible();
   });
 });

@@ -19,6 +19,7 @@ import {
   resolveCaller,
 } from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
+import { isMockMode } from '../_shared/ai/mock.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
 import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
@@ -38,6 +39,13 @@ const FIRST_RESPONSE_MS = 10_000;
 const CONCURRENCY_CAP = 5;
 
 async function fetchHtml(url: string): Promise<string> {
+  // In AI mock mode (local dev + e2e), skip the real network fetch entirely so
+  // the importer runs fully offline against canned data. The AI call is mocked
+  // too, so the returned draft is independent of this HTML — it only needs to
+  // be well-formed enough to flow through the scrape/strip pipeline.
+  if (isMockMode()) {
+    return '<!doctype html><html><head><title>Mock Recipe</title></head><body><h1>Mock Recipe</h1></body></html>';
+  }
   // safeFetch resolves + vets the host (and every redirect hop) against the
   // SSRF guard before connecting; a private/loopback/link-local target throws
   // SsrfError, which we map to a 400 invalid_url so the SPA can tell the user
