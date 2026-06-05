@@ -39,12 +39,18 @@ jobs:
         with: { version: latest }
 
       - name: Provision Edge Function env (AI mock)
-        # The Supabase stack started below serves Edge Functions; they read
-        # their environment from supabase/functions/.env. Writing AI_MOCK_MODE
-        # here makes the served functions short-circuit the Anthropic call.
+        # The served Edge Functions read their environment from
+        # supabase/functions/.env. AI_MOCK_MODE makes them short-circuit the
+        # Anthropic call. ANTHROPIC_API_KEY is a REQUIRED var in _shared/env.ts
+        # (validated eagerly on first access in resolveCaller), so provide a
+        # dummy — mock mode never makes a real Anthropic request. SUPABASE_URL /
+        # SUPABASE_SERVICE_ROLE_KEY are auto-injected by the local runtime.
         run: |
           mkdir -p supabase/functions
-          echo "AI_MOCK_MODE=playwright" >> supabase/functions/.env
+          {
+            echo "AI_MOCK_MODE=playwright"
+            echo "ANTHROPIC_API_KEY=sk-ant-mock-e2e-not-used"
+          } >> supabase/functions/.env
 
       - name: Materialize shared domain into functions tree
         # supabase/functions/_shared/domain is a symlink → src/domain. The
