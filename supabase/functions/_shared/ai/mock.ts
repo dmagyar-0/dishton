@@ -91,10 +91,12 @@ function systemText(opts: AiCallOpts): string {
     .toLowerCase();
 }
 
-// Pick the right fixture for the call. Translation calls carry the translate
-// system prompt; everything else is a structuring call and gets the draft.
+// Pick the right fixture for the call. Translation calls carry the distinctive
+// translate-recipe system preamble; the structuring prompt also mentions the
+// word "translate" (unit-word handling + language directive), so match the
+// translate prompt's unique opening phrase rather than a bare substring.
 export function mockAiChat(opts: AiCallOpts): AiResult {
-  const isTranslate = systemText(opts).includes('translate');
+  const isTranslate = systemText(opts).includes('you translate a dishton recipe');
   const fixture = isTranslate ? TRANSLATION_DE_FIXTURE : DRAFT_FIXTURE;
   return {
     content: JSON.stringify(fixture),
