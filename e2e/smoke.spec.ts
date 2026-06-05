@@ -49,14 +49,6 @@ test.describe('dishton smoke', () => {
     // In mock mode the importer skips the network fetch and the AI returns the
     // canned "Tomato Tarte Tatin" draft, so we land on the recipe with that
     // title as the page heading.
-    // TEMP diagnostic: surface the post-import page state in CI logs.
-    await page.waitForTimeout(6000);
-    // biome-ignore lint/suspicious/noConsole: temporary e2e diagnostic
-    console.log('[smoke] url after import:', page.url());
-    // biome-ignore lint/suspicious/noConsole: temporary e2e diagnostic
-    console.log('[smoke] alerts:', JSON.stringify(await page.getByRole('alert').allInnerTexts()));
-    // biome-ignore lint/suspicious/noConsole: temporary e2e diagnostic
-    console.log('[smoke] status:', JSON.stringify(await page.getByRole('status').allInnerTexts()));
     await page.waitForURL(/\/h\/[^/]+\/r\//, { timeout: 20_000 });
     await expect(page.getByRole('heading', { name: 'Tomato Tarte Tatin' })).toBeVisible();
   });

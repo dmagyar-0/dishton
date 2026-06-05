@@ -98,7 +98,39 @@ jobs:
       - name: Run Playwright smoke suite
         # PLAYWRIGHT_BASE_URL is unset, so playwright.config.ts boots
         # `pnpm preview` itself and points the tests at http://localhost:4173.
-        run: pnpm test:e2e
+        #
+        # `supabase start` serves the Edge Functions but does NOT load
+        # supabase/functions/.env, so AI_MOCK_MODE never reaches them. Mirror
+        # the documented local loop (supabase start + `pnpm fn:serve`) by
+        # serving the functions with the env file for the duration of the run —
+        # this is what makes URL import work fully offline against the canned
+        # AI fixtures. Backgrounded inside this step so it outlives nothing.
+        run: |
+          supabase functions serve --no-verify-jwt --env-file supabase/functions/.env \
+            > /tmp/fn-serve.log 2>&1 &
+          FN_PID=$!
+          echo "Waiting for Edge Functions to serve..."
+          for i in $(seq 1 60); do
+            if grep -qi "serving functions" /tmp/fn-serve.log; then
+              echo "Edge Functions are serving."
+              break
+            fi
+            if ! kill -0 "$FN_PID" 2>/dev/null; then
+              echo "supabase functions serve exited early:" >&2
+              cat /tmp/fn-serve.log >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          sleep 3
+          set +e
+          pnpm test:e2e
+          status=$?
+          set -e
+          kill "$FN_PID" 2>/dev/null || true
+          echo "----- supabase functions serve log -----"
+          tail -n 50 /tmp/fn-serve.log || true
+          exit $status
         env:
           CI: 'true'
 
