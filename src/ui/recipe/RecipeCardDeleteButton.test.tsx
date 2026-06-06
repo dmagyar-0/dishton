@@ -29,7 +29,12 @@ import { RecipeCardDeleteButton } from './RecipeCardDeleteButton';
 
 function renderButton() {
   return render(
-    <RecipeCardDeleteButton recipeId="rec_123" recipeTitle="Saffron Risotto" householdId="h_abc" />,
+    <RecipeCardDeleteButton
+      recipeId="rec_123"
+      recipeTitle="Saffron Risotto"
+      householdId="h_abc"
+      heroImagePath="u1/hero.jpg"
+    />,
   );
 }
 
@@ -59,7 +64,7 @@ describe('RecipeCardDeleteButton', () => {
     expect(screen.getByRole('button', { name: 'recipe.delete_confirm' })).toBeInTheDocument();
   });
 
-  it('calls mutate with the recipe id when the user confirms', async () => {
+  it('calls mutate with the recipe id and hero image path when the user confirms', async () => {
     const user = userEvent.setup();
     renderButton();
     await user.click(
@@ -67,7 +72,10 @@ describe('RecipeCardDeleteButton', () => {
     );
     await user.click(screen.getByRole('button', { name: 'recipe.delete_confirm' }));
     expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock.mock.calls[0]?.[0]).toBe('rec_123');
+    expect(mutateMock.mock.calls[0]?.[0]).toEqual({
+      recipeId: 'rec_123',
+      heroImagePath: 'u1/hero.jpg',
+    });
   });
 
   it('cancel closes the dialog without calling mutate', async () => {

@@ -2,6 +2,7 @@ import type { Quantity, Recipe } from '@/domain/recipe';
 import { useAuth } from '@/lib/auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { RECIPE_IMAGES_BUCKET, isRemoteImageUrl } from './storage';
 
 export type RecipeListRow = {
   id: string;
@@ -85,12 +86,44 @@ export type FullRecipe = {
   tags: string[];
 };
 
+export type DeleteRecipeArgs = {
+  recipeId: string;
+  // The recipe's hero_image_path (as held in the list row), passed so we can
+  // free its storage object after the row is gone. Null or a remote URL means
+  // there is nothing in our bucket to delete.
+  heroImagePath: string | null;
+};
+
 export function useDeleteRecipe(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (recipeId: string) => {
-      const { error } = await supabase.from('recipes').delete().eq('id', recipeId);
+    mutationFn: async ({ recipeId, heroImagePath }: DeleteRecipeArgs) => {
+      // `.select()` makes the DELETE return the rows it actually removed. RLS
+      // turns a forbidden delete into a 0-row no-op rather than an error, so
+      // without this check an unauthorized (or already-deleted) delete would
+      // surface to the user as a false success.
+      const { data, error } = await supabase
+        .from('recipes')
+        .delete()
+        .eq('id', recipeId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('recipe_delete_not_permitted');
+      }
+
+      // Best-effort: free the hero image blob now that the recipe is gone.
+      // Externally-imported heroes are remote URLs (nothing in our bucket);
+      // our own uploads are storage paths. The recipe row is the source of
+      // truth, so a storage failure (network, or RLS scoping deletes to the
+      // uploader's own folder in a shared household) must not fail the delete.
+      if (heroImagePath && !isRemoteImageUrl(heroImagePath)) {
+        try {
+          await supabase.storage.from(RECIPE_IMAGES_BUCKET).remove([heroImagePath]);
+        } catch {
+          // ignore — an orphaned blob is a cleanup concern, not a user error
+        }
+      }
       return recipeId;
     },
     onSuccess: (recipeId) => {

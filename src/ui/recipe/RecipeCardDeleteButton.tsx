@@ -20,10 +20,17 @@ type Props = {
   recipeId: string;
   recipeTitle: string;
   householdId: string;
+  heroImagePath: string | null;
   className?: string;
 };
 
-export function RecipeCardDeleteButton({ recipeId, recipeTitle, householdId, className }: Props) {
+export function RecipeCardDeleteButton({
+  recipeId,
+  recipeTitle,
+  householdId,
+  heroImagePath,
+  className,
+}: Props) {
   const { t } = useTranslation();
   const { push } = useToast();
   const deleteRecipe = useDeleteRecipe(householdId);
@@ -38,23 +45,26 @@ export function RecipeCardDeleteButton({ recipeId, recipeTitle, householdId, cla
   };
 
   const handleConfirm = () => {
-    deleteRecipe.mutate(recipeId, {
-      onSuccess: () => {
-        setOpen(false);
-        push({
-          variant: 'success',
-          title: t('recipe.delete_success_title'),
-          description: t('recipe.delete_success_body', { title: recipeTitle }),
-        });
+    deleteRecipe.mutate(
+      { recipeId, heroImagePath },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          push({
+            variant: 'success',
+            title: t('recipe.delete_success_title'),
+            description: t('recipe.delete_success_body', { title: recipeTitle }),
+          });
+        },
+        onError: () => {
+          push({
+            variant: 'error',
+            title: t('recipe.delete_failed_title'),
+            description: t('recipe.delete_failed_body'),
+          });
+        },
       },
-      onError: () => {
-        push({
-          variant: 'error',
-          title: t('recipe.delete_failed_title'),
-          description: t('recipe.delete_failed_body'),
-        });
-      },
-    });
+    );
   };
 
   return (

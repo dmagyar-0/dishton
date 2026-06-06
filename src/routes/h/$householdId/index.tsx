@@ -1,6 +1,6 @@
 import { useAuth } from '@/lib/auth';
 import { useHousehold } from '@/lib/queries/households';
-import { useRecipeList } from '@/lib/queries/recipes';
+import { useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
 import { Badge } from '@/ui/primitives/Badge';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
@@ -23,6 +23,9 @@ function RecipeListPage() {
   const list = useRecipeList(householdId);
   const household = useHousehold(householdId);
   const memberships = useAuth((s) => s.memberships);
+  // Only owners/editors may delete; followers can read but their delete would
+  // be a silent RLS no-op, so don't offer them the action.
+  const isEditor = useIsRecipeEditor(householdId);
   // Solo = personal household with the current user as only member. We
   // use it to swap in a friendlier headline + empty state for new
   // signups, so the recipe-list page doesn't feel like a clinical
@@ -67,11 +70,14 @@ function RecipeListPage() {
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {list.data.map((r) => (
             <li key={r.id} className="group/card relative">
-              <RecipeCardDeleteButton
-                recipeId={r.id}
-                recipeTitle={r.title}
-                householdId={householdId}
-              />
+              {isEditor && (
+                <RecipeCardDeleteButton
+                  recipeId={r.id}
+                  recipeTitle={r.title}
+                  householdId={householdId}
+                  heroImagePath={r.hero_image_path}
+                />
+              )}
               <Link
                 to="/h/$householdId/r/$recipeId"
                 params={{ householdId, recipeId: r.id }}
