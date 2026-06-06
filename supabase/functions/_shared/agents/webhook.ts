@@ -4,11 +4,16 @@
 // prefix). Implemented with Web Crypto + atob/btoa to avoid pulling the SDK or
 // an encoding dependency into the edge runtime.
 
-function b64decode(b64: string): Uint8Array<ArrayBuffer> {
+// Returns a real ArrayBuffer (not a generically-typed Uint8Array). ArrayBuffer
+// is unambiguously a BufferSource on both Deno 1.46 (CI) and 2.x (local), so
+// crypto.subtle.importKey accepts it without the `Uint8Array<ArrayBuffer>`
+// generic that older TypeScript rejects with TS2315.
+function b64ToBytes(b64: string): ArrayBuffer {
   const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+  const buf = new ArrayBuffer(bin.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+  return buf;
 }
 
 function b64encode(bytes: Uint8Array): string {
@@ -45,7 +50,7 @@ export async function verifyWebhook(
 
   const key = await crypto.subtle.importKey(
     'raw',
-    b64decode(signingSecret.slice('whsec_'.length)),
+    b64ToBytes(signingSecret.slice('whsec_'.length)),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
