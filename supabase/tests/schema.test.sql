@@ -116,6 +116,17 @@ with assertions(label, ok) as (
      join pg_namespace tn on tn.oid = t.relnamespace
      where c.contype = 'f' and tn.nspname='app' and t.relname='import_jobs'
        and c.confrelid = 'app.households'::regclass)),
+  -- recipe_id FK must SET NULL on recipe delete (confdeltype 'n'), so deleting
+  -- an imported recipe is not blocked by its import_jobs audit row.
+  ('FK app.import_jobs.recipe_id -> app.recipes.id is ON DELETE SET NULL',
+   exists(
+     select 1
+     from pg_constraint c
+     join pg_class t on t.oid = c.conrelid
+     join pg_namespace tn on tn.oid = t.relnamespace
+     where c.contype = 'f' and tn.nspname='app' and t.relname='import_jobs'
+       and c.confrelid = 'app.recipes'::regclass
+       and c.confdeltype = 'n')),
 
   -- Indexes
   ('GIN index on app.recipes(search)',
