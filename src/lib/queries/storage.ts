@@ -6,7 +6,7 @@ import { supabase } from '../supabase';
 // fetched through short-lived signed URLs. Externally-imported hero images are
 // stored as full remote http(s) URLs and must be used verbatim.
 
-const RECIPE_IMAGES_BUCKET = 'recipe-images';
+export const RECIPE_IMAGES_BUCKET = 'recipe-images';
 // One hour. Long enough to cover a page session without re-minting; short
 // enough that a leaked URL expires quickly.
 const SIGNED_URL_TTL_SECONDS = 3600;
