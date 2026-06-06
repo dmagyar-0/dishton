@@ -38,9 +38,14 @@ function RecipeListPage() {
         <h1 className="font-display text-display">
           {isSolo ? t('recipe.list_title_solo') : t('recipe.list_title')}
         </h1>
-        <Link to="/h/$householdId/import" params={{ householdId }}>
-          <Button>{t('nav.import')}</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/h/$householdId/draft" params={{ householdId }}>
+            <Button variant="secondary">{t('chat.nav')}</Button>
+          </Link>
+          <Link to="/h/$householdId/import" params={{ householdId }}>
+            <Button>{t('nav.import')}</Button>
+          </Link>
+        </div>
       </header>
 
       {list.isLoading && (
