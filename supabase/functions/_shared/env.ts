@@ -15,6 +15,12 @@ const OPTIONAL = [
   'LOG_DRAIN_TOKEN',
   'AI_MOCK_MODE',
   'SENTRY_DSN_FUNCTIONS',
+  // Recipe-chat agent (Managed Agents). Optional so unrelated functions don't
+  // fail cold start when these aren't configured; the recipe-chat functions
+  // guard their presence at use time.
+  'RECIPE_AGENT_ID',
+  'RECIPE_ENV_ID',
+  'ANTHROPIC_WEBHOOK_SIGNING_KEY',
 ] as const;
 
 type RequiredKey = (typeof REQUIRED)[number];
