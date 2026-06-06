@@ -8,10 +8,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env } from '../env.ts';
 
-let _admin: ReturnType<typeof createClient> | null = null;
+// Typed <any, 'public'> like _shared/auth.ts so the public-schema RPC calls
+// (app_reserve_ai_budget, etc.) type-check; the default generic resolves their
+// args to `undefined`.
+let _admin: ReturnType<typeof createClient<any, 'public'>> | null = null;
 function admin() {
   if (_admin === null) {
-    _admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    _admin = createClient<any, 'public'>(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
   }

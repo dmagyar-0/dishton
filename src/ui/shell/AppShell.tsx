@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
 import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
 import { Link, Outlet } from '@tanstack/react-router';
-import { Home, Search, Settings, Upload, User, Users } from 'lucide-react';
+import { Home, Search, Settings, Sparkles, Upload, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const NAV_CLASS = cn(
@@ -64,6 +64,19 @@ export function AppShell() {
                 >
                   <Upload size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.import')}</span>
+                </Link>
+              </li>
+            )}
+            {householdId && (
+              <li>
+                <Link
+                  to="/h/$householdId/draft"
+                  params={{ householdId }}
+                  className={NAV_CLASS}
+                  aria-label={t('chat.nav')}
+                >
+                  <Sparkles size={16} strokeWidth={1.5} />
+                  <span className="hidden md:inline">{t('chat.nav')}</span>
                 </Link>
               </li>
             )}
