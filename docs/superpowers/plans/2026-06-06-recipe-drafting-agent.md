@@ -23,7 +23,7 @@
 ## File structure
 
 **Create**
-- `supabase/migrations/20260606120000_recipe_chat.sql` — two tables, RLS, helpers, realtime, grants.
+- `supabase/migrations/20260606120100_recipe_chat.sql` — two tables, RLS, helpers, realtime, grants.
 - `supabase/tests/recipe_chat.test.sql` — RLS coverage.
 - `supabase/functions/_shared/agents/config.ts` — model, system prompt, tool schemas.
 - `supabase/functions/_shared/agents/transport.ts` — raw-HTTP Managed Agents calls + mock mode.
@@ -60,7 +60,7 @@
 ### Task 1: Migration for chat tables, RLS, realtime
 
 **Files:**
-- Create: `supabase/migrations/20260606120000_recipe_chat.sql`
+- Create: `supabase/migrations/20260606120100_recipe_chat.sql`
 
 - [ ] **Step 1: Write the migration**
 
@@ -163,7 +163,7 @@ Expected: completes without error; the two tables exist.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/20260606120000_recipe_chat.sql
+git add supabase/migrations/20260606120100_recipe_chat.sql
 git commit -m "feat(db): recipe chat sessions + messages tables, RLS, realtime"
 ```
 
