@@ -49,7 +49,11 @@ function DraftPage() {
     setHistoryOpen(false);
     setMobileView('chat');
   };
-  const onRename = (id: string, title: string) => rename.mutate({ householdId, id, title });
+  const onRename = (id: string, title: string) =>
+    rename.mutate(
+      { householdId, id, title },
+      { onError: () => push({ variant: 'error', title: t('chat.save_error') }) },
+    );
   const onDelete = (id: string) =>
     del.mutate(
       { householdId, id },
@@ -160,7 +164,7 @@ function DraftPage() {
           <DrawerHeader>
             <DrawerTitle>{t('chat.history')}</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto">{sidebar}</div>
+          <div className="flex-1 min-h-0 overflow-y-auto">{sidebar}</div>
         </DrawerContent>
       </Drawer>
     </main>
