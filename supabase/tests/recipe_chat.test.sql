@@ -46,6 +46,12 @@ values ('22222222-0000-0000-0000-000000000001',
         '00000000-0000-0000-0000-0000000000e1','sesn_test_1')
 on conflict (id) do nothing;
 
+insert into app.recipe_chat_sessions (id, household_id, created_by, anthropic_session_id)
+values ('22222222-0000-0000-0000-000000000002',
+        '11111111-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-0000000000e1','sesn_test_2')
+on conflict (id) do nothing;
+
 create temporary table _t_results(label text, ok boolean) on commit drop;
 
 create or replace function pg_temp.check_as(p_label text, p_ok boolean)
@@ -86,6 +92,42 @@ begin
 end;
 $$;
 
+-- Attempt to rename a session under the persona; RLS denial yields 0 rows.
+create or replace function pg_temp.q_update_title(p_persona uuid, p_session uuid)
+returns bigint language plpgsql as $$
+declare n bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_persona::text, 'role', 'authenticated')::text, true);
+  begin
+    update app.recipe_chat_sessions set title = 'renamed' where id = p_session;
+    get diagnostics n = row_count;
+  exception when others then n := 0;
+  end;
+  perform set_config('role', 'postgres', true);
+  return n;
+end;
+$$;
+
+-- Attempt to delete a session under the persona; RLS denial yields 0 rows.
+create or replace function pg_temp.q_delete(p_persona uuid, p_session uuid)
+returns bigint language plpgsql as $$
+declare n bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_persona::text, 'role', 'authenticated')::text, true);
+  begin
+    delete from app.recipe_chat_sessions where id = p_session;
+    get diagnostics n = row_count;
+  exception when others then n := 0;
+  end;
+  perform set_config('role', 'postgres', true);
+  return n;
+end;
+$$;
+
 select pg_temp.check_as('editor sees own household session',
   pg_temp.q_session_count('00000000-0000-0000-0000-0000000000e1'::uuid,
                           '22222222-0000-0000-0000-000000000001'::uuid) = 1);
@@ -101,5 +143,21 @@ select pg_temp.check_as('editor can insert a message',
 select pg_temp.check_as('stranger cannot insert a message',
   pg_temp.q_insert_message('00000000-0000-0000-0000-0000000000f1'::uuid,
                            '22222222-0000-0000-0000-000000000001'::uuid) = 0);
+
+select pg_temp.check_as('stranger cannot rename session',
+  pg_temp.q_update_title('00000000-0000-0000-0000-0000000000f1'::uuid,
+                         '22222222-0000-0000-0000-000000000001'::uuid) = 0);
+
+select pg_temp.check_as('editor can rename session',
+  pg_temp.q_update_title('00000000-0000-0000-0000-0000000000e1'::uuid,
+                         '22222222-0000-0000-0000-000000000001'::uuid) = 1);
+
+select pg_temp.check_as('stranger cannot delete session',
+  pg_temp.q_delete('00000000-0000-0000-0000-0000000000f1'::uuid,
+                   '22222222-0000-0000-0000-000000000002'::uuid) = 0);
+
+select pg_temp.check_as('editor can delete session',
+  pg_temp.q_delete('00000000-0000-0000-0000-0000000000e1'::uuid,
+                   '22222222-0000-0000-0000-000000000002'::uuid) = 1);
 
 select label, ok from _t_results order by label;

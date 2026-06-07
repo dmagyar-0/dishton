@@ -60,7 +60,9 @@ Prefer a single test file over the whole suite during iteration. Run `pnpm typec
 - Vitest for SPA (unit + components), Deno test for Edge Functions and DB, Playwright for E2E.
 - Coverage thresholds: domain 90% lines/branches/functions; overall 70% lines.
 - Co-locate component tests next to components. Domain tests live under `src/domain/`.
-- **Visual validation is required for any user-facing change** before claiming a feature complete. Run the `validating-features-visually` skill — it boots a local Supabase + `pnpm preview`, drives Playwright through signup + the new flow + adjacent surfaces at desktop and mobile viewports, and screenshots each step. Typecheck and unit tests don't catch flash-of-wrong-content, mobile overflow, or wrong post-signup field population — recent merges (#61, #62, #63) all needed follow-up fixes for exactly this class of bug.
+- **Visual validation is required for any user-facing change** before claiming a feature complete. **Run the `validating-features-visually` skill — it is the authoritative guide for *how* to run this, including inside the remote Claude-Code-on-the-web container.** It boots a local Supabase + `pnpm preview`, drives Playwright through signup + the new flow + adjacent surfaces at desktop and mobile viewports, and screenshots each step. Typecheck and unit tests don't catch flash-of-wrong-content, mobile overflow, or wrong post-signup field population — recent merges (#61, #62, #63) all needed follow-up fixes for exactly this class of bug.
+  - **Do not skip it because "Docker isn't running" or the CLI is missing** — the skill documents the setup: start the daemon (`sudo dockerd &`), install the Supabase CLI tarball, then `supabase start -x edge-runtime,functions` (the `-x` is required in the sandbox — edge-runtime/functions hit an rlimit error). Follow the skill's prerequisites + procedure rather than improvising.
+  - For features whose write/read path runs entirely through Supabase RLS (e.g. the recipe-chat history sidebar), you can seed rows directly so the flow is exercisable without the Edge Functions the local stack can't run.
 
 ## Edge Functions (Deno)
 
