@@ -37,11 +37,11 @@ function RecipeListPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
-      <header className="mb-8 flex items-baseline justify-between">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
         <h1 className="font-display text-display">
           {isSolo ? t('recipe.list_title_solo') : t('recipe.list_title')}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to="/h/$householdId/draft" params={{ householdId }}>
             <Button variant="secondary">{t('chat.nav')}</Button>
           </Link>
