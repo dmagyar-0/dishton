@@ -16,7 +16,7 @@ import { ChatComposer } from '@/ui/recipe/chat/ChatComposer';
 import { ChatHistorySidebar } from '@/ui/recipe/chat/ChatHistorySidebar';
 import { ChatThread } from '@/ui/recipe/chat/ChatThread';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
 
@@ -34,6 +34,18 @@ function DraftPage() {
   const [mobileView, setMobileView] = useState<'chat' | 'draft'>('chat');
 
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  // The history Drawer is mobile-only (its trigger is `md:hidden`). If the
+  // viewport grows to desktop while it's open (e.g. a phone rotated to
+  // landscape), close it so its overlay doesn't linger over the desktop layout.
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => {
+      if (mq.matches) setHistoryOpen(false);
+    };
+    mq.addEventListener('change', closeOnDesktop);
+    return () => mq.removeEventListener('change', closeOnDesktop);
+  }, []);
 
   const sessions = useChatSessions(householdId);
   const rename = useRenameChatSession();
