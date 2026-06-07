@@ -143,10 +143,11 @@ export type ChatSessionSummary = {
   updated_at: string;
 };
 
-export function useChatSessions(householdId: string) {
+export function useChatSessions(householdId: string | null) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['recipe-chat-sessions', householdId],
+    enabled: !!householdId,
     queryFn: async (): Promise<ChatSessionSummary[]> => {
       const { data, error } = await supabase
         .from('recipe_chat_sessions')
@@ -159,6 +160,7 @@ export function useChatSessions(householdId: string) {
   });
 
   useEffect(() => {
+    if (!householdId) return;
     const channel = supabase
       .channel(`recipe_chat_sessions:household:${householdId}`)
       .on(
@@ -208,6 +210,7 @@ export function useDeleteChatSession() {
     },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['recipe-chat-sessions', vars.householdId] });
+      qc.removeQueries({ queryKey: ['recipe-chat-session', vars.id] });
     },
   });
 }
