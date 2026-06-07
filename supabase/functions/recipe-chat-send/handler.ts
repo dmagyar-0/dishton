@@ -1,7 +1,14 @@
 import { z } from 'zod';
-import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
+import {
+  HttpError,
+  corsHeaders,
+  getHouseholdAllowedTags,
+  jsonResponse,
+  resolveCaller,
+} from '../_shared/auth.ts';
 import { env } from '../_shared/env.ts';
 import { isMockMode } from '../_shared/ai/mock.ts';
+import { formatAllowedTags } from '../_shared/ai/prompts.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { createSession, sendUserMessage } from '../_shared/agents/transport.ts';
 
@@ -96,6 +103,14 @@ export const handler = async (req: Request): Promise<Response> => {
       return jsonResponse({ error: 'rate_limit', retry_after: 60 }, 429, cors);
     }
 
+    // Constrain the drafter to the household's tag whitelist. The agent's
+    // system prompt is shared across households, so — exactly like the import
+    // structuring prompts — the per-household list rides in the user message.
+    // Only the original `body.message` is stored/shown; the agent sees the
+    // tag-prefixed text.
+    const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
+    const agentMessage = `${formatAllowedTags(allowedTags)}${body.message}`;
+
     let chatSessionId = body.chat_session_id;
     if (!chatSessionId) {
       const agentId = env.RECIPE_AGENT_ID ?? '';
@@ -120,7 +135,7 @@ export const handler = async (req: Request): Promise<Response> => {
         .single();
       if (error || !data) throw new HttpError(403, 'cannot_create_session');
       chatSessionId = data.id as string;
-      await sendUserMessage(data.anthropic_session_id as string, body.message);
+      await sendUserMessage(data.anthropic_session_id as string, agentMessage);
     } else {
       const { data, error } = await caller.client
         .from('recipe_chat_sessions')
@@ -128,7 +143,7 @@ export const handler = async (req: Request): Promise<Response> => {
         .eq('id', chatSessionId)
         .single();
       if (error || !data) throw new HttpError(404, 'session_not_found');
-      await sendUserMessage(data.anthropic_session_id as string, body.message);
+      await sendUserMessage(data.anthropic_session_id as string, agentMessage);
     }
 
     await caller.client.from('recipe_chat_messages').insert({

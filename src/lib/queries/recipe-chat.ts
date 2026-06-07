@@ -17,11 +17,20 @@ export type ChatSession = {
   recipe_id: string | null;
 };
 
-export function useChatMessages(chatSessionId: string | null) {
+// Polling cadence for the realtime fallback. Realtime is the fast path, but a
+// dropped or pre-subscription change event would otherwise leave the agent's
+// reply stuck in the DB until a manual refresh; we poll while a reply is
+// pending so it always lands within a couple seconds.
+const POLL_MS = 2000;
+
+// `poll` should be true while the SPA is waiting on the agent (a send is in
+// flight or the latest message is the user's). The caller derives it.
+export function useChatMessages(chatSessionId: string | null, poll = false) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['recipe-chat-messages', chatSessionId],
     enabled: !!chatSessionId,
+    refetchInterval: poll ? POLL_MS : false,
     queryFn: async (): Promise<ChatMessage[]> => {
       const { data, error } = await supabase
         .from('recipe_chat_messages')
@@ -35,6 +44,8 @@ export function useChatMessages(chatSessionId: string | null) {
 
   useEffect(() => {
     if (!chatSessionId) return;
+    const invalidate = () =>
+      void qc.invalidateQueries({ queryKey: ['recipe-chat-messages', chatSessionId] });
     const channel = supabase
       .channel(`recipe_chat_messages:${chatSessionId}`)
       .on(
@@ -45,11 +56,14 @@ export function useChatMessages(chatSessionId: string | null) {
           table: 'recipe_chat_messages',
           filter: `chat_session_id=eq.${chatSessionId}`,
         },
-        () => {
-          void qc.invalidateQueries({ queryKey: ['recipe-chat-messages', chatSessionId] });
-        },
+        invalidate,
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Close the subscribe gap: a message inserted between the initial fetch
+        // and the subscription becoming live is never delivered as a change
+        // event, so refetch once we're actually subscribed.
+        if (status === 'SUBSCRIBED') invalidate();
+      });
     return () => {
       void supabase.removeChannel(channel);
     };
@@ -58,11 +72,12 @@ export function useChatMessages(chatSessionId: string | null) {
   return query;
 }
 
-export function useChatSession(chatSessionId: string | null) {
+export function useChatSession(chatSessionId: string | null, poll = false) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['recipe-chat-session', chatSessionId],
     enabled: !!chatSessionId,
+    refetchInterval: poll ? POLL_MS : false,
     queryFn: async (): Promise<ChatSession> => {
       const { data, error } = await supabase
         .from('recipe_chat_sessions')
@@ -76,6 +91,8 @@ export function useChatSession(chatSessionId: string | null) {
 
   useEffect(() => {
     if (!chatSessionId) return;
+    const invalidate = () =>
+      void qc.invalidateQueries({ queryKey: ['recipe-chat-session', chatSessionId] });
     const channel = supabase
       .channel(`recipe_chat_session:${chatSessionId}`)
       .on(
@@ -86,11 +103,11 @@ export function useChatSession(chatSessionId: string | null) {
           table: 'recipe_chat_sessions',
           filter: `id=eq.${chatSessionId}`,
         },
-        () => {
-          void qc.invalidateQueries({ queryKey: ['recipe-chat-session', chatSessionId] });
-        },
+        invalidate,
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') invalidate();
+      });
     return () => {
       void supabase.removeChannel(channel);
     };

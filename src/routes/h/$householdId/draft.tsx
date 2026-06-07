@@ -77,13 +77,28 @@ function DraftPage() {
       },
     );
 
-  const messages = useChatMessages(chatSessionId);
-  const session = useChatSession(chatSessionId);
   const send = useSendChatMessage(householdId);
   const save = useSaveDraft();
 
+  // We're "awaiting" the agent whenever a send is in flight or the newest
+  // message is still the user's. While awaiting, the queries poll as a fallback
+  // so the reply + draft appear even if a realtime change event is missed
+  // (e.g. the subscribe gap on a brand-new session). Realtime stays the fast
+  // path; this just guarantees the update lands without a manual refresh.
+  const [awaitingReply, setAwaitingReply] = useState(false);
+  const poll = awaitingReply || send.isPending;
+
+  const messages = useChatMessages(chatSessionId, poll);
+  const session = useChatSession(chatSessionId, poll);
+
+  useEffect(() => {
+    const list = messages.data;
+    const last = list && list.length > 0 ? list[list.length - 1] : undefined;
+    setAwaitingReply(last?.role === 'user');
+  }, [messages.data]);
+
   const draft = session.data?.current_draft ?? null;
-  const thinking = session.data?.status === 'running' || send.isPending;
+  const thinking = send.isPending || awaitingReply || session.data?.status === 'running';
 
   const onSend = (text: string) => {
     send.mutate(
