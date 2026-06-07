@@ -194,6 +194,28 @@ preview-against-AI-mock pattern cover that role.
 - **Seed data lives outside migrations** in `supabase/seed.sql` and runs
   only via `supabase db reset` on local and preview branches.
 
+### Forward-only exception: tombstoned migrations
+
+Forward-only protects migrations that have *run* somewhere: editing one would
+drift the environments that already applied it. A migration that can never run
+in any environment carries no such risk, and in rare cases one must be retired
+— e.g. two PRs merge with the same `<UTC_TIMESTAMP>` prefix, so the second
+collides on the `supabase_migrations.schema_migrations` primary key and blocks
+every `supabase db push` and `supabase db reset`.
+
+To retire such a migration:
+
+1. Add a replacement migration with a fresh, unique timestamp — the schema it
+   was meant to create still ships forward.
+2. Delete the un-appliable file and add its path to `TOMBSTONED_DELETIONS` in
+   `scripts/check-migration-diff.mjs`, with a comment justifying why it could
+   never have applied. That single allowance lets `migration-diff` accept the
+   deletion while every other migration stays immutable.
+
+This is the only sanctioned way to remove a file from `supabase/migrations/`.
+It is not a rollback mechanism — to undo an *applied* migration, still write a
+reverse migration (see "Schema rollback" below).
+
 ## Secrets matrix
 
 Every secret is listed below with its purpose, where it is set, and which

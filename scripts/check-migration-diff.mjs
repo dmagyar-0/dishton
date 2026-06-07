@@ -54,9 +54,29 @@ const errors = [];
 
 const isMigration = (p) => /^supabase\/migrations\/.+\.sql$/.test(p);
 
+// Tombstoned migrations: files merged to main in a permanently un-appliable
+// state, allowed to be DELETED exactly once despite the forward-only rule.
+// Forward-only exists to stop edits to migrations that already ran somewhere
+// (which would drift those environments); a migration that could never run
+// anywhere carries no such risk. Every entry must stay justified -- see the
+// "forward-only exception" note in docs/13-ci-cd-and-environments.md.
+const TOMBSTONED_DELETIONS = new Set([
+  // Shared the 20260606120000 timestamp with
+  // 20260606120000_import_jobs_recipe_set_null.sql (#83 and #84 both used it),
+  // so it collided on the schema_migrations primary key and never applied in
+  // any environment. Superseded by 20260606120100_recipe_chat.sql.
+  'supabase/migrations/20260606120000_recipe_chat.sql',
+]);
+
+// A tombstoned file may be removed but not modified -- only its deletion is
+// exempt from the forward-only rule.
+const isTombstonedDeletion = (f) => f.status === 'D' && TOMBSTONED_DELETIONS.has(f.path);
+
 const migrationChanges = files.filter((f) => isMigration(f.path));
 const addedMigrations = migrationChanges.filter((f) => f.status === 'A');
-const mutatedMigrations = migrationChanges.filter((f) => f.status === 'M' || f.status === 'D');
+const mutatedMigrations = migrationChanges.filter(
+  (f) => (f.status === 'M' || f.status === 'D') && !isTombstonedDeletion(f),
+);
 
 // Check 1: forward-only.
 for (const f of mutatedMigrations) {
