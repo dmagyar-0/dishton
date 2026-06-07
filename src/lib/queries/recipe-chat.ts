@@ -133,3 +133,81 @@ export function useSaveDraft() {
     },
   });
 }
+
+export type ChatSessionSummary = {
+  id: string;
+  title: string | null;
+  status: string;
+  recipe_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function useChatSessions(householdId: string) {
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['recipe-chat-sessions', householdId],
+    queryFn: async (): Promise<ChatSessionSummary[]> => {
+      const { data, error } = await supabase
+        .from('recipe_chat_sessions')
+        .select('id, title, status, recipe_id, created_at, updated_at')
+        .eq('household_id', householdId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ChatSessionSummary[];
+    },
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`recipe_chat_sessions:household:${householdId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'app',
+          table: 'recipe_chat_sessions',
+          filter: `household_id=eq.${householdId}`,
+        },
+        () => {
+          void qc.invalidateQueries({ queryKey: ['recipe-chat-sessions', householdId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [householdId, qc]);
+
+  return query;
+}
+
+export function useRenameChatSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { householdId: string; id: string; title: string }): Promise<void> => {
+      const { error } = await supabase
+        .from('recipe_chat_sessions')
+        .update({ title: args.title })
+        .eq('id', args.id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ['recipe-chat-sessions', vars.householdId] });
+      void qc.invalidateQueries({ queryKey: ['recipe-chat-session', vars.id] });
+    },
+  });
+}
+
+export function useDeleteChatSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { householdId: string; id: string }): Promise<void> => {
+      const { error } = await supabase.from('recipe_chat_sessions').delete().eq('id', args.id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ['recipe-chat-sessions', vars.householdId] });
+    },
+  });
+}
