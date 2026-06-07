@@ -385,8 +385,6 @@ export default {
     url_placeholder: 'https://example.com/recipe',
     supported_sources_label: 'Recipe blogs and Instagram posts',
     submit: 'Import',
-    preparing: 'Mise en place',
-    progress_label: 'Importing recipe',
     success_title: 'Recipe added',
     success_body: "It's in your pantry now.",
     error_title: "Couldn't finish import",
@@ -394,23 +392,6 @@ export default {
     needs_review_title: 'Needs a second look',
     needs_review_body:
       "We couldn't read this page cleanly. Try another source or paste the recipe manually.",
-    step_reach: {
-      label: 'Reaching the page',
-      short: 'Reach',
-      hint: 'Knocking on the kitchen door…',
-    },
-    step_read: {
-      label: 'Reading the article',
-      short: 'Read',
-      hint: 'Skimming past the life story to find the recipe…',
-    },
-    step_distill: {
-      label: 'Distilling the recipe',
-      short: 'Distill',
-      hint: 'Sorting ingredients from prose…',
-    },
-    step_plate: { label: 'Plating the draft', short: 'Plate', hint: 'Arranging it just so…' },
-    long_wait_hint: 'Long recipe — still simmering. This can take up to a minute.',
     photo_pick_label: 'Choose photos',
     photo_hint: 'JPEG or PNG, up to 10 MB each, up to {{max}} photos.',
     photo_remove: 'Remove',
@@ -419,9 +400,6 @@ export default {
     photo_comment_placeholder:
       'e.g. ignore the handwriting in the margin, focus on the recipe in the centre',
     photo_comment_hint: "If your note isn't relevant to the image, the AI will ignore it.",
-    background_button: 'Continue in background',
-    background_toast_title: 'Continuing in background',
-    background_toast_body: "We'll let you know when this recipe is ready.",
     ready_title: 'Recipe ready',
     ready_view_recipe: 'View recipe',
     phase_default: 'Importing',

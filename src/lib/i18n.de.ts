@@ -397,8 +397,6 @@ export default {
     url_placeholder: 'https://example.com/recipe',
     supported_sources_label: 'Rezept-Blogs und Instagram-Posts',
     submit: 'Importieren',
-    preparing: 'Mise en place',
-    progress_label: 'Rezept wird importiert',
     success_title: 'Rezept gespeichert',
     success_body: 'Es ist jetzt in deiner Speisekammer.',
     error_title: 'Import fehlgeschlagen',
@@ -406,27 +404,6 @@ export default {
     needs_review_title: 'Zweiter Blick nötig',
     needs_review_body:
       'Wir konnten diese Seite nicht sauber lesen. Versuche eine andere Quelle oder gib das Rezept manuell ein.',
-    step_reach: {
-      label: 'Seite wird abgerufen',
-      short: 'Abrufen',
-      hint: 'Wir klopfen an die Küchentür…',
-    },
-    step_read: {
-      label: 'Artikel wird gelesen',
-      short: 'Lesen',
-      hint: 'Wir überfliegen die Lebensgeschichte und suchen das Rezept…',
-    },
-    step_distill: {
-      label: 'Rezept wird destilliert',
-      short: 'Destillieren',
-      hint: 'Zutaten werden aus dem Fließtext getrennt…',
-    },
-    step_plate: {
-      label: 'Entwurf wird angerichtet',
-      short: 'Anrichten',
-      hint: 'Wir richten alles hübsch an…',
-    },
-    long_wait_hint: 'Langes Rezept — köchelt noch. Das kann bis zu einer Minute dauern.',
     photo_pick_label: 'Fotos auswählen',
     photo_hint: 'JPEG oder PNG, je bis zu 10 MB, bis zu {{max}} Fotos.',
     photo_remove: 'Entfernen',
@@ -435,9 +412,6 @@ export default {
     photo_comment_placeholder:
       'z. B. Handschrift am Rand ignorieren, das Rezept in der Mitte verwenden',
     photo_comment_hint: 'Wenn dein Hinweis nicht zum Bild passt, ignoriert die KI ihn.',
-    background_button: 'Im Hintergrund fortsetzen',
-    background_toast_title: 'Läuft im Hintergrund weiter',
-    background_toast_body: 'Wir melden uns, sobald das Rezept fertig ist.',
     ready_title: 'Rezept fertig',
     ready_view_recipe: 'Rezept ansehen',
     phase_default: 'Importiere',

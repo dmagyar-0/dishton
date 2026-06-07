@@ -28,20 +28,21 @@ vi.mock('@/observability/breadcrumbs', () => ({ bcImportSaveFailed: () => {} }))
 // query), in which case it resolves to terminalRows.
 vi.mock('@/lib/supabase', () => {
   const make = () => {
-    const builderState = { terminal: false };
+    const state = { terminal: false };
+    const result = () =>
+      Promise.resolve({ data: state.terminal ? h.terminalRows : h.liveRows, error: null });
     const b: Record<string, unknown> = {};
-    const chain = () => b;
-    b.select = chain;
-    b.eq = chain;
-    b.in = chain;
-    b.order = chain;
-    b.update = chain;
+    b.select = () => b;
+    b.eq = () => b;
+    b.in = () => b;
+    b.update = () => b;
     b.gt = () => {
-      builderState.terminal = true;
+      state.terminal = true;
       return b;
     };
-    b.then = (resolve: (v: { data: unknown[]; error: null }) => unknown) =>
-      resolve({ data: builderState.terminal ? h.terminalRows : h.liveRows, error: null });
+    // Both backfill queries terminate in .order(); resolve there. The terminal
+    // query is distinguished by a preceding .gt() call.
+    b.order = () => result();
     return b;
   };
   return {
