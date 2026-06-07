@@ -110,3 +110,19 @@ verify_jwt = true
 
 [functions.translate-recipe]
 verify_jwt = true
+
+# Recipe-chat (Managed Agents). send/save are called by the SPA with the user's
+# JWT, so they keep JWT verification. The webhook is called by Anthropic's
+# servers with Svix signature headers and NO Supabase JWT — leaving verify_jwt
+# on (the default) makes the gateway 401 every delivery before the handler runs,
+# so the session never leaves "running". The handler verifies the webhook's HMAC
+# signature itself (see _shared/agents/webhook.ts), which is the correct auth
+# for this endpoint.
+[functions.recipe-chat-send]
+verify_jwt = true
+
+[functions.recipe-chat-save]
+verify_jwt = true
+
+[functions.recipe-chat-webhook]
+verify_jwt = false
