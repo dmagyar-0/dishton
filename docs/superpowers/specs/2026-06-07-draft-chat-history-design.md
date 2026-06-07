@@ -144,8 +144,9 @@ Layout:
     `recipe_id != null`, otherwise a subtle dot/label for `running`/`error`
     (reusing existing badge styling; no new tokens).
   - **Relative time** from `updated_at`.
-  - A **kebab menu** (existing themed menu primitive) → **Rename** and
-    **Delete**.
+  - Inline **Rename** (pencil) and **Delete** (trash) `IconButton`s revealed on
+    row hover/focus. (There is no dropdown/menu primitive in the codebase, so we
+    use inline icon buttons rather than a kebab menu.)
 - The **active** row is visually highlighted.
 - **Rename**: inline edit in place (text input seeded with the current title;
   Enter/blur commits via `onRename`, Esc cancels). Empty → no-op.
@@ -205,10 +206,12 @@ toggle label. Reuse existing "pantry"/draft vocabulary and tone.
   multiple sessions and active highlight; select fires `onSelect`; "New chat"
   fires `onNew`; rename flow (inline edit → commit/cancel/empty); delete flow
   (confirm → `onDelete`); empty state; "Saved" badge when `recipe_id` set.
-- **DB/RLS** (`pnpm test:db`): add a focused case that a household **member who
-  is not an editor** cannot `UPDATE`/`DELETE` a session, while an **editor**
-  can — since the client now exercises these paths directly. (Read access is
-  already covered.)
+- **DB/RLS** (`pnpm test:db`): add focused cases that an **editor** can
+  `UPDATE` (rename) and `DELETE` a session while a **stranger (non-member)**
+  cannot — since the client now exercises these paths directly. (Read access is
+  already covered. Note: `household_members.role` is constrained to
+  `('owner','editor')`, so every member is an editor; there is no non-editor
+  member role to test, and the sidebar does not gate actions by role.)
 - **Playwright visual validation** (required by CLAUDE.md,
   `validating-features-visually`): signup → create two drafts → switch between
   them via the sidebar → rename one → delete one → start a new chat, at desktop
