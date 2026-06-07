@@ -130,6 +130,45 @@ describe('ChatHistorySidebar', () => {
     expect(onRename).toHaveBeenCalledWith('s1', 'Harvest soup');
   });
 
+  it('cancels rename on Escape without calling onRename', () => {
+    const onRename = vi.fn();
+    render(
+      <ChatHistorySidebar
+        sessions={[base]}
+        activeId={null}
+        onSelect={noop}
+        onNew={noop}
+        onRename={onRename}
+        onDelete={noop}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('chat.rename'));
+    const input = screen.getByLabelText('chat.rename');
+    fireEvent.change(input, { target: { value: 'Discard me' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    fireEvent.blur(input);
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it('commits rename on blur', () => {
+    const onRename = vi.fn();
+    render(
+      <ChatHistorySidebar
+        sessions={[base]}
+        activeId={null}
+        onSelect={noop}
+        onNew={noop}
+        onRename={onRename}
+        onDelete={noop}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('chat.rename'));
+    const input = screen.getByLabelText('chat.rename');
+    fireEvent.change(input, { target: { value: 'Blurred title' } });
+    fireEvent.blur(input);
+    expect(onRename).toHaveBeenCalledWith('s1', 'Blurred title');
+  });
+
   it('deletes after confirming in the dialog', () => {
     const onDelete = vi.fn();
     render(

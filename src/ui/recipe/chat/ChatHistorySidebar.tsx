@@ -13,7 +13,7 @@ import {
 import { IconButton } from '@/ui/primitives/IconButton';
 import { Input } from '@/ui/primitives/Input';
 import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type Props = {
@@ -37,8 +37,10 @@ export function ChatHistorySidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const escapedRef = useRef(false);
 
   const startEdit = (s: ChatSessionSummary) => {
+    escapedRef.current = false;
     setEditingId(s.id);
     setDraftTitle(s.title ?? '');
   };
@@ -76,10 +78,22 @@ export function ChatHistorySidebar({
                     maxLength={80}
                     onChange={(e) => setDraftTitle(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitEdit(s.id);
-                      if (e.key === 'Escape') setEditingId(null);
+                      if (e.key === 'Enter') {
+                        escapedRef.current = false;
+                        commitEdit(s.id);
+                      }
+                      if (e.key === 'Escape') {
+                        escapedRef.current = true;
+                        setEditingId(null);
+                      }
                     }}
-                    onBlur={() => commitEdit(s.id)}
+                    onBlur={() => {
+                      if (escapedRef.current) {
+                        escapedRef.current = false;
+                        return;
+                      }
+                      commitEdit(s.id);
+                    }}
                   />
                   <IconButton
                     label={t('chat.save_rename')}
