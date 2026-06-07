@@ -196,9 +196,16 @@ toggle label. Reuse existing "pantry"/draft vocabulary and tone.
 - **Realtime drop**: list refetches on reconnect / query refocus (TanStack
   Query default), matching the existing message/session hooks.
 - **Empty title after rename**: no-op, keep the previous title.
-- **Concurrent rename/delete from another device**: Realtime invalidation keeps
-  the list consistent; a delete of a row mid-rename collapses gracefully (row
-  disappears).
+- **Concurrent rename/delete from another device**: INSERT and UPDATE events
+  carry the full row (incl. `household_id`), so new sessions and title/status
+  changes propagate live to other clients. **DELETE does not propagate live to
+  other clients**: with the table's default replica identity (primary key only),
+  Realtime DELETE events carry only `id`, so the `household_id` channel filter
+  can't match them. The acting client updates immediately (its mutation
+  invalidates the list directly); other open clients drop the row on the next
+  refetch/refocus. Making cross-device deletes instant would require
+  `replica identity full` (a migration), which is intentionally out of the
+  SPA-only scope of this iteration.
 
 ## 10. Testing strategy
 
@@ -226,5 +233,10 @@ toggle label. Reuse existing "pantry"/draft vocabulary and tone.
   rename/delete for non-editors.
 - **Assumption:** the auto-generated title (first 80 chars of the opening
   message) is an acceptable default label; rename exists for when it isn't.
+- **Known v1 limitations (acceptable, documented):** cross-device DELETE is not
+  live (see §9); the mobile history `Drawer` overlay is gated to mobile via the
+  `md:hidden` toggle, so the rare "open on mobile, then resize to desktop" case
+  could briefly show an overlay until closed.
 - **Future (not in scope):** deep-linkable session URLs / sharing; a global
-  cross-household chat list; bulk delete; search/filter over past drafts.
+  cross-household chat list; bulk delete; search/filter over past drafts;
+  `replica identity full` for instant cross-device deletes.
