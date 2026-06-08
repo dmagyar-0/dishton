@@ -195,23 +195,29 @@ export async function bootstrapAuth(): Promise<void> {
 }
 
 function subscribeAuthChanges(): void {
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  // This callback runs inside Supabase's auth lock. Keep it synchronous and
+  // defer any Supabase data call to a fresh macrotask: a query awaited inline
+  // re-enters the lock and holds it across network round-trips on every sign-in
+  // (and TOKEN_REFRESHED fires on every mobile resume) — the deadlock footgun
+  // the Supabase docs warn against. setTimeout(0) runs it after the lock frees.
+  supabase.auth.onAuthStateChange((event, session) => {
     useAuth.getState().setSession(session);
     if (event === 'SIGNED_IN' && session?.user) {
       if (BUILD_SHA) writeStoredSha(BUILD_SHA);
-      try {
-        await refreshAuthDerivedState(session.user.id);
-      } catch (err) {
-        console.error('[auth] failed to refresh derived state on sign-in', err);
-        useAuth.getState().setMemberships([]);
-      }
+      const userId = session.user.id;
+      setTimeout(() => {
+        void refreshAuthDerivedState(userId).catch((err) => {
+          console.error('[auth] failed to refresh derived state on sign-in', err);
+          useAuth.getState().setMemberships([]);
+        });
+      }, 0);
     } else if (event === 'SIGNED_OUT') {
       clearStoredSha();
-      await clearUserScopedCaches();
       clearUserContext();
       setHouseholdContext(null);
       useAuth.getState().setProfile(null);
       useAuth.getState().setMemberships([]);
+      void clearUserScopedCaches();
     }
   });
 }
