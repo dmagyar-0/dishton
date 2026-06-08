@@ -319,13 +319,13 @@ function RecipeDetailPage() {
         ))}
       </div>
 
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <h1 className="font-display text-display leading-tight">{displayed.recipe.title}</h1>
         {canEdit && (
           <Link
             to="/h/$householdId/r/$recipeId/edit"
             params={{ householdId, recipeId }}
-            className="mt-2 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink sm:mt-2"
             aria-label={t('recipe.edit_action')}
           >
             <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
