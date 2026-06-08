@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { bootstrapAuth } from './lib/auth';
+import { installSessionRecovery } from './lib/session-recovery';
 import { initSentry } from './observability/sentry';
 import { routeTree } from './routeTree.gen';
 import './styles/global.css';
@@ -15,6 +16,11 @@ const queryClient = new QueryClient({
     queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
   },
 });
+
+// Refetch on-screen queries and re-validate the session when the app returns to
+// the foreground, so a mobile resume after backgrounding self-heals instead of
+// leaving a stuck view that needs a manual reload. See session-recovery.ts.
+installSessionRecovery(queryClient);
 
 const router = createRouter({
   routeTree,

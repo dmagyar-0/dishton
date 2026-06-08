@@ -26,7 +26,7 @@ import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
 import { SsrfError, safeFetch } from '../_shared/scrape/ssrf-guard.ts';
 import { lightStripHtml } from '../_shared/scrape/strip-html.ts';
 import { decodeHtmlBody } from '../_shared/scrape/decode-body.ts';
-import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
+import { runDetached } from '../_shared/import-runner.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
 const Body = z.object({
@@ -35,7 +35,6 @@ const Body = z.object({
 });
 
 const MAX_BYTES = 5_000_000;
-const FIRST_RESPONSE_MS = 10_000;
 const CONCURRENCY_CAP = 5;
 
 async function fetchHtml(url: string): Promise<string> {
@@ -243,7 +242,7 @@ serve(async (req: Request) => {
       };
     };
 
-    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+    const onFinish = async (value: WorkResult): Promise<void> => {
       if (!value.ok) {
         if (value.reason === 'rate_limit' || value.reason === 'upstream') {
           await callerClient
@@ -270,11 +269,10 @@ serve(async (req: Request) => {
           .eq('id', jobId);
         return;
       }
-      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
       await callerClient
         .from('import_jobs')
         .update({
-          status: terminalStatus,
+          status: 'awaiting_save',
           phase: 'saving',
           progress_text: 'Saving recipe',
           payload: {
@@ -296,63 +294,20 @@ serve(async (req: Request) => {
         .eq('id', jobId);
     };
 
-    const detach = await runWithBackgroundDetach<WorkResult>({
-      firstResponseMs: FIRST_RESPONSE_MS,
-      work,
-      onFinish,
-      onError,
+    // Always detach: the worker runs post-response via waitUntil and writes the
+    // terminal status; the SPA's realtime listener saves the draft. Respond 202
+    // immediately so the import never blocks the page.
+    runDetached<WorkResult>({ work, onFinish, onError });
+    log({
+      request_id: requestId,
+      profile_id: caller.profileId,
+      household_id: body.household_id,
+      function: 'import-url',
+      event: 'background.detach',
     });
-
-    if (detach.mode === 'background') {
-      log({
-        request_id: requestId,
-        profile_id: caller.profileId,
-        household_id: body.household_id,
-        function: 'import-url',
-        event: 'background.detach',
-      });
-      return jsonResponse(
-        { job_id: jobId, status: 'running', request_id: requestId },
-        202,
-        cors,
-      );
-    }
-
-    const value = detach.value;
-    if (!value.ok) {
-      if (value.reason === 'rate_limit') {
-        return jsonResponse(
-          { error: 'rate_limit', retry_after: 60, request_id: requestId },
-          429,
-          cors,
-        );
-      }
-      if (value.reason === 'upstream') {
-        // Transient model/API failure — not a content problem. 503 so the SPA
-        // surfaces "importer busy, try again" rather than the needs_review
-        // "edit the draft" copy.
-        return jsonResponse(
-          { error: 'upstream', request_id: requestId },
-          503,
-          cors,
-        );
-      }
-      return jsonResponse(
-        {
-          job_id: jobId,
-          draft: null,
-          needs_review: true,
-          reason: value.reason,
-          request_id: requestId,
-        },
-        200,
-        cors,
-      );
-    }
-
     return jsonResponse(
-      { job_id: jobId, draft: value.draft, needs_review: false, request_id: requestId },
-      200,
+      { job_id: jobId, status: 'running', request_id: requestId },
+      202,
       cors,
     );
   } catch (e) {

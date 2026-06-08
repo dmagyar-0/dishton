@@ -6,6 +6,8 @@ import {
   useRecipe,
   useUpdateRecipe,
 } from '@/lib/queries/recipes';
+import { RECIPE_IMAGES_BUCKET, staleHeroImagePath } from '@/lib/queries/storage';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import {
@@ -156,12 +158,19 @@ function RecipeEditPage() {
   const recipeTitle = recipeQ.data.recipe.title;
 
   const handleSubmit = async (values: Recipe) => {
+    const previousHero = recipeQ.data?.recipe.hero_image_path ?? null;
     try {
       await update.mutateAsync({
         draft: values,
         expectedUpdatedAt: recipeQ.data?.recipe.updated_at ?? null,
       });
       dirtyRef.current = false;
+      // Best-effort: free the previous hero blob when the user swapped or
+      // removed it. An orphaned blob is a cleanup concern, not a user error.
+      const stale = staleHeroImagePath(previousHero, values.hero_image_path);
+      if (stale) {
+        void supabase.storage.from(RECIPE_IMAGES_BUCKET).remove([stale]).catch(() => undefined);
+      }
       push({
         variant: 'success',
         title: t('recipe.edit_success_title'),

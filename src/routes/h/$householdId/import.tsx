@@ -7,7 +7,7 @@ import {
   detectImportSource,
 } from '@/lib/forms/import';
 import { blankManualRecipe } from '@/lib/forms/manual-recipe';
-import { useActiveImports } from '@/lib/imports/ActiveImportsProvider';
+import { type ActiveImport, useActiveImports } from '@/lib/imports/ActiveImportsProvider';
 import { resizeForUpload } from '@/lib/photo-resize';
 import { useHouseholdAllowedTags } from '@/lib/queries/households';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +15,6 @@ import {
   bcImportInputValidated,
   bcImportRequestSent,
   bcImportResponseReceived,
-  bcImportSaveFailed,
   bcImportStart,
 } from '@/observability/breadcrumbs';
 import { Button } from '@/ui/primitives/Button';
@@ -25,18 +24,20 @@ import { Skeleton } from '@/ui/primitives/Skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives/Tabs';
 import { Textarea } from '@/ui/primitives/Textarea';
 import { useToast } from '@/ui/primitives/Toast';
-import { ImportProgress } from '@/ui/recipe/ImportProgress';
+import { ImportQueue } from '@/ui/recipe/ImportQueue';
 import { RecipeEditForm } from '@/ui/recipe/edit/RecipeEditForm';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Globe, Instagram } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
 
-const IMPORT_URL_TIMEOUT_MS = 120_000;
+// Only the kickoff round-trip is awaited now (the worker runs in the
+// background), so this guards a hung/cold-start invoke, not the whole import.
+const IMPORT_KICKOFF_TIMEOUT_MS = 30_000;
 const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 const PHOTO_ACCEPTED_TYPES = ['image/jpeg', 'image/png'] as const;
 const PHOTO_MAX_COUNT = 6;
@@ -120,18 +121,30 @@ function ImportPage() {
           <ManualTab householdId={householdId} />
         </TabsContent>
       </Tabs>
+      <ImportQueuePanel householdId={householdId} />
     </main>
   );
 }
 
+// Connects the in-memory active-imports state to the presentational queue,
+// scoped to this household. Lives on the import page so progress is visible
+// across the URL/Photo/Manual tabs.
+function ImportQueuePanel({ householdId }: { householdId: string }) {
+  const { items, dismiss } = useActiveImports();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const householdItems = items.filter((it) => it.householdId === householdId);
+  const onView = (item: ActiveImport): void => {
+    if (!item.recipeId) return;
+    void navigate({
+      to: '/h/$householdId/r/$recipeId',
+      params: { householdId, recipeId: item.recipeId },
+    });
+  };
+  return <ImportQueue items={householdItems} onDismiss={dismiss} onView={onView} />;
+}
+
 type DraftResponse = {
   job_id?: string;
-  draft?: unknown | null;
-  needs_review?: boolean;
-  reason?: string;
-  // Server returns this when an import detached into background after the
-  // first-response timer fired. The SPA stops awaiting the draft directly
-  // and lets the Realtime listener pick it up when the worker finishes.
   status?: 'running';
 };
 
@@ -140,32 +153,13 @@ type ImportKindLocal = 'url' | 'instagram' | 'photo';
 function UrlTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
   const { push } = useToast();
-  const navigate = useNavigate({ from: Route.fullPath });
-  const queryClient = useQueryClient();
   const { register: registerImport } = useActiveImports();
-  // backgrounded ref distinguishes a user-initiated "Continue in background"
-  // abort from a real network error: when set, AbortError is swallowed and
-  // the Realtime listener takes over.
-  const backgroundedRef = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ImportUrlInput>({ resolver: zodResolver(ImportUrlSchema) });
-
-  const dispatchToBackground = (): void => {
-    if (backgroundedRef.current) return;
-    backgroundedRef.current = true;
-    abortRef.current?.abort();
-    push({
-      variant: 'info',
-      title: t('import.background_toast_title'),
-      description: t('import.background_toast_body'),
-    });
-    reset();
-  };
 
   return (
     <Card className="mt-4 p-6">
@@ -179,10 +173,10 @@ function UrlTab({ householdId }: { householdId: string }) {
           bcImportInputValidated({ url_length: values.url.length, source });
           const t0 = performance.now();
           bcImportRequestSent(fnName, '');
-          backgroundedRef.current = false;
+          // Only the kickoff is awaited; the worker finishes in the background
+          // and the Realtime listener saves the draft.
           const ac = new AbortController();
-          abortRef.current = ac;
-          const timer = setTimeout(() => ac.abort(), IMPORT_URL_TIMEOUT_MS);
+          const timer = setTimeout(() => ac.abort(), IMPORT_KICKOFF_TIMEOUT_MS);
           let invokeError: unknown = null;
           let data: unknown = null;
           try {
@@ -196,13 +190,8 @@ function UrlTab({ householdId }: { householdId: string }) {
             invokeError = e;
           } finally {
             clearTimeout(timer);
-            abortRef.current = null;
           }
-          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 200);
-          // User clicked "Continue in background" mid-flight: the abort
-          // surfaces here as an AbortError, which we swallow. The Realtime
-          // listener handles auto-save once the worker finishes.
-          if (backgroundedRef.current) return;
+          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 202);
           if (invokeError) {
             const code = await readErrorCode(invokeError);
             push({
@@ -213,76 +202,15 @@ function UrlTab({ householdId }: { householdId: string }) {
             return;
           }
           const payload = data as DraftResponse | null;
-          // Server-side background detach: 202 response. Register the job
-          // so the indicator can light up immediately; the Realtime listener
-          // will auto-save once the worker completes.
-          if (payload?.status === 'running' && payload.job_id) {
-            registerImport({ jobId: payload.job_id, householdId, kind });
-            push({
-              variant: 'info',
-              title: t('import.background_toast_title'),
-              description: t('import.background_toast_body'),
-            });
-            reset();
-            return;
+          if (payload?.job_id) {
+            registerImport({ jobId: payload.job_id, householdId, kind, sourceUrl: values.url });
           }
-          if (payload?.needs_review || !payload?.draft) {
-            push({
-              variant: 'error',
-              title: t('import.needs_review_title'),
-              description: t('import.needs_review_body'),
-            });
-            return;
-          }
-          const { data: newId, error: saveErr } = await supabase.rpc('save_recipe', {
-            p_household: householdId,
-            p_draft: payload.draft as never,
-          });
-          if (saveErr || !newId) {
-            const detail = saveErr?.message?.trim() || saveErr?.details?.trim() || null;
-            bcImportSaveFailed({
-              code: saveErr?.code ?? null,
-              message: saveErr?.message ?? null,
-              details: saveErr?.details ?? null,
-              hint: saveErr?.hint ?? null,
-            });
-            push({
-              variant: 'error',
-              persist: detail !== null,
-              title: t('import.error_title'),
-              description: (
-                <>
-                  <p>{t('errors.internal')}</p>
-                  {detail && (
-                    <p className="mt-1 text-xs opacity-80 break-words">
-                      <span className="font-medium">{t('import.error_detail_label')}:</span>{' '}
-                      {detail}
-                    </p>
-                  )}
-                </>
-              ),
-            });
-            return;
-          }
-          // Patch the import_jobs row to reflect the saved recipe. Best-
-          // effort: failure here just means the indicator stays empty, no
-          // user-facing impact.
-          if (payload.job_id) {
-            void supabase
-              .from('import_jobs')
-              .update({ status: 'done', recipe_id: newId as string })
-              .eq('id', payload.job_id);
-          }
-          await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
           push({
-            variant: 'success',
-            title: t('import.success_title'),
-            description: t('import.success_body'),
+            variant: 'info',
+            title: t('import.started_toast_title'),
+            description: t('import.started_toast_body'),
           });
-          await navigate({
-            to: '/h/$householdId/r/$recipeId',
-            params: { householdId, recipeId: newId },
-          });
+          reset();
         })}
       >
         <Input placeholder={t('import.url_placeholder')} {...register('url')} />
@@ -299,7 +227,6 @@ function UrlTab({ householdId }: { householdId: string }) {
           {t('import.submit')}
         </Button>
       </form>
-      <ImportProgress active={isSubmitting} onBackground={dispatchToBackground} />
     </Card>
   );
 }
@@ -307,13 +234,9 @@ function UrlTab({ householdId }: { householdId: string }) {
 function PhotoTab({ householdId }: { householdId: string }) {
   const { t } = useTranslation();
   const { push } = useToast();
-  const navigate = useNavigate({ from: Route.fullPath });
-  const queryClient = useQueryClient();
   const { register: registerImport } = useActiveImports();
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
-  const backgroundedRef = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
   const {
     register,
     handleSubmit,
@@ -323,19 +246,6 @@ function PhotoTab({ householdId }: { householdId: string }) {
     resolver: zodResolver(ImportPhotoSchema),
     defaultValues: { comment: '' },
   });
-
-  const dispatchToBackground = (): void => {
-    if (backgroundedRef.current) return;
-    backgroundedRef.current = true;
-    abortRef.current?.abort();
-    push({
-      variant: 'info',
-      title: t('import.background_toast_title'),
-      description: t('import.background_toast_body'),
-    });
-    reset({ comment: '' });
-    setFiles([]);
-  };
 
   function addFiles(picked: FileList | null): void {
     setFileError(null);
@@ -433,10 +343,8 @@ function PhotoTab({ householdId }: { householdId: string }) {
 
           const t0 = performance.now();
           bcImportRequestSent('import-photo', '');
-          backgroundedRef.current = false;
           const ac = new AbortController();
-          abortRef.current = ac;
-          const timer = setTimeout(() => ac.abort(), IMPORT_URL_TIMEOUT_MS);
+          const timer = setTimeout(() => ac.abort(), IMPORT_KICKOFF_TIMEOUT_MS);
           let invokeError: unknown = null;
           let data: unknown = null;
           try {
@@ -454,10 +362,8 @@ function PhotoTab({ householdId }: { householdId: string }) {
             invokeError = e;
           } finally {
             clearTimeout(timer);
-            abortRef.current = null;
           }
-          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 200);
-          if (backgroundedRef.current) return;
+          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 202);
           if (invokeError) {
             const code = await readErrorCode(invokeError);
             push({
@@ -468,73 +374,16 @@ function PhotoTab({ householdId }: { householdId: string }) {
             return;
           }
           const payload = data as DraftResponse | null;
-          if (payload?.status === 'running' && payload.job_id) {
+          if (payload?.job_id) {
             registerImport({ jobId: payload.job_id, householdId, kind: 'photo' });
-            push({
-              variant: 'info',
-              title: t('import.background_toast_title'),
-              description: t('import.background_toast_body'),
-            });
-            reset({ comment: '' });
-            setFiles([]);
-            return;
           }
-          if (payload?.needs_review || !payload?.draft) {
-            push({
-              variant: 'error',
-              title: t('import.needs_review_title'),
-              description: t('import.needs_review_body'),
-            });
-            return;
-          }
-          const { data: newId, error: saveErr } = await supabase.rpc('save_recipe', {
-            p_household: householdId,
-            p_draft: payload.draft as never,
-          });
-          if (saveErr || !newId) {
-            const detail = saveErr?.message?.trim() || saveErr?.details?.trim() || null;
-            bcImportSaveFailed({
-              code: saveErr?.code ?? null,
-              message: saveErr?.message ?? null,
-              details: saveErr?.details ?? null,
-              hint: saveErr?.hint ?? null,
-            });
-            push({
-              variant: 'error',
-              persist: detail !== null,
-              title: t('import.error_title'),
-              description: (
-                <>
-                  <p>{t('errors.internal')}</p>
-                  {detail && (
-                    <p className="mt-1 text-xs opacity-80 break-words">
-                      <span className="font-medium">{t('import.error_detail_label')}:</span>{' '}
-                      {detail}
-                    </p>
-                  )}
-                </>
-              ),
-            });
-            return;
-          }
-          if (payload.job_id) {
-            void supabase
-              .from('import_jobs')
-              .update({ status: 'done', recipe_id: newId as string })
-              .eq('id', payload.job_id);
-          }
-          await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
           push({
-            variant: 'success',
-            title: t('import.success_title'),
-            description: t('import.success_body'),
+            variant: 'info',
+            title: t('import.started_toast_title'),
+            description: t('import.started_toast_body'),
           });
           reset({ comment: '' });
           setFiles([]);
-          await navigate({
-            to: '/h/$householdId/r/$recipeId',
-            params: { householdId, recipeId: newId },
-          });
         })}
       >
         <div className="space-y-1">
@@ -600,7 +449,6 @@ function PhotoTab({ householdId }: { householdId: string }) {
           {t('import.submit')}
         </Button>
       </form>
-      <ImportProgress active={isSubmitting} onBackground={dispatchToBackground} />
     </Card>
   );
 }

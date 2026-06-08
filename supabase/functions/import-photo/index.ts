@@ -19,11 +19,10 @@ import {
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
-import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
+import { runDetached } from '../_shared/import-runner.ts';
 import { isOwnedStoragePath } from '../_shared/storage-path.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
-const FIRST_RESPONSE_MS = 10_000;
 const CONCURRENCY_CAP = 5;
 const MAX_PHOTOS = 6;
 const TOKENS_BASE = 2000;
@@ -209,7 +208,7 @@ serve(async (req: Request) => {
       };
     };
 
-    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+    const onFinish = async (value: WorkResult): Promise<void> => {
       if (!value.ok) {
         if (value.reason === 'rate_limit' || value.reason === 'upstream') {
           await callerClient
@@ -241,11 +240,10 @@ serve(async (req: Request) => {
           .eq('id', jobId);
         return;
       }
-      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
       await callerClient
         .from('import_jobs')
         .update({
-          status: terminalStatus,
+          status: 'awaiting_save',
           phase: 'saving',
           progress_text: 'Saving recipe',
           payload: {
@@ -268,60 +266,17 @@ serve(async (req: Request) => {
         .eq('id', jobId);
     };
 
-    const detach = await runWithBackgroundDetach<WorkResult>({
-      firstResponseMs: FIRST_RESPONSE_MS,
-      work,
-      onFinish,
-      onError,
+    runDetached<WorkResult>({ work, onFinish, onError });
+    log({
+      request_id: requestId,
+      profile_id: caller.profileId,
+      household_id: body.household_id,
+      function: 'import-photo',
+      event: 'background.detach',
     });
-
-    if (detach.mode === 'background') {
-      log({
-        request_id: requestId,
-        profile_id: caller.profileId,
-        household_id: body.household_id,
-        function: 'import-photo',
-        event: 'background.detach',
-      });
-      return jsonResponse(
-        { job_id: jobId, status: 'running', request_id: requestId },
-        202,
-        cors,
-      );
-    }
-
-    const value = detach.value;
-    if (!value.ok) {
-      if (value.reason === 'rate_limit') {
-        return jsonResponse(
-          { error: 'rate_limit', retry_after: 60, request_id: requestId },
-          429,
-          cors,
-        );
-      }
-      if (value.reason === 'upstream') {
-        return jsonResponse(
-          { error: 'upstream', request_id: requestId },
-          503,
-          cors,
-        );
-      }
-      return jsonResponse(
-        {
-          job_id: jobId,
-          draft: null,
-          needs_review: true,
-          reason: value.reason,
-          request_id: requestId,
-        },
-        200,
-        cors,
-      );
-    }
-
     return jsonResponse(
-      { job_id: jobId, draft: value.draft, needs_review: false, request_id: requestId },
-      200,
+      { job_id: jobId, status: 'running', request_id: requestId },
+      202,
       cors,
     );
   } catch (e) {

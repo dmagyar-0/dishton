@@ -12,6 +12,7 @@ import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { IngredientRowEditor, type IngredientRowValue } from './IngredientRowEditor';
+import { RecipeImageField } from './RecipeImageField';
 import { StepRowEditor, type StepRowValue } from './StepRowEditor';
 
 export type RecipeEditFormProps = {
@@ -76,6 +77,7 @@ export function RecipeEditForm({
 
   return (
     <form onSubmit={submit} className="space-y-8" noValidate data-dirty={isDirty || undefined}>
+      <PhotoSection control={control} isSubmitting={isSubmitting} />
       <TagsSection control={control} allowedTags={allowedTags} />
       <BasicsSection register={register} errors={errors} control={control} />
       <IngredientsSection control={control} errors={errors} />
@@ -314,6 +316,28 @@ function StepsSection({ control, errors }: { control: Control<Recipe>; errors: E
           {t('recipe.add_step')}
         </Button>
       </div>
+    </Card>
+  );
+}
+
+function PhotoSection({
+  control,
+  isSubmitting,
+}: {
+  control: Control<Recipe>;
+  isSubmitting?: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card as="section">
+      <SectionHeading>{t('recipe.section_photo')}</SectionHeading>
+      <Controller
+        control={control}
+        name="hero_image_path"
+        render={({ field }) => (
+          <RecipeImageField value={field.value} onChange={field.onChange} disabled={isSubmitting} />
+        )}
+      />
     </Card>
   );
 }

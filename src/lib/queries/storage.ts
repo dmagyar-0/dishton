@@ -17,6 +17,17 @@ export function isRemoteImageUrl(value: string): boolean {
   return /^https?:\/\//i.test(value);
 }
 
+// Given the hero_image_path a recipe had when an edit began (`previous`) and the
+// path after saving (`next`), return the owned bucket object that is now
+// orphaned and safe to delete, or null when there is nothing to free. Remote
+// (imported) URLs are never ours to delete, and an unchanged path is still
+// referenced.
+export function staleHeroImagePath(previous: string | null, next: string | null): string | null {
+  if (!previous || previous === next) return null;
+  if (isRemoteImageUrl(previous)) return null;
+  return previous;
+}
+
 // Resolve a hero_image_path / avatar_url to a displayable URL. Remote URLs are
 // returned unchanged; storage paths are exchanged for a signed URL. Returns
 // null when there is nothing to show or the signing call fails.

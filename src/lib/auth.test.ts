@@ -307,11 +307,15 @@ describe('subscribeAuthChanges (registered by bootstrapAuth)', () => {
 
       await lastAuthChangeCb?.('SIGNED_IN', session);
 
+      // BUILD_SHA + session update synchronously inside the callback...
       expect(localStorage.getItem(BUILD_SHA_KEY)).toBe('sha-current');
       expect(useAuth.getState().session).toBe(session);
       expect(useAuth.getState().user?.id).toBe('u2');
-      expect(useAuth.getState().profile).toEqual(profile);
-      expect(useAuth.getState().memberships).toEqual(memberships);
+      // ...while the derived-state fetch is deferred out of the auth lock.
+      await vi.waitFor(() => {
+        expect(useAuth.getState().profile).toEqual(profile);
+        expect(useAuth.getState().memberships).toEqual(memberships);
+      });
     });
 
     it('SIGNED_OUT: clears stored SHA, profile, and memberships', async () => {
@@ -361,7 +365,9 @@ describe('subscribeAuthChanges (registered by bootstrapAuth)', () => {
       await lastAuthChangeCb?.('SIGNED_IN', session);
 
       expect(localStorage.getItem(BUILD_SHA_KEY)).toBeNull();
-      expect(useAuth.getState().profile).toEqual(profile);
+      await vi.waitFor(() => {
+        expect(useAuth.getState().profile).toEqual(profile);
+      });
     });
   });
 });

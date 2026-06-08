@@ -7,6 +7,14 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+// The image field has its own test; stub it here so the form test stays a pure
+// form-behaviour test (no Supabase/storage imports).
+vi.mock('./RecipeImageField', () => ({
+  RecipeImageField: ({ value }: { value: string | null }) => (
+    <div data-testid="recipe-image-field" data-value={value ?? ''} />
+  ),
+}));
+
 import { RecipeEditForm } from './RecipeEditForm';
 
 const ALLOWED = ['main', 'dessert'];
@@ -176,5 +184,18 @@ describe('RecipeEditForm', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'import.manual_submit' })).toBeInTheDocument();
+  });
+
+  it('renders the photo section with the image field bound to hero_image_path', () => {
+    render(
+      <RecipeEditForm
+        defaultValues={{ ...sampleRecipe(), hero_image_path: 'u1/hero.jpg' }}
+        allowedTags={ALLOWED}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('recipe.section_photo')).toBeInTheDocument();
+    expect(screen.getByTestId('recipe-image-field')).toHaveAttribute('data-value', 'u1/hero.jpg');
   });
 });
