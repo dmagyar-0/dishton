@@ -397,11 +397,7 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
           const row = payload.new as Row;
           if (!row?.id) return;
           upsert(row, 'realtime');
-          if (
-            row.status === 'done' ||
-            row.status === 'failed' ||
-            row.status === 'needs_review'
-          ) {
+          if (row.status === 'done' || row.status === 'failed' || row.status === 'needs_review') {
             bumpMark(row.completed_at);
           }
           if (row.status === 'awaiting_save') {
@@ -428,17 +424,7 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [
-    profileId,
-    originated,
-    saved,
-    upsert,
-    saveFromAwaiting,
-    announceAway,
-    bumpMark,
-    push,
-    t,
-  ]);
+  }, [profileId, originated, saved, upsert, saveFromAwaiting, announceAway, bumpMark, push, t]);
 
   // Prune terminal rows after the TTL so the indicator naturally clears.
   useEffect(() => {
