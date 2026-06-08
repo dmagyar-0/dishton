@@ -45,10 +45,24 @@ test.describe('dishton smoke', () => {
       .fill('https://example.test/tomato-tarte-tatin');
     await page.getByRole('button', { name: /^import$/i }).click();
 
-    // A successful import saves the recipe and navigates to its detail page.
-    // In mock mode the importer skips the network fetch and the AI returns the
-    // canned "Tomato Tarte Tatin" draft, so we land on the recipe with that
-    // title as the page heading.
+    // Since #95, URL import runs in the background — the page does NOT auto-
+    // navigate to the recipe. The kickoff returns immediately and the inline
+    // import queue shows the in-progress item, labelled with the source host.
+    await expect(page.getByRole('heading', { name: 'Imports in progress' })).toBeVisible();
+    await expect(page.getByText('example.test')).toBeVisible();
+
+    // When the background worker finishes, the SPA's realtime listener saves the
+    // draft and it lands in the user's collection. In mock mode the importer
+    // skips the network fetch and the AI returns the canned "Tomato Tarte Tatin"
+    // draft, so that recipe shows up in the list. Hop back to "My Recipes" and
+    // wait for it to appear.
+    await page.getByRole('link', { name: 'My Recipes' }).click();
+    const recipeCard = page.getByRole('link', { name: /tomato tarte tatin/i });
+    await expect(recipeCard).toBeVisible({ timeout: 20_000 });
+
+    // Opening it lands on the recipe detail page with the imported title as the
+    // page heading.
+    await recipeCard.click();
     await page.waitForURL(/\/h\/[^/]+\/r\//, { timeout: 20_000 });
     await expect(page.getByRole('heading', { name: 'Tomato Tarte Tatin' })).toBeVisible();
   });
