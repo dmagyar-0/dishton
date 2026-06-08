@@ -25,6 +25,7 @@ type Props = {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
+  error?: string;
 };
 
 export function IngredientRowEditor({
@@ -36,6 +37,7 @@ export function IngredientRowEditor({
   onMoveUp,
   onMoveDown,
   onRemove,
+  error,
 }: Props) {
   const { t } = useTranslation();
   const [quantityDraft, setQuantityDraft] = useState(() => formatQuantityForInput(value.quantity));
@@ -158,6 +160,12 @@ export function IngredientRowEditor({
           className="h-8 w-8 text-ink-soft hover:text-pomegranate"
         />
       </div>
+
+      {error && (
+        <p className="ml-10 text-xs text-pomegranate" role="alert">
+          {error}
+        </p>
+      )}
     </li>
   );
 }

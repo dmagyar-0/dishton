@@ -130,4 +130,51 @@ describe('RecipeEditForm', () => {
     await user.click(screen.getByRole('button', { name: 'recipe.edit_cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('surfaces a row error and blocks submit when a step body is emptied', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <RecipeEditForm
+        defaultValues={sampleRecipe()}
+        allowedTags={ALLOWED}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    await user.clear(screen.getByDisplayValue('Preheat oven.'));
+    await user.click(screen.getByRole('button', { name: 'recipe.edit_save' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('recipe.step_body_required')).toBeInTheDocument();
+  });
+
+  it('surfaces a row error and blocks submit when an ingredient line is emptied', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <RecipeEditForm
+        defaultValues={sampleRecipe()}
+        allowedTags={ALLOWED}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    await user.clear(screen.getByDisplayValue('500 g tomatoes'));
+    await user.click(screen.getByRole('button', { name: 'recipe.edit_save' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('recipe.ingredient_text_required')).toBeInTheDocument();
+  });
+
+  it('uses a custom submit label when provided', () => {
+    render(
+      <RecipeEditForm
+        defaultValues={sampleRecipe()}
+        allowedTags={ALLOWED}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        submitLabel="import.manual_submit"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'import.manual_submit' })).toBeInTheDocument();
+  });
 });

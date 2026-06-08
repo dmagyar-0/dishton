@@ -29,7 +29,9 @@ describe('StepRowEditor', () => {
     onRemove = vi.fn();
   });
 
-  function renderRow(opts: { isFirst?: boolean; isLast?: boolean; value?: StepRowValue } = {}) {
+  function renderRow(
+    opts: { isFirst?: boolean; isLast?: boolean; value?: StepRowValue; error?: string } = {},
+  ) {
     return render(
       <ul>
         <StepRowEditor
@@ -41,6 +43,7 @@ describe('StepRowEditor', () => {
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
           onRemove={onRemove}
+          error={opts.error}
         />
       </ul>,
     );
@@ -71,5 +74,10 @@ describe('StepRowEditor', () => {
     const duration = screen.getByRole('spinbutton', { name: 'recipe.field_step_duration' });
     await user.clear(duration);
     expect(onChange).toHaveBeenLastCalledWith({ duration_min: null });
+  });
+
+  it('renders the error message when provided', () => {
+    renderRow({ error: 'recipe.step_body_required' });
+    expect(screen.getByText('recipe.step_body_required')).toBeInTheDocument();
   });
 });

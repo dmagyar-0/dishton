@@ -20,6 +20,7 @@ export type RecipeEditFormProps = {
   onSubmit: (values: Recipe) => Promise<void> | void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  submitLabel?: string;
 };
 
 function blankIngredient(position: number): Ingredient {
@@ -46,6 +47,7 @@ export function RecipeEditForm({
   onSubmit,
   onCancel,
   isSubmitting,
+  submitLabel,
 }: RecipeEditFormProps) {
   const { t } = useTranslation();
   const {
@@ -76,15 +78,15 @@ export function RecipeEditForm({
     <form onSubmit={submit} className="space-y-8" noValidate data-dirty={isDirty || undefined}>
       <TagsSection control={control} allowedTags={allowedTags} />
       <BasicsSection register={register} errors={errors} control={control} />
-      <IngredientsSection control={control} />
-      <StepsSection control={control} />
+      <IngredientsSection control={control} errors={errors} />
+      <StepsSection control={control} errors={errors} />
 
       <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t border-cream-line bg-paper/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-paper/80 sm:static sm:mx-0 sm:rounded-[var(--radius-md)] sm:border sm:bg-paper-2/60 sm:px-5">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
           {t('recipe.edit_cancel')}
         </Button>
         <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
-          {t('recipe.edit_save')}
+          {submitLabel ?? t('recipe.edit_save')}
         </Button>
       </div>
     </form>
@@ -222,7 +224,7 @@ function BasicsSection({
   );
 }
 
-function IngredientsSection({ control }: { control: Control<Recipe> }) {
+function IngredientsSection({ control, errors }: { control: Control<Recipe>; errors: Errors }) {
   const { t } = useTranslation();
   const { fields, append, remove, move } = useFieldArray({ control, name: 'ingredients' });
 
@@ -246,6 +248,11 @@ function IngredientsSection({ control }: { control: Control<Recipe> }) {
                 onMoveUp={() => move(idx, idx - 1)}
                 onMoveDown={() => move(idx, idx + 1)}
                 onRemove={() => remove(idx)}
+                error={
+                  errors.ingredients?.[idx]?.raw_text
+                    ? t('recipe.ingredient_text_required')
+                    : undefined
+                }
               />
             )}
           />
@@ -266,7 +273,7 @@ function IngredientsSection({ control }: { control: Control<Recipe> }) {
   );
 }
 
-function StepsSection({ control }: { control: Control<Recipe> }) {
+function StepsSection({ control, errors }: { control: Control<Recipe>; errors: Errors }) {
   const { t } = useTranslation();
   const { fields, append, remove, move } = useFieldArray({ control, name: 'steps' });
 
@@ -290,6 +297,7 @@ function StepsSection({ control }: { control: Control<Recipe> }) {
                 onMoveUp={() => move(idx, idx - 1)}
                 onMoveDown={() => move(idx, idx + 1)}
                 onRemove={() => remove(idx)}
+                error={errors.steps?.[idx]?.body ? t('recipe.step_body_required') : undefined}
               />
             )}
           />

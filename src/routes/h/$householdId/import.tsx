@@ -1,3 +1,4 @@
+import type { Recipe } from '@/domain/recipe';
 import {
   type ImportPhotoInput,
   ImportPhotoSchema,
@@ -5,8 +6,10 @@ import {
   ImportUrlSchema,
   detectImportSource,
 } from '@/lib/forms/import';
+import { blankManualRecipe } from '@/lib/forms/manual-recipe';
 import { useActiveImports } from '@/lib/imports/ActiveImportsProvider';
 import { resizeForUpload } from '@/lib/photo-resize';
+import { useHouseholdAllowedTags } from '@/lib/queries/households';
 import { supabase } from '@/lib/supabase';
 import {
   bcImportInputValidated,
@@ -18,15 +21,17 @@ import {
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
+import { Skeleton } from '@/ui/primitives/Skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives/Tabs';
 import { Textarea } from '@/ui/primitives/Textarea';
 import { useToast } from '@/ui/primitives/Toast';
 import { ImportProgress } from '@/ui/recipe/ImportProgress';
+import { RecipeEditForm } from '@/ui/recipe/edit/RecipeEditForm';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Globe, Instagram } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
@@ -112,7 +117,7 @@ function ImportPage() {
           <PhotoTab householdId={householdId} />
         </TabsContent>
         <TabsContent value="manual">
-          <ManualTab />
+          <ManualTab householdId={householdId} />
         </TabsContent>
       </Tabs>
     </main>
@@ -600,10 +605,72 @@ function PhotoTab({ householdId }: { householdId: string }) {
   );
 }
 
-function ManualTab() {
+function ManualTab({ householdId }: { householdId: string }) {
+  const { t, i18n } = useTranslation();
+  const { push } = useToast();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
+  const { tags: allowedTags, isLoading: tagsLoading } = useHouseholdAllowedTags(householdId);
+  const [isSaving, setIsSaving] = useState(false);
+  const defaults = useMemo(() => blankManualRecipe(i18n.language), [i18n.language]);
+
+  const handleSubmit = async (values: Recipe): Promise<void> => {
+    setIsSaving(true);
+    const { data: newId, error: saveErr } = await supabase.rpc('save_recipe', {
+      p_household: householdId,
+      p_draft: values as never,
+    });
+    if (saveErr || !newId) {
+      setIsSaving(false);
+      const detail = saveErr?.message?.trim() || saveErr?.details?.trim() || null;
+      push({
+        variant: 'error',
+        persist: detail !== null,
+        title: t('import.error_title'),
+        description: (
+          <>
+            <p>{t('errors.internal')}</p>
+            {detail && (
+              <p className="mt-1 text-xs opacity-80 break-words">
+                <span className="font-medium">{t('import.error_detail_label')}:</span> {detail}
+              </p>
+            )}
+          </>
+        ),
+      });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ['recipes', householdId] });
+    push({
+      variant: 'success',
+      title: t('import.success_title'),
+      description: t('import.success_body'),
+    });
+    await navigate({
+      to: '/h/$householdId/r/$recipeId',
+      params: { householdId, recipeId: newId },
+    });
+  };
+
+  if (tagsLoading) {
+    return (
+      <div className="mt-4 space-y-4">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
   return (
-    <Card className="mt-4 p-6 text-ink-soft">
-      Manual entry — full form lands in a follow-up PR.
-    </Card>
+    <div className="mt-4">
+      <RecipeEditForm
+        defaultValues={defaults}
+        allowedTags={allowedTags}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate({ to: '/h/$householdId', params: { householdId } })}
+        isSubmitting={isSaving}
+        submitLabel={t('import.manual_submit')}
+      />
+    </div>
   );
 }
