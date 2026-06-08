@@ -34,7 +34,7 @@ describe('IngredientRowEditor', () => {
   });
 
   function renderRow(
-    opts: { isFirst?: boolean; isLast?: boolean; value?: IngredientRowValue } = {},
+    opts: { isFirst?: boolean; isLast?: boolean; value?: IngredientRowValue; error?: string } = {},
   ) {
     return render(
       <ul>
@@ -47,6 +47,7 @@ describe('IngredientRowEditor', () => {
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
           onRemove={onRemove}
+          error={opts.error}
         />
       </ul>,
     );
@@ -93,5 +94,10 @@ describe('IngredientRowEditor', () => {
     await user.clear(qty);
     await user.tab();
     expect(onChange).toHaveBeenCalledWith({ quantity: null });
+  });
+
+  it('renders the error message when provided', () => {
+    renderRow({ error: 'recipe.ingredient_text_required' });
+    expect(screen.getByText('recipe.ingredient_text_required')).toBeInTheDocument();
   });
 });

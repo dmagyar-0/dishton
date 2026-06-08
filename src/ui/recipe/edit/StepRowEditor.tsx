@@ -19,6 +19,7 @@ type Props = {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
+  error?: string;
 };
 
 export function StepRowEditor({
@@ -30,6 +31,7 @@ export function StepRowEditor({
   onMoveUp,
   onMoveDown,
   onRemove,
+  error,
 }: Props) {
   const { t } = useTranslation();
 
@@ -69,6 +71,12 @@ export function StepRowEditor({
           />
         </div>
       </div>
+
+      {error && (
+        <p className="ml-11 text-xs text-pomegranate" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="ml-11 flex items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-xs text-ink-soft">
