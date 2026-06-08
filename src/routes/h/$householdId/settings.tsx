@@ -37,10 +37,16 @@ function SettingsPage() {
 
   const household = useHousehold(householdId);
   const members = useHouseholdMembers(householdId);
-  // Solo = personal household with only the current user as a member.
-  // We hide the household name editor, the danger zone, and the members
-  // list in this mode and show a single "Invite to share" CTA instead.
-  const isSolo = household.data?.is_personal === true && (members.data?.length ?? 0) <= 1;
+  // Solo = the user's personal household. In this mode we hide the household
+  // name editor, the danger zone, and the members list and show a single
+  // "Invite to share" CTA instead. is_personal is the authoritative signal:
+  // app.redeem_invite clears it the moment a second member joins the household
+  // (migration 20260607130000), so a shared household never reads as solo. We
+  // deliberately do NOT also gate on members.data?.length — that count goes
+  // stale on the inviter's client after a guest joins (no realtime, and
+  // refetchOnWindowFocus is off), which is exactly what kept this screen
+  // showing the solo copy after someone had already joined.
+  const isSolo = household.data?.is_personal === true;
 
   // Tag the current household for observability while the user manages it.
   useEffect(() => {
