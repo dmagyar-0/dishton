@@ -43,6 +43,8 @@ export type ActiveImport = {
   phase: ImportPhase;
   progressText: string | null;
   recipeId: string | null;
+  // Source URL for url/instagram imports (from payload.url); null for photos.
+  sourceUrl: string | null;
   // Set when the SPA originated this import (vs. one started in another tab).
   // Used by the import page to decide whether to dismiss its own modal on
   // status flips.
@@ -67,7 +69,25 @@ type Row = {
 
 // Server `error` codes that have a dedicated user-facing i18n string under
 // `errors.*`. Anything else (or null) falls back to errors.internal.
-const KNOWN_FAILED_CODES = new Set(['rate_limit', 'upstream', 'timeout']);
+// Server `error` codes that have a dedicated user-facing i18n string under
+// `errors.*`. With every import now finishing in the background, more failure
+// reasons reach the SPA via realtime instead of as a synchronous HTTP error,
+// so map all of them. Anything unknown falls back to errors.internal.
+const KNOWN_FAILED_CODES = new Set([
+  'rate_limit',
+  'upstream',
+  'timeout',
+  'fetch_failed',
+  'invalid_url',
+  'not_html',
+  'source_too_large',
+  'instagram_unavailable',
+  'object_not_found',
+  'forbidden_path',
+  'not_image',
+  'photo_too_large',
+  'network',
+]);
 
 function failedErrorKey(code: string | null | undefined): string {
   return code && KNOWN_FAILED_CODES.has(code) ? `errors.${code}` : 'errors.internal';
@@ -77,6 +97,7 @@ type RegisterArgs = {
   jobId: string;
   householdId: string;
   kind: ImportKind;
+  sourceUrl?: string | null;
 };
 
 type ActiveImportsContextValue = {
@@ -92,6 +113,18 @@ const ActiveImportsContext = createContext<ActiveImportsContextValue | null>(nul
 // so the indicator can briefly show "just finished" before disappearing.
 const COMPLETED_TTL_MS = 30_000;
 
+// localStorage key holding the completed_at of the most recent terminal import
+// this device has already announced. Lets a reopen surface only completions
+// that happened while the app wasn't listening.
+function lastNotifiedKey(profileId: string): string {
+  return `dishton:imports:lastNotified:${profileId}`;
+}
+
+function draftTitle(row: Row): string | null {
+  const draft = (row.payload as { draft?: { title?: string } } | null | undefined)?.draft;
+  return draft?.title ?? null;
+}
+
 function rowToActive(row: Row, origin: ActiveImport['origin']): ActiveImport {
   return {
     jobId: row.id,
@@ -101,6 +134,7 @@ function rowToActive(row: Row, origin: ActiveImport['origin']): ActiveImport {
     phase: (row.phase ?? null) as ImportPhase,
     progressText: row.progress_text ?? null,
     recipeId: row.recipe_id ?? null,
+    sourceUrl: (row.payload as { url?: string } | null | undefined)?.url ?? null,
     origin,
     createdAt: row.created_at,
     completedAt: row.completed_at,
@@ -140,8 +174,20 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.filter((it) => it.jobId !== jobId));
   }, []);
 
+  // Advance the per-device high-water-mark so a reopen never re-announces a
+  // terminal import the user already saw (live or via a prior backfill).
+  const bumpMark = useCallback(
+    (completedAt: string | null | undefined) => {
+      if (!profileId || !completedAt) return;
+      const key = lastNotifiedKey(profileId);
+      const prev = localStorage.getItem(key);
+      if (!prev || completedAt > prev) localStorage.setItem(key, completedAt);
+    },
+    [profileId],
+  );
+
   const register = useCallback(
-    ({ jobId, householdId, kind }: RegisterArgs) => {
+    ({ jobId, householdId, kind, sourceUrl }: RegisterArgs) => {
       originated.add(jobId);
       // Optimistic insert so the indicator renders immediately, before the
       // Realtime channel delivers the INSERT event for this row.
@@ -156,6 +202,7 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
           phase: 'scrape',
           progressText: null,
           recipeId: null,
+          sourceUrl: sourceUrl ?? null,
           origin: 'this-tab',
           createdAt: now,
           completedAt: null,
@@ -229,6 +276,56 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
     [navigate, push, queryClient, saved, t],
   );
 
+  // Surface terminal imports that completed while this device wasn't listening,
+  // as a persistent pop-up on reopen. A single `done` links straight to the
+  // recipe; multiple/mixed results are summarised.
+  const announceAway = useCallback(
+    (rows: Row[]) => {
+      const done = rows.filter((r) => r.status === 'done' && r.recipe_id);
+      const failed = rows.filter((r) => r.status === 'failed' || r.status === 'needs_review');
+      if (done.length === 1 && failed.length === 0) {
+        const row = done[0];
+        if (!row) return;
+        const title = draftTitle(row);
+        const recipeId = row.recipe_id as string;
+        const householdId = row.household_id;
+        push({
+          variant: 'success',
+          persist: true,
+          title: t('import.away_ready_title'),
+          description: (
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                navigate({
+                  to: '/h/$householdId/r/$recipeId',
+                  params: { householdId, recipeId },
+                });
+              }}
+            >
+              {title ? t('import.away_ready_body', { title }) : t('import.ready_view_recipe')}
+            </button>
+          ),
+        });
+        return;
+      }
+      if (done.length === 0 && failed.length === 0) return;
+      push({
+        variant: failed.length > 0 && done.length === 0 ? 'error' : 'info',
+        persist: true,
+        title: t('import.away_summary_title'),
+        description: [
+          done.length > 0 ? t('import.away_summary_done', { count: done.length }) : null,
+          failed.length > 0 ? t('import.away_summary_failed', { count: failed.length }) : null,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      });
+    },
+    [navigate, push, t],
+  );
+
   // Subscribe once per session per profile. Re-subscribes when the user
   // signs in as a different account.
   useEffect(() => {
@@ -254,11 +351,36 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
         .eq('profile_id', profileId)
         .in('status', ['queued', 'running', 'awaiting_save'])
         .order('created_at', { ascending: false });
-      if (cancelled || !data) return;
-      for (const r of data as Row[]) {
-        upsert(r, 'realtime');
-        if (r.status === 'awaiting_save') void saveFromAwaiting(r);
+      if (cancelled) return;
+      if (data) {
+        for (const r of data as Row[]) {
+          upsert(r, 'realtime');
+          if (r.status === 'awaiting_save') void saveFromAwaiting(r);
+        }
       }
+
+      // Reopen pop-up: announce terminal imports completed past the mark. On a
+      // device's first run we set the mark to "now" so we never replay history.
+      const markKey = lastNotifiedKey(profileId);
+      let mark = localStorage.getItem(markKey);
+      if (mark === null) {
+        mark = new Date().toISOString();
+        localStorage.setItem(markKey, mark);
+      }
+      const { data: terminal } = await supabase
+        .from('import_jobs')
+        .select(
+          'id, household_id, kind, status, phase, progress_text, recipe_id, payload, error, created_at, completed_at',
+        )
+        .eq('profile_id', profileId)
+        .in('status', ['done', 'failed', 'needs_review'])
+        .gt('completed_at', mark)
+        .order('completed_at', { ascending: true });
+      if (cancelled || !terminal || terminal.length === 0) return;
+      for (const r of terminal as Row[]) upsert(r, 'realtime');
+      announceAway(terminal as Row[]);
+      const newest = (terminal as Row[])[terminal.length - 1]?.completed_at;
+      if (newest) localStorage.setItem(markKey, newest);
     })();
 
     const channel = supabase
@@ -275,6 +397,13 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
           const row = payload.new as Row;
           if (!row?.id) return;
           upsert(row, 'realtime');
+          if (
+            row.status === 'done' ||
+            row.status === 'failed' ||
+            row.status === 'needs_review'
+          ) {
+            bumpMark(row.completed_at);
+          }
           if (row.status === 'awaiting_save') {
             void saveFromAwaiting(row);
           } else if (row.status === 'needs_review' && !originated.has(row.id)) {
@@ -299,7 +428,17 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [profileId, originated, saved, upsert, saveFromAwaiting, push, t]);
+  }, [
+    profileId,
+    originated,
+    saved,
+    upsert,
+    saveFromAwaiting,
+    announceAway,
+    bumpMark,
+    push,
+    t,
+  ]);
 
   // Prune terminal rows after the TTL so the indicator naturally clears.
   useEffect(() => {

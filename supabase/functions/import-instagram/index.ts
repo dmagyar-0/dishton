@@ -18,7 +18,7 @@ import {
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
-import { runWithBackgroundDetach } from '../_shared/import-runner.ts';
+import { runDetached } from '../_shared/import-runner.ts';
 import { env } from '../_shared/env.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 import {
@@ -33,7 +33,6 @@ const Body = z.object({
   household_id: z.string().uuid(),
 });
 
-const FIRST_RESPONSE_MS = 10_000;
 const CONCURRENCY_CAP = 5;
 const RAW_PREVIEW_LIMIT = 240;
 
@@ -335,7 +334,7 @@ serve(async (req: Request) => {
       };
     };
 
-    const onFinish = async (value: WorkResult, mode: 'sync' | 'background'): Promise<void> => {
+    const onFinish = async (value: WorkResult): Promise<void> => {
       if (!value.ok) {
         if (value.reason === 'rate_limit' || value.reason === 'upstream') {
           await callerClient
@@ -373,11 +372,10 @@ serve(async (req: Request) => {
           .eq('id', jobId);
         return;
       }
-      const terminalStatus = mode === 'sync' ? 'done' : 'awaiting_save';
       await callerClient
         .from('import_jobs')
         .update({
-          status: terminalStatus,
+          status: 'awaiting_save',
           phase: 'saving',
           progress_text: 'Saving recipe',
           payload: {
@@ -400,59 +398,11 @@ serve(async (req: Request) => {
         .eq('id', jobId);
     };
 
-    const detach = await runWithBackgroundDetach<WorkResult>({
-      firstResponseMs: FIRST_RESPONSE_MS,
-      work,
-      onFinish,
-      onError,
-    });
-
-    if (detach.mode === 'background') {
-      emit('background.detach');
-      return jsonResponse(
-        { job_id: jobId, status: 'running', request_id: requestId },
-        202,
-        cors,
-      );
-    }
-
-    const value = detach.value;
-    if (!value.ok) {
-      if (value.reason === 'rate_limit') {
-        return jsonResponse(
-          { error: 'rate_limit', retry_after: 60, request_id: requestId },
-          429,
-          cors,
-        );
-      }
-      if (value.reason === 'instagram_unavailable') {
-        throw new HttpError(422, 'instagram_unavailable');
-      }
-      if (value.reason === 'upstream') {
-        return jsonResponse({ error: 'upstream', request_id: requestId }, 503, cors);
-      }
-      return jsonResponse(
-        {
-          job_id: jobId,
-          draft: null,
-          needs_review: true,
-          reason: value.reason,
-          request_id: requestId,
-        },
-        200,
-        cors,
-      );
-    }
-
+    runDetached<WorkResult>({ work, onFinish, onError });
+    emit('background.detach');
     return jsonResponse(
-      {
-        job_id: jobId,
-        draft: value.draft,
-        needs_review: false,
-        thumbnail_url: value.thumbnailUrl,
-        request_id: requestId,
-      },
-      200,
+      { job_id: jobId, status: 'running', request_id: requestId },
+      202,
       cors,
     );
   } catch (e) {

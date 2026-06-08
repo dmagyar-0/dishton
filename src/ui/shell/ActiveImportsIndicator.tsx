@@ -1,5 +1,6 @@
 import { useActiveImports } from '@/lib/imports/ActiveImportsProvider';
 import { cn } from '@/ui/cn';
+import { Link } from '@tanstack/react-router';
 import { Loader } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -20,10 +21,12 @@ export function ActiveImportsIndicator() {
   const phaseKey = newest.phase ? PHASE_LABEL_KEYS[newest.phase] : null;
   const phaseLabel = phaseKey ? t(phaseKey) : t('import.phase_default');
   return (
-    <div
+    <Link
+      to="/h/$householdId/import"
+      params={{ householdId: newest.householdId }}
       className={cn(
         'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-pill)]',
-        'bg-saffron/15 text-aubergine text-xs font-body',
+        'bg-saffron/15 text-aubergine text-xs font-body hover:bg-saffron/25',
       )}
       role="status"
       aria-live="polite"
@@ -36,6 +39,6 @@ export function ActiveImportsIndicator() {
           : t('import.active_indicator_count', { count: active.length })}
       </span>
       <span className="sm:hidden font-medium">{active.length}</span>
-    </div>
+    </Link>
   );
 }
