@@ -19,7 +19,8 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: async () => {} }),
 }));
 vi.mock('@/lib/auth', () => ({
-  useAuth: (sel: (s: { profile: { id: string } | null }) => unknown) => sel({ profile: { id: 'p1' } }),
+  useAuth: (sel: (s: { profile: { id: string } | null }) => unknown) =>
+    sel({ profile: { id: 'p1' } }),
 }));
 vi.mock('@/observability/breadcrumbs', () => ({ bcImportSaveFailed: () => {} }));
 
