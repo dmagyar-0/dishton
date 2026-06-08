@@ -195,29 +195,33 @@ export async function bootstrapAuth(): Promise<void> {
 }
 
 function subscribeAuthChanges(): void {
-  // This callback runs inside Supabase's auth lock. Keep it synchronous and
-  // defer any Supabase data call to a fresh macrotask: a query awaited inline
-  // re-enters the lock and holds it across network round-trips on every sign-in
-  // (and TOKEN_REFRESHED fires on every mobile resume) — the deadlock footgun
-  // the Supabase docs warn against. setTimeout(0) runs it after the lock frees.
-  supabase.auth.onAuthStateChange((event, session) => {
+  // Await refreshAuthDerivedState *inside* this callback on purpose. signUp and
+  // signInWithPassword resolve only after their onAuthStateChange subscribers
+  // settle, so awaiting here guarantees memberships are loaded before
+  // signup.tsx / login.tsx navigate to '/'. The index route redirects to
+  // /onboarding whenever memberships are empty (a non-reactive beforeLoad), so
+  // deferring this load — e.g. to a setTimeout macrotask — lets that redirect
+  // win the race and strands freshly-signed-in users on /onboarding. The fetch
+  // timeout (timeout-fetch.ts) already bounds how long this can hold the auth
+  // lock, and auth-js steals an orphaned lock after 5s, so the inline await is
+  // safe from the resume-hang this client otherwise guards against.
+  supabase.auth.onAuthStateChange(async (event, session) => {
     useAuth.getState().setSession(session);
     if (event === 'SIGNED_IN' && session?.user) {
       if (BUILD_SHA) writeStoredSha(BUILD_SHA);
-      const userId = session.user.id;
-      setTimeout(() => {
-        void refreshAuthDerivedState(userId).catch((err) => {
-          console.error('[auth] failed to refresh derived state on sign-in', err);
-          useAuth.getState().setMemberships([]);
-        });
-      }, 0);
+      try {
+        await refreshAuthDerivedState(session.user.id);
+      } catch (err) {
+        console.error('[auth] failed to refresh derived state on sign-in', err);
+        useAuth.getState().setMemberships([]);
+      }
     } else if (event === 'SIGNED_OUT') {
       clearStoredSha();
+      await clearUserScopedCaches();
       clearUserContext();
       setHouseholdContext(null);
       useAuth.getState().setProfile(null);
       useAuth.getState().setMemberships([]);
-      void clearUserScopedCaches();
     }
   });
 }
