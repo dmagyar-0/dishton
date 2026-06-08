@@ -6,6 +6,7 @@
 // callers can use the real schema shape without being blocked by stale stubs.
 
 import { createClient } from '@supabase/supabase-js';
+import { createTimeoutFetch } from './timeout-fetch';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -24,4 +25,10 @@ export const supabase = createClient(url ?? 'http://localhost:54321', anon ?? 'a
     detectSessionInUrl: true,
   },
   db: { schema: 'app' },
+  // Bound every Supabase HTTP request with a timeout. Without it, a request
+  // fired on a dead socket — classically a token refresh the moment a mobile
+  // browser resumes the PWA after backgrounding — hangs until the OS TCP
+  // timeout, holding the auth lock and freezing the app until a manual reload.
+  // See timeout-fetch.ts.
+  global: { fetch: createTimeoutFetch() },
 });
