@@ -169,7 +169,10 @@ function RecipeEditPage() {
       // removed it. An orphaned blob is a cleanup concern, not a user error.
       const stale = staleHeroImagePath(previousHero, values.hero_image_path);
       if (stale) {
-        void supabase.storage.from(RECIPE_IMAGES_BUCKET).remove([stale]).catch(() => undefined);
+        void supabase.storage
+          .from(RECIPE_IMAGES_BUCKET)
+          .remove([stale])
+          .catch(() => undefined);
       }
       push({
         variant: 'success',
