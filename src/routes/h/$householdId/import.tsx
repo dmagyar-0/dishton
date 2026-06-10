@@ -396,6 +396,11 @@ function PhotoTab({ householdId }: { householdId: string }) {
             type="file"
             accept={PHOTO_ACCEPTED_TYPES.join(',')}
             multiple
+            // The styled Button below is the accessible trigger; keep this
+            // sr-only input out of the tab order and the a11y tree so keyboard
+            // focus never lands on an invisible control.
+            tabIndex={-1}
+            aria-hidden="true"
             onChange={(e) => {
               addFiles(e.target.files);
               // Reset so re-picking the same file after removal still fires onChange.
