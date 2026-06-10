@@ -326,13 +326,13 @@ function RecipeDetailPage() {
         )}
       </div>
       {displayed.recipe.description && (
-        <p className="text-lg text-ink-soft leading-relaxed mb-4 max-w-prose">
+        <p className="text-lg text-ink-soft leading-relaxed mb-8 max-w-prose">
           {displayed.recipe.description}
         </p>
       )}
 
       {displayed.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 -mt-4 mb-8">
           {displayed.tags.map((tag) => (
             <Badge key={tag} variant="outline">
               {tag}
