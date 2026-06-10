@@ -12,9 +12,7 @@ vi.mock('@/ui/primitives/RecipeImage', () => ({
     path: string;
     alt: string;
     className?: string;
-  }) => (
-    <img aria-hidden="true" data-testid="recipe-image" src={path} alt="" className={className} />
-  ),
+  }) => <img data-testid="recipe-image" src={path} alt="" className={className} />,
 }));
 
 import { RecipeCardMedia, gradientClassForTitle, titleGradientIndex } from './RecipeCardMedia';
@@ -62,6 +60,15 @@ describe('RecipeCardMedia', () => {
       const wrapper = container.firstChild as HTMLElement;
       expect(wrapper).toHaveAttribute('aria-hidden', 'true');
     });
+
+    it('applies the gradient class derived from the title to the placeholder element', () => {
+      const title = 'Lemon Tart';
+      const { container } = render(<RecipeCardMedia heroImagePath={null} title={title} />);
+      const expectedGradient = gradientClassForTitle(title);
+      // The inner div (first child of the outer wrapper) carries the gradient classes.
+      const inner = (container.firstChild as HTMLElement).firstChild as HTMLElement;
+      expect(inner.className).toContain(expectedGradient);
+    });
   });
 
   describe('gradient determinism', () => {
@@ -79,15 +86,15 @@ describe('RecipeCardMedia', () => {
       }
     });
 
-    it('two different titles may produce different indices', () => {
-      // We cannot guarantee they differ (hash collisions are valid), but we can
-      // show that the function at least outputs a number, and two very different
-      // titles produce consistent results independently.
-      const idx1 = titleGradientIndex('AAA');
-      const idx2 = titleGradientIndex('ZZZ');
-      // Both are valid numbers in range.
-      expect(typeof idx1).toBe('number');
-      expect(typeof idx2).toBe('number');
+    it('two different titles produce different indices', () => {
+      // 'A' has char code 65; 65 % 6 = 5.
+      // 'B' has char code 66; 66 % 6 = 0.
+      // These are mathematically guaranteed to map to different indices.
+      const idx1 = titleGradientIndex('A');
+      const idx2 = titleGradientIndex('B');
+      expect(idx1).toBe(5);
+      expect(idx2).toBe(0);
+      expect(idx1).not.toBe(idx2);
     });
   });
 });

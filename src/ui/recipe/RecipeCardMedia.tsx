@@ -63,23 +63,20 @@ export function RecipeCardMedia({ heroImagePath, title, className }: Props) {
   const gradientClass = gradientClassForTitle(title);
 
   return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        wrapperClass,
-        'bg-gradient-to-br',
-        gradientClass,
-        'flex items-center justify-center',
-        // Scale the initial along with the card image on hover for consistency.
-        'group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]',
-      )}
-    >
-      <span
-        className="font-display text-6xl leading-none select-none text-[color-mix(in_srgb,var(--color-ink)_18%,transparent)]"
-        aria-hidden="true"
+    <div aria-hidden="true" className={wrapperClass}>
+      <div
+        className={cn(
+          'h-full w-full bg-gradient-to-br',
+          gradientClass,
+          'flex items-center justify-center',
+          // Scale the initial along with the card image on hover for consistency.
+          'group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]',
+        )}
       >
-        {initial}
-      </span>
+        <span className="font-display text-6xl leading-none select-none text-[color-mix(in_srgb,var(--color-ink)_18%,transparent)]">
+          {initial}
+        </span>
+      </div>
     </div>
   );
 }
