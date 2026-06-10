@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // i18n: echo keys so assertions are bundle-independent.
 vi.mock('react-i18next', () => ({
@@ -109,16 +109,12 @@ describe('AppShell — solo user (one personal household)', () => {
     render(<AppShell />);
     // Spans inside tab items carry the visible label text.
     // With i18n echoing keys, these match the translation keys.
-    const allMyRecipes = screen.getAllByText('nav.my_recipes');
-    expect(allMyRecipes.length).toBeGreaterThanOrEqual(1);
-    const allSearch = screen.getAllByText('search.nav');
-    expect(allSearch.length).toBeGreaterThanOrEqual(1);
-    const allImport = screen.getAllByText('nav.import');
-    expect(allImport.length).toBeGreaterThanOrEqual(1);
-    const allChat = screen.getAllByText('chat.nav');
-    expect(allChat.length).toBeGreaterThanOrEqual(1);
-    const allProfile = screen.getAllByText('nav.profile');
-    expect(allProfile.length).toBeGreaterThanOrEqual(1);
+    const tabBar = screen.getByRole('navigation', { name: 'nav.tab_bar_label' });
+    expect(within(tabBar).getAllByText('nav.my_recipes')).toHaveLength(1);
+    expect(within(tabBar).getAllByText('search.nav')).toHaveLength(1);
+    expect(within(tabBar).getAllByText('nav.import')).toHaveLength(1);
+    expect(within(tabBar).getAllByText('chat.nav')).toHaveLength(1);
+    expect(within(tabBar).getAllByText('nav.profile')).toHaveLength(1);
   });
 });
 
@@ -164,10 +160,10 @@ describe('AppShell — no household yet (empty memberships)', () => {
 
   it('renders bottom tab bar with only Search and Profile (no household-dependent items)', () => {
     render(<AppShell />);
-    expect(screen.getAllByLabelText('search.nav').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByLabelText('nav.profile').length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByLabelText('nav.my_recipes')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('nav.import')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('chat.nav')).not.toBeInTheDocument();
+    const tabBar = screen.getByRole('navigation', { name: 'nav.tab_bar_label' });
+    const tabLinks = within(tabBar).getAllByRole('link');
+    expect(tabLinks).toHaveLength(2);
+    expect(within(tabBar).getByLabelText('search.nav')).toBeInTheDocument();
+    expect(within(tabBar).getByLabelText('nav.profile')).toBeInTheDocument();
   });
 });

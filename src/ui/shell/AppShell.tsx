@@ -34,23 +34,7 @@ type NavItem =
       kind: 'household';
       label: string;
       icon: React.ReactNode;
-      to: '/h/$householdId';
-      params: { householdId: string };
-      exact: boolean;
-    }
-  | {
-      kind: 'household';
-      label: string;
-      icon: React.ReactNode;
-      to: '/h/$householdId/import';
-      params: { householdId: string };
-      exact: boolean;
-    }
-  | {
-      kind: 'household';
-      label: string;
-      icon: React.ReactNode;
-      to: '/h/$householdId/draft';
+      to: '/h/$householdId' | '/h/$householdId/import' | '/h/$householdId/draft';
       params: { householdId: string };
       exact: boolean;
     }
@@ -58,16 +42,28 @@ type NavItem =
       kind: 'simple';
       label: string;
       icon: React.ReactNode;
-      to: '/search';
-      exact: boolean;
-    }
-  | {
-      kind: 'simple';
-      label: string;
-      icon: React.ReactNode;
-      to: '/profile';
+      to: '/search' | '/profile';
       exact: boolean;
     };
+
+// Renders a single bottom-tab-bar link, handling the household/simple split so
+// the caller doesn't need to repeat the full <Link> block twice.
+function TabLink({ item }: { item: NavItem }) {
+  return (
+    <Link
+      to={item.to}
+      {...(item.kind === 'household' ? { params: item.params } : {})}
+      className={TAB_CLASS}
+      activeProps={{ className: TAB_ACTIVE_CLASS }}
+      inactiveProps={TAB_INACTIVE_PROPS}
+      activeOptions={{ exact: item.exact }}
+      aria-label={item.label}
+    >
+      {item.icon}
+      <span>{item.label}</span>
+    </Link>
+  );
+}
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -282,32 +278,7 @@ export function AppShell() {
         <ul className="flex items-stretch justify-around px-1 py-1">
           {primaryItems.map((item) => (
             <li key={item.to} className="flex-1">
-              {item.kind === 'household' ? (
-                <Link
-                  to={item.to}
-                  params={item.params}
-                  className={TAB_CLASS}
-                  activeProps={{ className: TAB_ACTIVE_CLASS }}
-                  inactiveProps={TAB_INACTIVE_PROPS}
-                  activeOptions={{ exact: item.exact }}
-                  aria-label={item.label}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </Link>
-              ) : (
-                <Link
-                  to={item.to}
-                  className={TAB_CLASS}
-                  activeProps={{ className: TAB_ACTIVE_CLASS }}
-                  inactiveProps={TAB_INACTIVE_PROPS}
-                  activeOptions={{ exact: item.exact }}
-                  aria-label={item.label}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </Link>
-              )}
+              <TabLink item={item} />
             </li>
           ))}
         </ul>
