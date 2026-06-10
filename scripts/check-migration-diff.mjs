@@ -15,9 +15,10 @@
 //
 // Limitation (documented in docs/13): this cannot detect schema changes that
 // were applied only to a developer's local database and never written to any
-// file — there is nothing in the diff to catch. The live preview-branch
-// `supabase db diff` (run out-of-band against a real project) remains the
-// backstop for that case. This gate guarantees the file-level invariants.
+// file — there is nothing in the diff to catch. There is no preview-branch
+// `supabase db diff` backstop (no preview environments exist); the practical
+// backstop is `supabase db push` failing on drift during deploy. This gate
+// guarantees the file-level invariants.
 //
 // Usage: node scripts/check-migration-diff.mjs <base-ref>
 //   base-ref defaults to origin/main. The caller must have fetched it.
