@@ -3,8 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TagStrip } from './TagStrip';
 
-describe('TagStrip', () => {
-  it('renders tags with optional counts', () => {
+// i18n: echo keys so assertions are bundle-independent.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+describe('TagStrip — full cloud (no collapse prop)', () => {
+  it('renders tags with count as a single unit separated by ·', () => {
     render(
       <TagStrip
         tags={[{ tag: 'tomato', n: 3 }, { tag: 'soup' }]}
@@ -13,7 +18,8 @@ describe('TagStrip', () => {
       />,
     );
     expect(screen.getByText('tomato')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    // Count is rendered in a sibling span containing "· 3"
+    expect(screen.getByText(/·\s*3/)).toBeInTheDocument();
     expect(screen.getByText('soup')).toBeInTheDocument();
   });
 
@@ -28,5 +34,99 @@ describe('TagStrip', () => {
   it('marks selected via aria-pressed', () => {
     render(<TagStrip tags={[{ tag: 'soup' }]} selected={['soup']} onToggle={() => {}} />);
     expect(screen.getByText('soup').closest('button')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows all tags when not collapsed', () => {
+    render(
+      <TagStrip
+        tags={[{ tag: 'chicken' }, { tag: 'baking' }, { tag: 'soup' }]}
+        selected={[]}
+        onToggle={() => {}}
+      />,
+    );
+    expect(screen.getByText('chicken')).toBeInTheDocument();
+    expect(screen.getByText('baking')).toBeInTheDocument();
+    expect(screen.getByText('soup')).toBeInTheDocument();
+  });
+
+  it('shows the expanded disclosure button when onCollapseToggle is provided', () => {
+    render(
+      <TagStrip
+        tags={[{ tag: 'chicken' }]}
+        selected={[]}
+        onToggle={() => {}}
+        collapsed={false}
+        onCollapseToggle={() => {}}
+      />,
+    );
+    const toggle = screen.getByRole('button', { name: /search\.hide_tag_filters/ });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+describe('TagStrip — collapsed mode', () => {
+  it('hides non-active tags when collapsed', () => {
+    render(
+      <TagStrip
+        tags={[{ tag: 'chicken' }, { tag: 'baking' }, { tag: 'soup' }]}
+        selected={['baking']}
+        onToggle={() => {}}
+        collapsed={true}
+        onCollapseToggle={() => {}}
+      />,
+    );
+    // Active tag stays visible
+    expect(screen.getByText('baking')).toBeInTheDocument();
+    // Inactive tags are hidden
+    expect(screen.queryByText('chicken')).not.toBeInTheDocument();
+    expect(screen.queryByText('soup')).not.toBeInTheDocument();
+  });
+
+  it('shows the disclosure toggle in collapsed state', () => {
+    render(
+      <TagStrip
+        tags={[{ tag: 'chicken' }]}
+        selected={[]}
+        onToggle={() => {}}
+        collapsed={true}
+        onCollapseToggle={() => {}}
+      />,
+    );
+    const toggle = screen.getByRole('button', { name: /search\.filter_by_tag/ });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('calls onCollapseToggle when disclosure toggle is clicked', async () => {
+    const onCollapseToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TagStrip
+        tags={[{ tag: 'chicken' }]}
+        selected={[]}
+        onToggle={() => {}}
+        collapsed={true}
+        onCollapseToggle={onCollapseToggle}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /search\.filter_by_tag/ }));
+    expect(onCollapseToggle).toHaveBeenCalledOnce();
+  });
+
+  it('active tag chip remains clickable while collapsed', async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TagStrip
+        tags={[{ tag: 'baking' }, { tag: 'soup' }]}
+        selected={['baking']}
+        onToggle={onToggle}
+        collapsed={true}
+        onCollapseToggle={() => {}}
+      />,
+    );
+    await user.click(screen.getByText('baking'));
+    expect(onToggle).toHaveBeenCalledWith('baking');
   });
 });

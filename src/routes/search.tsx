@@ -9,7 +9,7 @@ import { RecipeCardMedia } from '@/ui/recipe/RecipeCardMedia';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { requireAuth } from './_guards';
@@ -63,6 +63,19 @@ function SearchPage() {
   const list = useRecipesAcrossHouseholds(householdIds, !searchActive);
   const tags = usePopularTags(householdIds);
 
+  // Cloud is auto-collapsed whenever a text query is active or tags are selected,
+  // so results appear immediately after the search input. The user can re-expand
+  // via the disclosure toggle without losing their tag filters.
+  const cloudShouldCollapse = searchActive || selected.length > 0;
+  const [cloudManuallyExpanded, setCloudManuallyExpanded] = useState(false);
+  // Reset manual expansion each time the trigger condition flips to true (i.e. a
+  // new query is typed after the user previously expanded the cloud). This ensures
+  // the cloud re-collapses on a fresh search without clearing active tag filters.
+  useEffect(() => {
+    if (!cloudShouldCollapse) setCloudManuallyExpanded(false);
+  }, [cloudShouldCollapse]);
+  const cloudCollapsed = cloudShouldCollapse && !cloudManuallyExpanded;
+
   const source = searchActive ? search.data : list.data;
   const sourceFetching = searchActive ? search.isFetching : list.isFetching;
   const sourceLoading = searchActive ? search.isLoading : list.isLoading;
@@ -92,15 +105,22 @@ function SearchPage() {
         <TagStrip
           tags={tags.data}
           selected={selected}
-          onToggle={(tag) =>
+          collapsed={cloudCollapsed}
+          onCollapseToggle={
+            cloudShouldCollapse ? () => setCloudManuallyExpanded((v) => !v) : undefined
+          }
+          onToggle={(tag) => {
+            // When a tag is toggled while collapsed, always auto-collapse again
+            // so results remain visible. If the user has manually expanded, keep
+            // them in the expanded view.
             nav({
               search: (prev: SearchParams) => {
                 const cur = Array.isArray(prev.tag) ? prev.tag : prev.tag ? [prev.tag] : [];
                 const next = cur.includes(tag) ? cur.filter((t) => t !== tag) : [...cur, tag];
                 return { ...prev, tag: next.length === 0 ? undefined : next };
               },
-            })
-          }
+            });
+          }}
         />
       )}
 

@@ -121,6 +121,8 @@ export default {
     no_matches_query_tags:
       'Nothing matched "{{query}}" with the selected tags. Try a different word or clear the filters.',
     no_matches_tags: 'No recipes match the selected tags. Try removing a tag.',
+    filter_by_tag: 'Filter by tag',
+    hide_tag_filters: 'Hide tag filters',
   },
   household_settings: {
     title: 'Household settings',
