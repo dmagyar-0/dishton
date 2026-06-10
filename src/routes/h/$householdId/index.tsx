@@ -5,9 +5,9 @@ import { Badge } from '@/ui/primitives/Badge';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
-import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
+import { RecipeCardMedia } from '@/ui/recipe/RecipeCardMedia';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
@@ -89,15 +89,7 @@ function RecipeListPage() {
                 className="block group/link"
               >
                 <Card className="p-0 overflow-hidden h-full">
-                  {r.hero_image_path && (
-                    <div className="aspect-[16/10] w-full overflow-hidden border-b border-cream-line">
-                      <RecipeImage
-                        path={r.hero_image_path}
-                        alt=""
-                        className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
-                      />
-                    </div>
-                  )}
+                  <RecipeCardMedia heroImagePath={r.hero_image_path} title={r.title} />
                   <div className="p-5">
                     <h2 className="font-display text-2xl leading-tight mb-2">{r.title}</h2>
                     {r.description && (

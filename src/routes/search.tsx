@@ -5,7 +5,7 @@ import { useRecipesAcrossHouseholds } from '@/lib/queries/recipes';
 import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
-import { RecipeImage } from '@/ui/primitives/RecipeImage';
+import { RecipeCardMedia } from '@/ui/recipe/RecipeCardMedia';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
@@ -130,15 +130,7 @@ function SearchPage() {
                 className="block group/link"
               >
                 <Card className="p-0 overflow-hidden h-full">
-                  {r.hero_image_path && (
-                    <div className="aspect-[16/10] w-full overflow-hidden border-b border-cream-line">
-                      <RecipeImage
-                        path={r.hero_image_path}
-                        alt=""
-                        className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
-                      />
-                    </div>
-                  )}
+                  <RecipeCardMedia heroImagePath={r.hero_image_path} title={r.title} />
                   <div className="p-5">
                     <h2 className="font-display text-xl mb-2">{r.title}</h2>
                     {r.description && (
