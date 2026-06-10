@@ -123,6 +123,7 @@ export default {
     no_matches_tags: 'No recipes match the selected tags. Try removing a tag.',
     filter_by_tag: 'Filter by tag',
     hide_tag_filters: 'Hide tag filters',
+    tag_filters_label: 'Tag filters',
   },
   household_settings: {
     title: 'Household settings',

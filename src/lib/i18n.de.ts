@@ -127,6 +127,7 @@ export default {
     no_matches_tags: 'Keine Rezepte passen zu den gewählten Tags. Entferne ein Tag.',
     filter_by_tag: 'Nach Tag filtern',
     hide_tag_filters: 'Tag-Filter ausblenden',
+    tag_filters_label: 'Tag-Filter',
   },
   household_settings: {
     title: 'Haushaltseinstellungen',

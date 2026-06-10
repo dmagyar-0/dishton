@@ -68,9 +68,9 @@ function SearchPage() {
   // via the disclosure toggle without losing their tag filters.
   const cloudShouldCollapse = searchActive || selected.length > 0;
   const [cloudManuallyExpanded, setCloudManuallyExpanded] = useState(false);
-  // Reset manual expansion each time the trigger condition flips to true (i.e. a
-  // new query is typed after the user previously expanded the cloud). This ensures
-  // the cloud re-collapses on a fresh search without clearing active tag filters.
+  // Clear manual expansion once the page returns to idle (query cleared, no tags
+  // selected), so the next search starts auto-collapsed again instead of
+  // inheriting a stale expansion from the previous search.
   useEffect(() => {
     if (!cloudShouldCollapse) setCloudManuallyExpanded(false);
   }, [cloudShouldCollapse]);

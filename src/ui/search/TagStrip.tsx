@@ -1,4 +1,5 @@
 import { cn } from '@/ui/cn';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export type TagStripProps = {
@@ -26,7 +27,6 @@ function TagChip({
 }) {
   return (
     <button
-      key={tag}
       type="button"
       aria-pressed={active}
       onClick={() => onToggle(tag)}
@@ -58,6 +58,8 @@ export function TagStrip({
   className,
 }: TagStripProps) {
   const { t } = useTranslation();
+  // Stable id linking the disclosure buttons to the chip group they toggle.
+  const cloudId = useId();
 
   if (tags.length === 0) return null;
 
@@ -66,9 +68,10 @@ export function TagStrip({
     const activeTags = tags.filter(({ tag }) => selected.includes(tag));
     return (
       <div
+        id={cloudId}
         className={cn('flex flex-wrap items-center gap-2', className)}
         role="group"
-        aria-label="Tag filters"
+        aria-label={t('search.tag_filters_label')}
       >
         {activeTags.map(({ tag, n }) => (
           <TagChip key={tag} tag={tag} n={n} active onToggle={onToggle} />
@@ -77,6 +80,7 @@ export function TagStrip({
           type="button"
           onClick={onCollapseToggle}
           aria-expanded={false}
+          aria-controls={cloudId}
           className={cn(
             'inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-sm transition-colors',
             'duration-[var(--duration-fast)]',
@@ -103,7 +107,12 @@ export function TagStrip({
 
   // Expanded / default mode: full cloud.
   return (
-    <div className={cn('flex flex-wrap gap-2', className)} role="group" aria-label="Tag filters">
+    <div
+      id={cloudId}
+      className={cn('flex flex-wrap gap-2', className)}
+      role="group"
+      aria-label={t('search.tag_filters_label')}
+    >
       {tags.map(({ tag, n }) => {
         const active = selected.includes(tag);
         return <TagChip key={tag} tag={tag} n={n} active={active} onToggle={onToggle} />;
@@ -114,6 +123,7 @@ export function TagStrip({
           type="button"
           onClick={onCollapseToggle}
           aria-expanded={true}
+          aria-controls={cloudId}
           className={cn(
             'inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-sm transition-colors',
             'duration-[var(--duration-fast)]',
