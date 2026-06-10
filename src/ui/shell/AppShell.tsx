@@ -6,10 +6,62 @@ import { Link, Outlet } from '@tanstack/react-router';
 import { Home, Search, Settings, Sparkles, Upload, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const NAV_CLASS = cn(
+// Shared base classes for top-bar nav links (desktop).
+const TOP_NAV_CLASS = cn(
   'inline-flex items-center gap-1.5 px-2 md:px-3 py-2 rounded-[var(--radius-pill)]',
   'text-sm text-ink hover:bg-paper-2 transition-colors duration-[var(--duration-fast)]',
 );
+const TOP_NAV_ACTIVE_CLASS = 'bg-paper-2 text-aubergine';
+
+// Bottom tab bar link classes (mobile).
+const TAB_CLASS = cn(
+  'flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-[var(--radius-pill)]',
+  'text-xs text-ink hover:text-aubergine transition-colors duration-[var(--duration-fast)]',
+);
+const TAB_ACTIVE_CLASS = 'text-aubergine';
+
+// ---------------------------------------------------------------------------
+// Shared nav item descriptors — avoids duplicating the five primary links.
+// ---------------------------------------------------------------------------
+type NavItem =
+  | {
+      kind: 'household';
+      label: string;
+      icon: React.ReactNode;
+      to: '/h/$householdId';
+      params: { householdId: string };
+      exact: boolean;
+    }
+  | {
+      kind: 'household';
+      label: string;
+      icon: React.ReactNode;
+      to: '/h/$householdId/import';
+      params: { householdId: string };
+      exact: boolean;
+    }
+  | {
+      kind: 'household';
+      label: string;
+      icon: React.ReactNode;
+      to: '/h/$householdId/draft';
+      params: { householdId: string };
+      exact: boolean;
+    }
+  | {
+      kind: 'simple';
+      label: string;
+      icon: React.ReactNode;
+      to: '/search';
+      exact: boolean;
+    }
+  | {
+      kind: 'simple';
+      label: string;
+      icon: React.ReactNode;
+      to: '/profile';
+      exact: boolean;
+    };
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -25,20 +77,79 @@ export function AppShell() {
   // is turned on (off by default in MVP production per docs/15).
   const followsEnabled = useFeatureFlag('follows_enabled');
 
+  // ---------------------------------------------------------------------------
+  // Five primary destinations shared between top bar (desktop) and bottom tab
+  // bar (mobile). Defined once here to avoid duplication.
+  // ---------------------------------------------------------------------------
+  const primaryItems: NavItem[] = [
+    ...(householdId
+      ? ([
+          {
+            kind: 'household',
+            label: isSolo ? t('nav.my_recipes') : t('nav.home'),
+            icon: <Home size={20} strokeWidth={1.5} />,
+            to: '/h/$householdId',
+            params: { householdId },
+            exact: true,
+          },
+        ] as NavItem[])
+      : []),
+    {
+      kind: 'simple',
+      label: t('search.nav'),
+      icon: <Search size={20} strokeWidth={1.5} />,
+      to: '/search',
+      exact: false,
+    },
+    ...(householdId
+      ? ([
+          {
+            kind: 'household',
+            label: t('nav.import'),
+            icon: <Upload size={20} strokeWidth={1.5} />,
+            to: '/h/$householdId/import',
+            params: { householdId },
+            exact: false,
+          },
+          {
+            kind: 'household',
+            label: t('chat.nav'),
+            icon: <Sparkles size={20} strokeWidth={1.5} />,
+            to: '/h/$householdId/draft',
+            params: { householdId },
+            exact: false,
+          },
+        ] as NavItem[])
+      : []),
+    {
+      kind: 'simple',
+      label: t('nav.profile'),
+      icon: <User size={20} strokeWidth={1.5} />,
+      to: '/profile',
+      exact: false,
+    },
+  ];
+
   return (
     <div className="min-h-dvh">
+      {/* ------------------------------------------------------------------ */}
+      {/* Top header                                                           */}
+      {/* ------------------------------------------------------------------ */}
       <header className="sticky top-0 z-30 bg-paper/95 backdrop-blur border-b border-cream-line">
         <nav className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
           <Link to="/" className="font-display text-xl md:text-2xl text-aubergine shrink-0">
             {t('app.name')}
           </Link>
           <ul className="flex items-center gap-0 md:gap-1">
+            {/* Primary destinations — hidden on mobile (moved to bottom tab bar). */}
             {householdId && (
-              <li>
+              <li className="hidden md:flex">
                 <Link
                   to="/h/$householdId"
                   params={{ householdId }}
-                  className={NAV_CLASS}
+                  className={TOP_NAV_CLASS}
+                  activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  activeOptions={{ exact: true }}
                   aria-label={isSolo ? t('nav.my_recipes') : t('nav.home')}
                 >
                   <Home size={16} strokeWidth={1.5} />
@@ -48,18 +159,24 @@ export function AppShell() {
                 </Link>
               </li>
             )}
-            <li>
-              <Link to="/search" className={NAV_CLASS} aria-label={t('search.nav')}>
+            <li className="hidden md:flex">
+              <Link
+                to="/search"
+                className={TOP_NAV_CLASS}
+                activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                aria-label={t('search.nav')}
+              >
                 <Search size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('search.nav')}</span>
               </Link>
             </li>
             {householdId && (
-              <li>
+              <li className="hidden md:flex">
                 <Link
                   to="/h/$householdId/import"
                   params={{ householdId }}
-                  className={NAV_CLASS}
+                  className={TOP_NAV_CLASS}
+                  activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
                   aria-label={t('nav.import')}
                 >
                   <Upload size={16} strokeWidth={1.5} />
@@ -68,11 +185,12 @@ export function AppShell() {
               </li>
             )}
             {householdId && (
-              <li>
+              <li className="hidden md:flex">
                 <Link
                   to="/h/$householdId/draft"
                   params={{ householdId }}
-                  className={NAV_CLASS}
+                  className={TOP_NAV_CLASS}
+                  activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
                   aria-label={t('chat.nav')}
                 >
                   <Sparkles size={16} strokeWidth={1.5} />
@@ -80,9 +198,15 @@ export function AppShell() {
                 </Link>
               </li>
             )}
+            {/* Secondary / utility items — visible on all viewports. */}
             {followsEnabled && (
               <li>
-                <Link to="/following" className={NAV_CLASS} aria-label={t('nav.following')}>
+                <Link
+                  to="/following"
+                  className={TOP_NAV_CLASS}
+                  activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  aria-label={t('nav.following')}
+                >
                   <Users size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.following')}</span>
                 </Link>
@@ -94,7 +218,8 @@ export function AppShell() {
                   to="/h/$householdId/settings"
                   params={{ householdId }}
                   search={{ tab: 'general' }}
-                  className={NAV_CLASS}
+                  className={TOP_NAV_CLASS}
+                  activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
                   aria-label={t('nav.household_settings')}
                 >
                   <Settings size={16} strokeWidth={1.5} />
@@ -102,8 +227,13 @@ export function AppShell() {
                 </Link>
               </li>
             )}
-            <li>
-              <Link to="/profile" className={NAV_CLASS} aria-label={t('nav.profile')}>
+            <li className="hidden md:flex">
+              <Link
+                to="/profile"
+                className={TOP_NAV_CLASS}
+                activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                aria-label={t('nav.profile')}
+              >
                 <User size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('nav.profile')}</span>
               </Link>
@@ -114,7 +244,56 @@ export function AppShell() {
           </ul>
         </nav>
       </header>
-      <Outlet />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Page content — extra bottom padding on mobile for the bottom tab bar */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+        <Outlet />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Mobile bottom tab bar (hidden on md+)                               */}
+      {/* ------------------------------------------------------------------ */}
+      <nav
+        aria-label={t('app.name')}
+        className={cn(
+          'fixed bottom-0 left-0 right-0 z-30 md:hidden',
+          'bg-paper/95 backdrop-blur border-t border-cream-line',
+          'pb-[env(safe-area-inset-bottom,0px)]',
+        )}
+      >
+        <ul className="flex items-stretch justify-around px-1 py-1">
+          {primaryItems.map((item) => (
+            <li key={item.to} className="flex-1">
+              {item.kind === 'household' ? (
+                <Link
+                  to={item.to}
+                  params={item.params}
+                  className={TAB_CLASS}
+                  activeProps={{ className: TAB_ACTIVE_CLASS }}
+                  activeOptions={{ exact: item.exact }}
+                  aria-label={item.label}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              ) : (
+                <Link
+                  to={item.to}
+                  className={TAB_CLASS}
+                  activeProps={{ className: TAB_ACTIVE_CLASS }}
+                  activeOptions={{ exact: item.exact }}
+                  aria-label={item.label}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
   );
 }
