@@ -15,6 +15,7 @@ import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { useCachedTranslations, useTranslateRecipe } from '@/lib/queries/translations';
+import { cn } from '@/ui/cn';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
@@ -332,7 +333,14 @@ function RecipeDetailPage() {
       )}
 
       {displayed.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 -mt-4 mb-8">
+        <div
+          className={cn(
+            'flex flex-wrap gap-2 mb-8',
+            // Tuck the chips up under the description; without one, keep the
+            // title row's own gap intact.
+            displayed.recipe.description && '-mt-4',
+          )}
+        >
           {displayed.tags.map((tag) => (
             <Badge key={tag} variant="outline">
               {tag}
