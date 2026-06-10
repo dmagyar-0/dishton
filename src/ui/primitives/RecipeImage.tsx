@@ -1,4 +1,4 @@
-import { useImageUrl } from '@/lib/queries/storage';
+import { isRemoteImageUrl, useImageUrl } from '@/lib/queries/storage';
 import type { ImgHTMLAttributes } from 'react';
 
 export type RecipeImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
@@ -13,6 +13,11 @@ export type RecipeImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> 
 export function RecipeImage({ path, alt = '', ...rest }: RecipeImageProps) {
   const url = useImageUrl(path);
   if (!url) return null;
+  // Storage-bucket images are fetched with CORS so the service worker caches
+  // a real 200 instead of an opaque response (opaque entries are quota-padded
+  // ~7 MB each in Chromium). Legacy remote heroes stay no-cors — third-party
+  // hosts don't reliably send CORS headers and would fail to render at all.
+  const crossOrigin = path && !isRemoteImageUrl(path) ? ('anonymous' as const) : undefined;
   // `alt` is positioned last so a spread rest can never override it.
-  return <img {...rest} src={url} alt={alt} />;
+  return <img crossOrigin={crossOrigin} {...rest} src={url} alt={alt} />;
 }

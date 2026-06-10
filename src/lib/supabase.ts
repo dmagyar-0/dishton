@@ -23,6 +23,12 @@ export const supabase = createClient(url ?? 'http://localhost:54321', anon ?? 'a
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    // PKCE: email links and OAuth callbacks land with a single-use `?code=`
+    // that is exchanged server-side, instead of the implicit flow's
+    // `#access_token=...&refresh_token=...` fragment. Bearer tokens in the
+    // URL leak into anything that records location.href (Sentry transactions,
+    // history sync) and enable login-CSRF via a crafted fragment link.
+    flowType: 'pkce',
   },
   db: { schema: 'app' },
   // Bound every Supabase HTTP request with a timeout. Without it, a request

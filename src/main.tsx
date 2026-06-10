@@ -3,7 +3,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { bootstrapAuth } from './lib/auth';
+import { bootstrapAuth, registerQueryClient, useAuth } from './lib/auth';
 import { installSessionRecovery } from './lib/session-recovery';
 import { initSentry } from './observability/sentry';
 import { routeTree } from './routeTree.gen';
@@ -21,6 +21,10 @@ const queryClient = new QueryClient({
 // the foreground, so a mobile resume after backgrounding self-heals instead of
 // leaving a stuck view that needs a manual reload. See session-recovery.ts.
 installSessionRecovery(queryClient);
+
+// Sign-out clears the query cache so the next account on this device can't
+// read the previous user's cached recipes. See clearUserScopedState in auth.ts.
+registerQueryClient(queryClient);
 
 const router = createRouter({
   routeTree,
@@ -45,6 +49,11 @@ if (!rootEl) throw new Error('root element missing');
 void bootstrapAuth()
   .catch((err) => {
     console.error('[auth] bootstrap failed', err);
+    // Fail closed: without this the store never hydrates and every route
+    // guard silently no-ops (guards return early pre-hydration). A hydrated
+    // signed-out state sends the visitor to /auth/login instead.
+    useAuth.getState().setSession(null);
+    useAuth.getState().setMemberships([]);
   })
   .finally(() => {
     createRoot(rootEl).render(

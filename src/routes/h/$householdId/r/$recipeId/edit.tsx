@@ -8,6 +8,7 @@ import {
 } from '@/lib/queries/recipes';
 import { RECIPE_IMAGES_BUCKET, staleHeroImagePath } from '@/lib/queries/storage';
 import { supabase } from '@/lib/supabase';
+import { logErrorBreadcrumb } from '@/observability/sentry';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import {
@@ -199,10 +200,13 @@ function RecipeEditPage() {
         });
         return;
       }
+      // Raw PostgREST messages can embed constraint names and row values —
+      // keep them in the Sentry breadcrumb for triage, never in the toast.
+      logErrorBreadcrumb('recipe edit save failed', { detail });
       push({
         variant: 'error',
         title: t('recipe.edit_failed_title'),
-        description: detail ?? t('recipe.edit_failed_body'),
+        description: t('recipe.edit_failed_body'),
       });
     }
   };

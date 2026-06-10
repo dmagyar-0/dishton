@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 export const ImportUrlSchema = z.object({
-  url: z.string().url(),
+  // .url() alone admits javascript:/file:/data: — the Edge Function enforces
+  // http(s) too (SSRF guard); this just fails fast in the form.
+  url: z
+    .string()
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), { message: 'invalid_url' }),
 });
 export type ImportUrlInput = z.infer<typeof ImportUrlSchema>;
 

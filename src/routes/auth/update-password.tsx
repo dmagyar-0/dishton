@@ -14,19 +14,25 @@ export const Route = createFileRoute('/auth/update-password')({
   component: UpdatePasswordPage,
 });
 
-// Status of the recovery session the Supabase client builds from the URL
-// fragment (`#access_token=...&type=recovery`). The Supabase JS client emits
-// `PASSWORD_RECOVERY` once it detects the recovery hash; we wait for that
-// before allowing the form to submit, so a stale logged-in session can't be
-// used to silently change the password.
+// Status of the session this page submits against. Recovery links arrive as a
+// single-use PKCE `?code=` which the Supabase client exchanges on load
+// (emitting PASSWORD_RECOVERY / SIGNED_IN); the exchange may complete before
+// or after this component mounts, so we listen for the events AND poll
+// getSession.
 //
-// `pending` -> we're still waiting for the client to process the URL hash.
-// `ready`   -> recovery session established; the form is usable.
+// Honest scope note: ANY authenticated session enables the form — that is
+// Supabase's default updateUser semantics, and the poll below intentionally
+// accepts an existing session (a logged-in user may navigate here directly).
+// This page does NOT add a recovery-link-only gate; protecting a logged-in
+// session on an unlocked device is out of scope for the web client.
+//
+// `pending` -> no session yet (exchange still running, or no/expired link).
+// `ready`   -> session present; the form is usable.
 // We deliberately do NOT hard-fail to a "link expired" dead-end on a fixed
-// timer: on a slow connection detectSessionInUrl can take several seconds, and
+// timer: on a slow connection the code exchange can take several seconds, and
 // declaring a valid link "expired" is the worse error. Instead, after a grace
 // period we surface a non-destructive "having trouble?" affordance while the
-// PASSWORD_RECOVERY event can still promote us to `ready` at any moment.
+// auth events can still promote us to `ready` at any moment.
 type RecoveryStatus = 'pending' | 'ready';
 
 // Show the "having trouble?" help once the recovery hash has clearly failed to
