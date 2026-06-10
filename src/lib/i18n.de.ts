@@ -18,7 +18,7 @@ export default {
     view_chat: 'Zurück zum Chat',
     history: 'Deine Entwürfe',
     new_chat: 'Neuer Chat',
-    history_empty: 'Noch keine Entwürfe — starte oben einen.',
+    history_empty: 'Noch keine Entwürfe.',
     untitled_draft: 'Unbenannter Entwurf',
     saved_badge: 'Gespeichert',
     rename: 'Umbenennen',
@@ -29,6 +29,12 @@ export default {
       'Damit werden der Chat und seine Nachrichten entfernt. Das kann nicht rückgängig gemacht werden.',
     confirm_delete: 'Löschen',
     cancel: 'Abbrechen',
+    empty_heading: 'Rezept mit KI entwerfen',
+    empty_body:
+      'Beschreibe, was du kochen möchtest — die KI erstellt ein Rezept während des Chats.',
+    suggestion_seasonal: 'Etwas Saisonales mit Wurzelgemüse',
+    suggestion_quick: 'Ein schnelles Abendessen in unter 30 Minuten',
+    suggestion_vegetarian: 'Ein sättigendes vegetarisches Gericht für vier Personen',
   },
   nav: {
     home: 'Start',

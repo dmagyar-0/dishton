@@ -5,12 +5,26 @@ import { useTranslation } from 'react-i18next';
 export function ChatComposer({
   onSend,
   disabled,
+  value,
+  onValueChange,
 }: {
   onSend: (text: string) => void;
   disabled: boolean;
+  /** Optional controlled value — lets parent seed the textarea (e.g. suggestion chips). */
+  value?: string;
+  onValueChange?: (v: string) => void;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState('');
+  const [internal, setInternal] = useState('');
+
+  const text = value !== undefined ? value : internal;
+  const handleChange = (v: string) => {
+    if (onValueChange) {
+      onValueChange(v);
+    } else {
+      setInternal(v);
+    }
+  };
 
   return (
     <form
@@ -20,7 +34,7 @@ export function ChatComposer({
         const trimmed = text.trim();
         if (trimmed) {
           onSend(trimmed);
-          setText('');
+          handleChange('');
         }
       }}
     >
@@ -30,7 +44,7 @@ export function ChatComposer({
         value={text}
         placeholder={t('chat.placeholder')}
         aria-label={t('chat.placeholder')}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
       />
       <Button type="submit" disabled={disabled || !text.trim()}>
         {t('chat.send')}

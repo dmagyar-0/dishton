@@ -10,6 +10,7 @@ import {
 import { cn } from '@/ui/cn';
 import { Button } from '@/ui/primitives/Button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/ui/primitives/Drawer';
+import { EmptyState } from '@/ui/primitives/EmptyState';
 import { useToast } from '@/ui/primitives/Toast';
 import { DraftPreviewCard } from '@/ui/recipe/DraftPreviewCard';
 import { ChatComposer } from '@/ui/recipe/chat/ChatComposer';
@@ -25,13 +26,21 @@ export const Route = createFileRoute('/h/$householdId/draft')({
   component: DraftPage,
 });
 
-function DraftPage() {
+const SUGGESTIONS = [
+  'chat.suggestion_seasonal',
+  'chat.suggestion_quick',
+  'chat.suggestion_vegetarian',
+] as const;
+
+// Exported for co-located component tests.
+export function DraftPage() {
   const { householdId } = Route.useParams();
   const { t } = useTranslation();
   const navigate = useNavigate({ from: Route.fullPath });
   const { push } = useToast();
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'chat' | 'draft'>('chat');
+  const [composerValue, setComposerValue] = useState('');
 
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -100,6 +109,12 @@ function DraftPage() {
   const draft = session.data?.current_draft ?? null;
   const thinking = send.isPending || awaitingReply || session.data?.status === 'running';
 
+  // The chat is "started" once the session exists or messages have loaded. We
+  // use this to decide whether to show the empty state vs. the live thread, and
+  // whether to show the Save button at all.
+  const hasMessages = (messages.data?.length ?? 0) > 0;
+  const chatStarted = chatSessionId !== null || hasMessages;
+
   const onSend = (text: string) => {
     send.mutate(
       { chatSessionId, message: text },
@@ -163,15 +178,53 @@ function DraftPage() {
         <aside className="hidden md:block md:w-64 md:shrink-0">{sidebar}</aside>
 
         <div className="flex-1 grid md:grid-cols-2 gap-6">
+          {/* Chat column: flex column so thread grows and input pins to the bottom */}
           <div
-            className={cn('flex-col gap-4', mobileView === 'chat' ? 'flex' : 'hidden', 'md:flex')}
+            className={cn(
+              'flex-col gap-4 min-h-[60vh]',
+              mobileView === 'chat' ? 'flex' : 'hidden',
+              'md:flex',
+            )}
           >
-            <div className="min-h-[40vh]">
-              <ChatThread messages={messages.data ?? []} thinking={thinking} />
+            <div className="flex-1 flex flex-col justify-end">
+              {hasMessages ? (
+                <ChatThread messages={messages.data ?? []} thinking={thinking} />
+              ) : (
+                <EmptyState
+                  title={t('chat.empty_heading')}
+                  description={t('chat.empty_body')}
+                  action={
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {SUGGESTIONS.map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setComposerValue(t(key))}
+                          className={cn(
+                            'rounded-[var(--radius-pill)] border border-cream-line bg-paper-2 px-3 py-1.5',
+                            'font-body text-sm text-ink',
+                            'transition-colors duration-[var(--duration-fast)]',
+                            'hover:bg-saffron/10 hover:border-saffron/40',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50',
+                          )}
+                        >
+                          {t(key)}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                />
+              )}
             </div>
-            <ChatComposer onSend={onSend} disabled={send.isPending} />
+            <ChatComposer
+              onSend={onSend}
+              disabled={send.isPending}
+              value={composerValue}
+              onValueChange={setComposerValue}
+            />
           </div>
 
+          {/* Draft panel: shown when there's a draft or a chat in progress */}
           <div className={cn(mobileView === 'draft' ? 'block' : 'hidden', 'md:block')}>
             <h2 className="font-display text-xl mb-2">{t('chat.draft_heading')}</h2>
             {draft ? (
@@ -179,9 +232,11 @@ function DraftPage() {
             ) : (
               <p className="text-ink-soft">{t('chat.no_draft_yet')}</p>
             )}
-            <Button className="mt-6 w-full" disabled={!draft || save.isPending} onClick={onSave}>
-              {t('chat.save')}
-            </Button>
+            {chatStarted && (
+              <Button className="mt-6 w-full" disabled={!draft || save.isPending} onClick={onSave}>
+                {t('chat.save')}
+              </Button>
+            )}
           </div>
         </div>
       </div>
