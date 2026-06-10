@@ -15,6 +15,9 @@ const OPTIONAL = [
   'LOG_DRAIN_TOKEN',
   'AI_MOCK_MODE',
   'SENTRY_DSN_FUNCTIONS',
+  // Comma-separated origin allowlist for CORS (e.g. the production app URL).
+  // Unset = echo the request origin (local stacks, tests).
+  'ALLOWED_ORIGINS',
   // Recipe-chat agent (Managed Agents). Optional so unrelated functions don't
   // fail cold start when these aren't configured; the recipe-chat functions
   // guard their presence at use time.

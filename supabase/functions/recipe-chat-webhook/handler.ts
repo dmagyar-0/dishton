@@ -1,8 +1,17 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env } from '../_shared/env.ts';
 import { verifyWebhook } from '../_shared/agents/webhook.ts';
-import { listEvents, sendToolResult } from '../_shared/agents/transport.ts';
+import { archiveSession, listEvents, sendToolResult } from '../_shared/agents/transport.ts';
 import { getRecipe, listMyRecipes, validateDraft } from '../_shared/agents/recipe-tools.ts';
+import { withRateBudget } from '../_shared/ai/rate-budget.ts';
+
+// Cost controls for the webhook-driven agent loop. recipe-chat-send reserves
+// a flat per-turn estimate, but every status_idled delivery here represents a
+// real agent cycle (reasoning + web_search/web_fetch) that would otherwise be
+// unmetered: debit the session creator's budget per cycle and hard-cap cycles
+// per session so a runaway tool loop can't spend indefinitely.
+const CYCLE_TOKENS = 1500;
+const MAX_AGENT_CYCLES = 24;
 
 function admin() {
   return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -33,7 +42,9 @@ export const handler = async (req: Request): Promise<Response> => {
   const db = admin();
   const { data: session } = await db
     .from('recipe_chat_sessions')
-    .select('id, household_id, anthropic_session_id, events_cursor, draft_repair_attempts')
+    .select(
+      'id, household_id, created_by, anthropic_session_id, events_cursor, draft_repair_attempts, agent_cycles',
+    )
     .eq('anthropic_session_id', anthropicSessionId)
     .single();
   if (!session) return new Response(null, { status: 204 }); // not ours
@@ -52,6 +63,38 @@ export const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { status: 204 });
   }
   if (type !== 'session.status_idled') return new Response(null, { status: 204 });
+
+  // Hard cap on agent cycles per session: terminate instead of letting a
+  // tool loop spin forever.
+  const cycles = ((session.agent_cycles as number | null) ?? 0) + 1;
+  if (cycles > MAX_AGENT_CYCLES) {
+    await db.from('recipe_chat_sessions').update({ status: 'error' }).eq('id', session.id);
+    await db.from('recipe_chat_messages').insert({
+      chat_session_id: session.id,
+      role: 'agent',
+      content: 'This chat reached its turn limit. Please start a new draft.',
+    });
+    try {
+      await archiveSession(anthropicSessionId);
+    } catch {
+      /* best-effort */
+    }
+    return new Response(null, { status: 204 });
+  }
+
+  // Debit the creator's per-minute budget for this cycle. On denial, return a
+  // retryable status WITHOUT advancing the cursor or cycle count — the
+  // webhook is redelivered with backoff and the cycle resumes once the window
+  // clears, instead of killing the session over a transient rate limit.
+  const cycleBudget = await withRateBudget(
+    session.created_by as string,
+    CYCLE_TOKENS,
+    async () => true,
+  );
+  if (cycleBudget.status === 'rate_limit') {
+    return new Response('budget exhausted, retry later', { status: 429 });
+  }
+  await db.from('recipe_chat_sessions').update({ agent_cycles: cycles }).eq('id', session.id);
 
   // Drain new events past the cursor and resolve any pending tool calls.
   const events = await listEvents(anthropicSessionId);

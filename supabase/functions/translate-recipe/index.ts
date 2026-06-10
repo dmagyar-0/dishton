@@ -9,7 +9,7 @@ import { buildTranslationCacheKey } from '../_shared/domain/translation-key.ts';
 import { HttpError, corsHeaders, jsonResponse, resolveCaller } from '../_shared/auth.ts';
 import { env } from '../_shared/env.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
-import { withRateBudget } from '../_shared/ai/rate-budget.ts';
+import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { translatePrompt } from '../_shared/ai/prompts.ts';
 import { log, logAiCall } from '../_shared/log.ts';
 
@@ -140,6 +140,12 @@ serve(async (req: Request) => {
     }
     const result = budget.value!;
     if (!result.ok) {
+      // `upstream` means the model call itself failed — nothing was spent, so
+      // hand the reservation back. parse/schema failures consumed real tokens
+      // and stay charged.
+      if (result.reason === 'upstream') {
+        await refundBudgets(caller.profileId, 2500);
+      }
       return jsonResponse(
         { error: 'translation_failed', reason: result.reason, request_id: requestId },
         502,

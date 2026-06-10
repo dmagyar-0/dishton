@@ -17,10 +17,29 @@ Deno.test('corsHeaders allow-headers covers every header supabase-js sends', () 
   }
 });
 
-Deno.test('corsHeaders echoes the request origin when present', () => {
+Deno.test('corsHeaders echoes the request origin when no allowlist is configured', () => {
   assertEquals(
     corsHeaders('https://app.example')['access-control-allow-origin'],
     'https://app.example',
   );
   assertEquals(corsHeaders(null)['access-control-allow-origin'], '*');
+});
+
+Deno.test('corsHeaders enforces the allowlist when configured', () => {
+  const allow = ['https://dishton.app', 'https://staging.dishton.app'];
+  assertEquals(
+    corsHeaders('https://dishton.app', allow)['access-control-allow-origin'],
+    'https://dishton.app',
+  );
+  assertEquals(
+    corsHeaders('https://staging.dishton.app', allow)['access-control-allow-origin'],
+    'https://staging.dishton.app',
+  );
+  // Unknown origins get the first allowed entry — the browser then fails the
+  // CORS check instead of receiving a reflected wildcard.
+  assertEquals(
+    corsHeaders('https://evil.example', allow)['access-control-allow-origin'],
+    'https://dishton.app',
+  );
+  assertEquals(corsHeaders(null, allow)['access-control-allow-origin'], 'https://dishton.app');
 });

@@ -48,6 +48,25 @@ export async function getCallerPreferredLanguage(
   return (data?.preferred_language as string | undefined) ?? 'en';
 }
 
+// Assert the caller belongs to the household they are targeting. RLS already
+// confines the sensitive writes (save_recipe et al. re-check editorship), but
+// the import/chat functions accept a client-chosen household_id and should
+// fail fast with a clear 403 instead of leaking a generic 500 from a deeper
+// RLS denial. Reads through the caller-scoped client, so RLS itself answers.
+export async function assertHouseholdMember(
+  client: AppClient,
+  profileId: string,
+  householdId: string,
+): Promise<void> {
+  const { data } = await client
+    .from('household_members')
+    .select('household_id')
+    .eq('household_id', householdId)
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (!data) throw new HttpError(403, 'not_household_member');
+}
+
 // Read the household's allowed tag whitelist. The structuring prompt is
 // constrained to pick tags only from this list — see
 // supabase/functions/_shared/ai/prompts.ts. RLS restricts the row to members
@@ -89,9 +108,45 @@ export function jsonResponse(body: unknown, status = 200, headers: Record<string
   });
 }
 
-export function corsHeaders(origin: string | null): Record<string, string> {
+// Parse the ALLOWED_ORIGINS secret (comma-separated origins). null means "not
+// configured" — local stacks and tests then keep the permissive echo below.
+export function parseAllowedOrigins(raw: string | undefined): string[] | null {
+  if (!raw) return null;
+  const list = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length > 0 ? list : null;
+}
+
+function configuredOrigins(): string[] | null {
+  // env throws on missing REQUIRED vars; tests run without any of them set,
+  // and an unconfigured allowlist must not take the function down.
+  try {
+    return parseAllowedOrigins(env.ALLOWED_ORIGINS);
+  } catch {
+    return null;
+  }
+}
+
+export function corsHeaders(
+  origin: string | null,
+  allowedOrigins?: string[] | null,
+): Record<string, string> {
+  const allowlist = allowedOrigins === undefined ? configuredOrigins() : allowedOrigins;
+  // With ALLOWED_ORIGINS set (production), only echo a known origin; an
+  // unknown one gets the first allowed entry, which makes the browser fail
+  // the CORS check instead of granting a reflected wildcard. These endpoints
+  // authenticate via the Authorization header (no cookies), so this is
+  // defence in depth rather than a CSRF gate.
+  const allowOrigin =
+    allowlist === null
+      ? (origin ?? '*')
+      : origin !== null && allowlist.includes(origin)
+        ? origin
+        : (allowlist[0] ?? '*');
   return {
-    'access-control-allow-origin': origin ?? '*',
+    'access-control-allow-origin': allowOrigin,
     'access-control-allow-methods': 'POST, OPTIONS',
     // supabase-js attaches `apikey` and `x-client-info` to every
     // functions.invoke call. Browsers preflight-block the POST if either is

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   HttpError,
+  assertHouseholdMember,
   corsHeaders,
   getHouseholdAllowedTags,
   jsonResponse,
@@ -96,6 +97,11 @@ export const handler = async (req: Request): Promise<Response> => {
   try {
     const caller = await resolveCaller(req);
     const body = Body.parse(await req.json());
+
+    // Sessions and messages are scoped to this household; reject a household
+    // the caller doesn't belong to before reserving budget or creating
+    // anything. (RLS independently blocks the writes; this gives a clear 403.)
+    await assertHouseholdMember(caller.client, caller.profileId, body.household_id);
 
     // Reserve AI budget per turn (mirrors the import functions).
     const budget = await withRateBudget(caller.profileId, 4000, async () => true);
