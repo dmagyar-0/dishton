@@ -43,6 +43,8 @@ export default {
     import: 'Import',
     profile: 'Profil',
     household_settings: 'Einstellungen',
+    main_nav_label: 'Hauptnavigation',
+    tab_bar_label: 'Schnellnavigation',
   },
   auth: {
     login: 'Anmelden',

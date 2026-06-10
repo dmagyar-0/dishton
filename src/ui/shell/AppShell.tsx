@@ -7,18 +7,24 @@ import { Home, Search, Settings, Sparkles, Upload, User, Users } from 'lucide-re
 import { useTranslation } from 'react-i18next';
 
 // Shared base classes for top-bar nav links (desktop).
+// Note: text-ink is NOT here — it lives in TOP_NAV_INACTIVE_PROPS so it never
+// competes with text-aubergine in the active state (cascade-order issue).
 const TOP_NAV_CLASS = cn(
   'inline-flex items-center gap-1.5 px-2 md:px-3 py-2 rounded-[var(--radius-pill)]',
-  'text-sm text-ink hover:bg-paper-2 transition-colors duration-[var(--duration-fast)]',
+  'text-sm hover:bg-paper-2 transition-colors duration-[var(--duration-fast)]',
 );
 const TOP_NAV_ACTIVE_CLASS = 'bg-paper-2 text-aubergine';
+const TOP_NAV_INACTIVE_PROPS = { className: 'text-ink' };
 
 // Bottom tab bar link classes (mobile).
+// Note: text-ink is NOT here — it lives in TAB_INACTIVE_PROPS so active tabs
+// always show text-aubergine without a later-declared text-ink overriding it.
 const TAB_CLASS = cn(
   'flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-[var(--radius-pill)]',
-  'text-xs text-ink hover:text-aubergine transition-colors duration-[var(--duration-fast)]',
+  'text-xs hover:text-aubergine transition-colors duration-[var(--duration-fast)]',
 );
-const TAB_ACTIVE_CLASS = 'text-aubergine';
+const TAB_ACTIVE_CLASS = 'text-aubergine font-medium';
+const TAB_INACTIVE_PROPS = { className: 'text-ink' };
 
 // ---------------------------------------------------------------------------
 // Shared nav item descriptors — avoids duplicating the five primary links.
@@ -136,7 +142,10 @@ export function AppShell() {
       {/* Top header                                                           */}
       {/* ------------------------------------------------------------------ */}
       <header className="sticky top-0 z-30 bg-paper/95 backdrop-blur border-b border-cream-line">
-        <nav className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+        <nav
+          aria-label={t('nav.main_nav_label')}
+          className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2"
+        >
           <Link to="/" className="font-display text-xl md:text-2xl text-aubergine shrink-0">
             {t('app.name')}
           </Link>
@@ -149,6 +158,7 @@ export function AppShell() {
                   params={{ householdId }}
                   className={TOP_NAV_CLASS}
                   activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  inactiveProps={TOP_NAV_INACTIVE_PROPS}
                   activeOptions={{ exact: true }}
                   aria-label={isSolo ? t('nav.my_recipes') : t('nav.home')}
                 >
@@ -164,6 +174,7 @@ export function AppShell() {
                 to="/search"
                 className={TOP_NAV_CLASS}
                 activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                inactiveProps={TOP_NAV_INACTIVE_PROPS}
                 aria-label={t('search.nav')}
               >
                 <Search size={16} strokeWidth={1.5} />
@@ -177,6 +188,7 @@ export function AppShell() {
                   params={{ householdId }}
                   className={TOP_NAV_CLASS}
                   activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  inactiveProps={TOP_NAV_INACTIVE_PROPS}
                   aria-label={t('nav.import')}
                 >
                   <Upload size={16} strokeWidth={1.5} />
@@ -191,6 +203,7 @@ export function AppShell() {
                   params={{ householdId }}
                   className={TOP_NAV_CLASS}
                   activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  inactiveProps={TOP_NAV_INACTIVE_PROPS}
                   aria-label={t('chat.nav')}
                 >
                   <Sparkles size={16} strokeWidth={1.5} />
@@ -205,6 +218,7 @@ export function AppShell() {
                   to="/following"
                   className={TOP_NAV_CLASS}
                   activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  inactiveProps={TOP_NAV_INACTIVE_PROPS}
                   aria-label={t('nav.following')}
                 >
                   <Users size={16} strokeWidth={1.5} />
@@ -220,6 +234,7 @@ export function AppShell() {
                   search={{ tab: 'general' }}
                   className={TOP_NAV_CLASS}
                   activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                  inactiveProps={TOP_NAV_INACTIVE_PROPS}
                   aria-label={t('nav.household_settings')}
                 >
                   <Settings size={16} strokeWidth={1.5} />
@@ -232,6 +247,7 @@ export function AppShell() {
                 to="/profile"
                 className={TOP_NAV_CLASS}
                 activeProps={{ className: TOP_NAV_ACTIVE_CLASS }}
+                inactiveProps={TOP_NAV_INACTIVE_PROPS}
                 aria-label={t('nav.profile')}
               >
                 <User size={16} strokeWidth={1.5} />
@@ -256,7 +272,7 @@ export function AppShell() {
       {/* Mobile bottom tab bar (hidden on md+)                               */}
       {/* ------------------------------------------------------------------ */}
       <nav
-        aria-label={t('app.name')}
+        aria-label={t('nav.tab_bar_label')}
         className={cn(
           'fixed bottom-0 left-0 right-0 z-30 md:hidden',
           'bg-paper/95 backdrop-blur border-t border-cream-line',
@@ -272,6 +288,7 @@ export function AppShell() {
                   params={item.params}
                   className={TAB_CLASS}
                   activeProps={{ className: TAB_ACTIVE_CLASS }}
+                  inactiveProps={TAB_INACTIVE_PROPS}
                   activeOptions={{ exact: item.exact }}
                   aria-label={item.label}
                 >
@@ -283,6 +300,7 @@ export function AppShell() {
                   to={item.to}
                   className={TAB_CLASS}
                   activeProps={{ className: TAB_ACTIVE_CLASS }}
+                  inactiveProps={TAB_INACTIVE_PROPS}
                   activeOptions={{ exact: item.exact }}
                   aria-label={item.label}
                 >

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 // i18n: echo keys so assertions are bundle-independent.
@@ -47,6 +47,7 @@ vi.mock('@tanstack/react-router', () => ({
     search?: Record<string, string>;
     className?: string;
     activeProps?: Record<string, string>;
+    inactiveProps?: Record<string, string>;
     activeOptions?: Record<string, boolean>;
   }) => (
     <a href={to} aria-label={ariaLabel}>
@@ -87,9 +88,11 @@ describe('AppShell — solo user (one personal household)', () => {
 
   it('renders the bottom tab bar with exactly 5 labeled items', () => {
     render(<AppShell />);
-    // Bottom bar is the <nav> that is NOT the top header nav. We find all nav
-    // elements and look for the one containing the tab items.
-    // Each tab item has an aria-label on the Link.
+    // Scope to the bottom tab bar landmark by its aria-label (i18n key echoed).
+    const tabBar = screen.getByRole('navigation', { name: 'nav.tab_bar_label' });
+    const links = within(tabBar).getAllByRole('link');
+    expect(links).toHaveLength(5);
+    // Verify each expected label is present within the tab bar.
     const tabLabels = [
       'nav.my_recipes', // solo label for Home
       'search.nav',
@@ -98,10 +101,7 @@ describe('AppShell — solo user (one personal household)', () => {
       'nav.profile',
     ];
     for (const label of tabLabels) {
-      // getAllByLabelText because some labels appear in both top bar (desktop,
-      // hidden via CSS) and bottom bar — jsdom doesn't apply media queries.
-      const items = screen.getAllByLabelText(label);
-      expect(items.length).toBeGreaterThanOrEqual(1);
+      expect(within(tabBar).getByLabelText(label)).toBeInTheDocument();
     }
   });
 
