@@ -302,7 +302,7 @@ function RecipeDetailPage() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       {displayed.recipe.hero_image_path && (
-        <div className="aspect-[3/2] mb-8 overflow-hidden rounded-[var(--radius-lg)] border border-cream-line">
+        <div className="aspect-[3/2] md:aspect-auto md:max-h-[420px] mb-8 overflow-hidden rounded-[var(--radius-lg)] border border-cream-line">
           <RecipeImage
             path={displayed.recipe.hero_image_path}
             alt=""
@@ -310,14 +310,6 @@ function RecipeDetailPage() {
           />
         </div>
       )}
-
-      <div className="flex flex-wrap gap-2 mb-3">
-        {displayed.tags.map((tag) => (
-          <Badge key={tag} variant="outline">
-            {tag}
-          </Badge>
-        ))}
-      </div>
 
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <h1 className="font-display text-display leading-tight">{displayed.recipe.title}</h1>
@@ -334,9 +326,19 @@ function RecipeDetailPage() {
         )}
       </div>
       {displayed.recipe.description && (
-        <p className="text-lg text-ink-soft leading-relaxed mb-8 max-w-prose">
+        <p className="text-lg text-ink-soft leading-relaxed mb-4 max-w-prose">
           {displayed.recipe.description}
         </p>
+      )}
+
+      {displayed.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          {displayed.tags.map((tag) => (
+            <Badge key={tag} variant="outline">
+              {tag}
+            </Badge>
+          ))}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-8">
