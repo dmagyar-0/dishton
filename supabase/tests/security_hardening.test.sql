@@ -493,5 +493,28 @@ begin
             n >= 1 and remaining = 0);
 end $$;
 
+-- 9. handle_new_user honours the display_name signup metadata.
+do $$
+declare dn text;
+begin
+  insert into auth.users (instance_id, id, aud, role, email,
+                          encrypted_password, email_confirmed_at,
+                          raw_app_meta_data, raw_user_meta_data,
+                          created_at, updated_at) values
+    ('00000000-0000-0000-0000-000000000000',
+     '00000000-0000-0000-0000-0000000000b4',
+     'authenticated','authenticated','sh-meta@example.test',
+     crypt('test1234', gen_salt('bf')), now(),
+     '{"provider":"email","providers":["email"]}'::jsonb,
+     '{"display_name":"Visual Tester"}'::jsonb,
+     now(), now())
+  on conflict (id) do nothing;
+  select display_name into dn from app.profiles
+   where id = '00000000-0000-0000-0000-0000000000b4';
+  insert into _t_results(label, ok)
+    values ('handle_new_user uses signup display_name metadata',
+            dn = 'Visual Tester');
+end $$;
+
 -- Output the TAP rows.
 select label, ok from _t_results order by label;
