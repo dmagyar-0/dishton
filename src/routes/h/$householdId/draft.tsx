@@ -65,11 +65,13 @@ export function DraftPage() {
     setChatSessionId(id);
     setHistoryOpen(false);
     setMobileView('chat');
+    setComposerValue('');
   };
   const newChat = () => {
     setChatSessionId(null);
     setHistoryOpen(false);
     setMobileView('chat');
+    setComposerValue('');
   };
   const onRename = (id: string, title: string) =>
     rename.mutate(

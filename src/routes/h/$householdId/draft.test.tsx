@@ -83,6 +83,8 @@ vi.mock('@/ui/recipe/chat/ChatComposer', () => ({
   ),
 }));
 
+const mockNavigate = vi.fn();
+
 // Mock the router: useNavigate returns a no-op, createFileRoute returns a
 // factory whose result exposes useParams so the component can call it.
 vi.mock('@tanstack/react-router', () => {
@@ -96,7 +98,7 @@ vi.mock('@tanstack/react-router', () => {
   });
   return {
     createFileRoute,
-    useNavigate: () => () => vi.fn(),
+    useNavigate: () => mockNavigate,
     redirect: vi.fn(() => {
       throw new Error('redirect');
     }),
@@ -134,7 +136,7 @@ describe('DraftPage — empty state', () => {
     // Click the sidebar's "select session" button to set chatSessionId state.
     // There are two sidebar instances (desktop aside + mobile drawer); pick the first.
     const selectBtns = screen.getAllByTestId('select-session');
-    expect(selectBtns.length).toBeGreaterThan(0);
+    expect(selectBtns).toHaveLength(2); // desktop aside + mobile drawer
     await user.click(selectBtns[0] as HTMLElement);
 
     // With chatSessionId set and messages loading, the skeleton should render.

@@ -2,18 +2,19 @@ import { Button } from '@/ui/primitives/Button';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export function ChatComposer({
-  onSend,
-  disabled,
-  value,
-  onValueChange,
-}: {
+// Discriminated union: either both controlled props are provided or neither is.
+// This prevents the broken-read-only-textarea footgun of passing onValueChange
+// without value (or vice versa).
+type ComposerValueProps =
+  | { value?: undefined; onValueChange?: undefined }
+  | { value: string; onValueChange: (v: string) => void };
+
+type ChatComposerProps = {
   onSend: (text: string) => void;
   disabled: boolean;
-  /** Optional controlled value — lets parent seed the textarea (e.g. suggestion chips). */
-  value?: string;
-  onValueChange?: (v: string) => void;
-}) {
+} & ComposerValueProps;
+
+export function ChatComposer({ onSend, disabled, value, onValueChange }: ChatComposerProps) {
   const { t } = useTranslation();
   const [internal, setInternal] = useState('');
 
