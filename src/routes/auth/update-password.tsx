@@ -1,6 +1,7 @@
 import { authErrorCopy } from '@/lib/auth-errors';
 import { type UpdatePasswordInput, UpdatePasswordSchema } from '@/lib/forms/auth';
 import { supabase } from '@/lib/supabase';
+import { AuthWordmark } from '@/ui/auth/AuthWordmark';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
@@ -94,6 +95,7 @@ function UpdatePasswordPage() {
   return (
     <main className="min-h-dvh flex items-center justify-center px-4">
       <Card className="w-full max-w-md p-8">
+        <AuthWordmark />
         <h1 className="font-display text-3xl mb-6">{t('auth.update_password.title')}</h1>
         {done ? (
           <div className="space-y-4">

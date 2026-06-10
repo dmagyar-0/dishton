@@ -1,5 +1,6 @@
 import { type ResetInput, ResetSchema } from '@/lib/forms/auth';
 import { supabase } from '@/lib/supabase';
+import { AuthWordmark } from '@/ui/auth/AuthWordmark';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
@@ -36,6 +37,7 @@ function ResetPage() {
   return (
     <main className="min-h-dvh flex items-center justify-center px-4">
       <Card className="w-full max-w-md p-8">
+        <AuthWordmark />
         <h1 className="font-display text-3xl mb-6">{t('auth.forgot')}</h1>
         {sent ? (
           <p role="status">{t('auth.reset.sent')}</p>

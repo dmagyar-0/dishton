@@ -29,8 +29,8 @@ import { RecipeEditForm } from '@/ui/recipe/edit/RecipeEditForm';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Globe, Instagram } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Globe, ImagePlus, Instagram } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
@@ -237,6 +237,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
   const { register: registerImport } = useActiveImports();
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     register,
     handleSubmit,
@@ -387,10 +388,11 @@ function PhotoTab({ householdId }: { householdId: string }) {
         })}
       >
         <div className="space-y-1">
-          <label className="block font-body text-sm text-ink-soft">
-            {t('import.photo_pick_label')}
-          </label>
+          <p className="block font-body text-sm text-ink-soft">{t('import.photo_pick_label')}</p>
+          {/* Visually hidden — kept in DOM so Playwright setInputFiles and keyboard focus work. */}
           <input
+            ref={fileInputRef}
+            id="photo-file-input"
             type="file"
             accept={PHOTO_ACCEPTED_TYPES.join(',')}
             multiple
@@ -399,9 +401,19 @@ function PhotoTab({ householdId }: { householdId: string }) {
               // Reset so re-picking the same file after removal still fires onChange.
               e.target.value = '';
             }}
-            className="block w-full text-sm text-ink file:mr-3 file:rounded-[var(--radius-sm)] file:border-0 file:bg-saffron file:px-3 file:py-2 file:text-ink file:font-body hover:file:cursor-pointer disabled:opacity-60"
+            className="sr-only"
             disabled={isSubmitting || files.length >= PHOTO_MAX_COUNT}
           />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            leftIcon={<ImagePlus size={16} strokeWidth={1.5} />}
+            disabled={isSubmitting || files.length >= PHOTO_MAX_COUNT}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {t('import.photo_pick_label')}
+          </Button>
           <p className="text-xs text-ink-muted">
             {t('import.photo_hint', { max: PHOTO_MAX_COUNT })}
           </p>
