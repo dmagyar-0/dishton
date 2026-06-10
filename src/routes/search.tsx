@@ -7,6 +7,7 @@ import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeCardMedia } from '@/ui/recipe/RecipeCardMedia';
 import { SearchBar } from '@/ui/search/SearchBar';
+import type { CollapseProps } from '@/ui/search/TagStrip';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -105,14 +106,15 @@ function SearchPage() {
         <TagStrip
           tags={tags.data}
           selected={selected}
-          collapsed={cloudCollapsed}
-          onCollapseToggle={
-            cloudShouldCollapse ? () => setCloudManuallyExpanded((v) => !v) : undefined
-          }
+          {...(cloudShouldCollapse
+            ? {
+                collapsed: cloudCollapsed,
+                onCollapseToggle: () => setCloudManuallyExpanded((v) => !v),
+              }
+            : ({} as CollapseProps))}
           onToggle={(tag) => {
-            // When a tag is toggled while collapsed, always auto-collapse again
-            // so results remain visible. If the user has manually expanded, keep
-            // them in the expanded view.
+            // Chip toggles only update the URL params; collapse state stays
+            // derived from cloudShouldCollapse + cloudManuallyExpanded.
             nav({
               search: (prev: SearchParams) => {
                 const cur = Array.isArray(prev.tag) ? prev.tag : prev.tag ? [prev.tag] : [];

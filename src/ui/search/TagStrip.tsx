@@ -1,6 +1,11 @@
 import { cn } from '@/ui/cn';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+
+export type CollapseProps =
+  | { collapsed?: never; onCollapseToggle?: never }
+  | { collapsed: boolean; onCollapseToggle: () => void };
 
 export type TagStripProps = {
   tags: { tag: string; n?: number }[];
@@ -8,11 +13,8 @@ export type TagStripProps = {
   onToggle: (tag: string) => void;
   /** When true, collapse the full cloud to a single row with only active chips +
    *  a disclosure toggle. Pass `undefined` (default) to always show the full cloud. */
-  collapsed?: boolean;
-  /** Called when the disclosure toggle is clicked. Required when `collapsed` is provided. */
-  onCollapseToggle?: () => void;
   className?: string;
-};
+} & CollapseProps;
 
 function TagChip({
   tag,
@@ -41,10 +43,40 @@ function TagChip({
       <span>{tag}</span>
       {n != null && (
         <span className="text-xs opacity-60">
-          {'· '}
+          {'· '}
           {n}
         </span>
       )}
+    </button>
+  );
+}
+
+function DisclosureToggle({
+  expanded,
+  onClick,
+  controls,
+  label,
+}: {
+  expanded: boolean;
+  onClick: () => void;
+  controls: string;
+  label: string;
+}) {
+  const Icon = expanded ? ChevronUp : ChevronDown;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={expanded}
+      aria-controls={controls}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-sm transition-colors',
+        'duration-[var(--duration-fast)]',
+        'bg-paper-2 text-ink-soft border-cream-line hover:bg-paper',
+      )}
+    >
+      {label}
+      <Icon className="h-3 w-3" aria-hidden="true" />
     </button>
   );
 }
@@ -58,8 +90,9 @@ export function TagStrip({
   className,
 }: TagStripProps) {
   const { t } = useTranslation();
-  // Stable id linking the disclosure buttons to the chip group they toggle.
+  // Stable id linking the disclosure buttons to the full cloud panel they toggle.
   const cloudId = useId();
+  const panelId = `${cloudId}-panel`;
 
   if (tags.length === 0) return null;
 
@@ -68,7 +101,6 @@ export function TagStrip({
     const activeTags = tags.filter(({ tag }) => selected.includes(tag));
     return (
       <div
-        id={cloudId}
         className={cn('flex flex-wrap items-center gap-2', className)}
         role="group"
         aria-label={t('search.tag_filters_label')}
@@ -76,31 +108,12 @@ export function TagStrip({
         {activeTags.map(({ tag, n }) => (
           <TagChip key={tag} tag={tag} n={n} active onToggle={onToggle} />
         ))}
-        <button
-          type="button"
+        <DisclosureToggle
+          expanded={false}
           onClick={onCollapseToggle}
-          aria-expanded={false}
-          aria-controls={cloudId}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-sm transition-colors',
-            'duration-[var(--duration-fast)]',
-            'bg-paper-2 text-ink-soft border-cream-line hover:bg-paper',
-          )}
-        >
-          {t('search.filter_by_tag')}
-          <svg
-            className="h-3 w-3"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M2 4l4 4 4-4" />
-          </svg>
-        </button>
+          controls={panelId}
+          label={t('search.filter_by_tag')}
+        />
       </div>
     );
   }
@@ -108,8 +121,8 @@ export function TagStrip({
   // Expanded / default mode: full cloud.
   return (
     <div
-      id={cloudId}
-      className={cn('flex flex-wrap gap-2', className)}
+      id={panelId}
+      className={cn('flex flex-wrap items-center gap-2', className)}
       role="group"
       aria-label={t('search.tag_filters_label')}
     >
@@ -117,33 +130,14 @@ export function TagStrip({
         const active = selected.includes(tag);
         return <TagChip key={tag} tag={tag} n={n} active={active} onToggle={onToggle} />;
       })}
-      {/* When a collapse toggle is provided (query active) show a "less" button */}
+      {/* When a collapse toggle is provided (query active or tags selected), show a "less" button */}
       {onCollapseToggle && (
-        <button
-          type="button"
+        <DisclosureToggle
+          expanded={true}
           onClick={onCollapseToggle}
-          aria-expanded={true}
-          aria-controls={cloudId}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-sm transition-colors',
-            'duration-[var(--duration-fast)]',
-            'bg-paper-2 text-ink-soft border-cream-line hover:bg-paper',
-          )}
-        >
-          {t('search.hide_tag_filters')}
-          <svg
-            className="h-3 w-3"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M2 8l4-4 4 4" />
-          </svg>
-        </button>
+          controls={panelId}
+          label={t('search.hide_tag_filters')}
+        />
       )}
     </div>
   );

@@ -62,6 +62,13 @@ describe('TagStrip — full cloud (no collapse prop)', () => {
     const toggle = screen.getByRole('button', { name: /search\.hide_tag_filters/ });
     expect(toggle).toBeInTheDocument();
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // aria-controls must point at the full-cloud panel, not the button's own container.
+    const panelId = toggle.getAttribute('aria-controls');
+    expect(panelId).toBeTruthy();
+    // The panel element must exist in the DOM and have that id.
+    if (panelId) {
+      expect(document.getElementById(panelId)).toBeInTheDocument();
+    }
   });
 });
 
@@ -96,6 +103,9 @@ describe('TagStrip — collapsed mode', () => {
     const toggle = screen.getByRole('button', { name: /search\.filter_by_tag/ });
     expect(toggle).toBeInTheDocument();
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    // aria-controls must reference the same panel id as the expanded button uses.
+    // In collapsed mode the panel is not mounted, so we only verify the attribute exists.
+    expect(toggle.getAttribute('aria-controls')).toBeTruthy();
   });
 
   it('calls onCollapseToggle when disclosure toggle is clicked', async () => {
