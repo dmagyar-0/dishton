@@ -10,10 +10,11 @@ vi.mock('react-i18next', () => ({
 
 // Mutable state so individual tests can override.
 let messagesData: unknown[] = [];
+let messagesIsLoading = false;
 let sessionData: unknown = undefined;
 
 vi.mock('@/lib/queries/recipe-chat', () => ({
-  useChatMessages: () => ({ data: messagesData, isLoading: false }),
+  useChatMessages: () => ({ data: messagesData, isLoading: messagesIsLoading }),
   useChatSession: () => ({ data: sessionData }),
   useChatSessions: () => ({ data: [] }),
   useSendChatMessage: () => ({ mutate: vi.fn(), isPending: false }),
@@ -38,7 +39,22 @@ vi.mock('@/ui/recipe/DraftPreviewCard', () => ({
 }));
 
 vi.mock('@/ui/recipe/chat/ChatHistorySidebar', () => ({
-  ChatHistorySidebar: () => <div data-testid="chat-history-sidebar" />,
+  ChatHistorySidebar: ({
+    onSelect,
+  }: {
+    onSelect?: (id: string) => void;
+    sessions: unknown[];
+    activeId: string | null;
+    onNew: () => void;
+    onRename: (id: string, title: string) => void;
+    onDelete: (id: string) => void;
+  }) => (
+    <div data-testid="chat-history-sidebar">
+      <button type="button" data-testid="select-session" onClick={() => onSelect?.('session-123')}>
+        select session
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('@/ui/recipe/chat/ChatThread', () => ({
@@ -95,6 +111,7 @@ import { DraftPage } from './draft';
 describe('DraftPage — empty state', () => {
   it('shows the empty-state heading when there are no messages', () => {
     messagesData = [];
+    messagesIsLoading = false;
     sessionData = undefined;
 
     render(<DraftPage />);
@@ -103,8 +120,32 @@ describe('DraftPage — empty state', () => {
     expect(screen.queryByTestId('chat-thread')).not.toBeInTheDocument();
   });
 
+  it('shows a skeleton and hides the empty state while a selected session is loading messages', async () => {
+    // Simulate the flash-of-wrong-content bug: user selects an existing session
+    // from the history sidebar. The messages query refetches and isLoading is
+    // true while data is undefined. The empty state must NOT flash during this.
+    messagesData = [];
+    messagesIsLoading = true;
+    sessionData = undefined;
+
+    const user = userEvent.setup();
+    render(<DraftPage />);
+
+    // Click the sidebar's "select session" button to set chatSessionId state.
+    // There are two sidebar instances (desktop aside + mobile drawer); pick the first.
+    const selectBtns = screen.getAllByTestId('select-session');
+    expect(selectBtns.length).toBeGreaterThan(0);
+    await user.click(selectBtns[0] as HTMLElement);
+
+    // With chatSessionId set and messages loading, the skeleton should render.
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
+    // The empty-state heading must NOT flash during the loading phase.
+    expect(screen.queryByText('chat.empty_heading')).not.toBeInTheDocument();
+  });
+
   it('shows the chat thread when messages exist (not the empty state)', () => {
     messagesData = [{ id: '1', role: 'user', content: 'Hello', created_at: '' }];
+    messagesIsLoading = false;
     sessionData = undefined;
 
     render(<DraftPage />);
@@ -115,6 +156,7 @@ describe('DraftPage — empty state', () => {
 
   it('fills the composer when a suggestion chip is clicked (does not auto-send)', async () => {
     messagesData = [];
+    messagesIsLoading = false;
     sessionData = undefined;
 
     const user = userEvent.setup();
@@ -134,6 +176,7 @@ describe('DraftPage — empty state', () => {
 describe('DraftPage — Save to pantry button', () => {
   it('hides the Save button when no chat has started', () => {
     messagesData = [];
+    messagesIsLoading = false;
     sessionData = undefined;
 
     render(<DraftPage />);
@@ -143,6 +186,7 @@ describe('DraftPage — Save to pantry button', () => {
 
   it('shows and disables the Save button when chat started but no draft yet', () => {
     messagesData = [{ id: '1', role: 'user', content: 'Hello', created_at: '' }];
+    messagesIsLoading = false;
     sessionData = { id: 's-1', status: 'idle', current_draft: null, recipe_id: null };
 
     render(<DraftPage />);
@@ -153,6 +197,7 @@ describe('DraftPage — Save to pantry button', () => {
 
   it('enables the Save button when a valid draft exists', () => {
     messagesData = [{ id: '1', role: 'user', content: 'Hello', created_at: '' }];
+    messagesIsLoading = false;
     sessionData = {
       id: 's-1',
       status: 'idle',

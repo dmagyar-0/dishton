@@ -11,6 +11,7 @@ import { cn } from '@/ui/cn';
 import { Button } from '@/ui/primitives/Button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/ui/primitives/Drawer';
 import { EmptyState } from '@/ui/primitives/EmptyState';
+import { Skeleton } from '@/ui/primitives/Skeleton';
 import { useToast } from '@/ui/primitives/Toast';
 import { DraftPreviewCard } from '@/ui/recipe/DraftPreviewCard';
 import { ChatComposer } from '@/ui/recipe/chat/ChatComposer';
@@ -112,6 +113,7 @@ export function DraftPage() {
   // The chat is "started" once the session exists or messages have loaded. We
   // use this to decide whether to show the empty state vs. the live thread, and
   // whether to show the Save button at all.
+  const messagesLoading = chatSessionId != null && messages.isLoading;
   const hasMessages = (messages.data?.length ?? 0) > 0;
   const chatStarted = chatSessionId !== null || hasMessages;
 
@@ -187,7 +189,13 @@ export function DraftPage() {
             )}
           >
             <div className="flex-1 flex flex-col justify-end">
-              {hasMessages ? (
+              {messagesLoading ? (
+                <div className="flex flex-col gap-3 p-4">
+                  <Skeleton className="h-12 w-3/4" />
+                  <Skeleton className="h-12 w-1/2 self-end" />
+                  <Skeleton className="h-12 w-2/3" />
+                </div>
+              ) : hasMessages ? (
                 <ChatThread messages={messages.data ?? []} thinking={thinking} />
               ) : (
                 <EmptyState
