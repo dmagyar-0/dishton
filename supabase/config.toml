@@ -128,3 +128,9 @@ verify_jwt = true
 
 [functions.recipe-chat-webhook]
 verify_jwt = false
+
+# Public share surface: the share token in the path is the credential, and the
+# function only reads via the get_public_recipe definer RPC. Crawlers (and the
+# vercel.json rewrite) call it with no Supabase JWT, so the gateway must not 401.
+[functions.public-recipe]
+verify_jwt = false
