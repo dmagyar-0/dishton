@@ -132,6 +132,14 @@ insert into app.recipe_tags (recipe_id, tag) values
   ('44444444-4444-4444-4444-444444444444','italian')
 on conflict do nothing;
 
+-- Deterministic public share for the Tomato Tarte Tatin so local visual
+-- validation and E2E can hit /r/<token> without UI setup.
+insert into app.recipe_shares (recipe_id, token, created_by) values
+  ('33333333-3333-3333-3333-333333333333',
+   'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+   '00000000-0000-0000-0000-000000000001')
+on conflict (recipe_id) do nothing;
+
 ------------------------------------------------------------------------------
 -- Feature flags per docs/15-roadmap-and-flags.md.
 -- Local defaults: follows_enabled=true, public_household_pages=false.
@@ -139,7 +147,8 @@ on conflict do nothing;
 
 insert into app.feature_flags (key, enabled, rollout_percent) values
   ('follows_enabled',         true,  100),
-  ('public_household_pages',  false, 0)
+  ('public_household_pages',  false, 0),
+  ('public_recipe_shares',    true,  100)
 on conflict (key) do update set
   enabled         = excluded.enabled,
   rollout_percent = excluded.rollout_percent,
