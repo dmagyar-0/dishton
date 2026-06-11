@@ -17,7 +17,7 @@
 - Create: `src/domain/share.test.ts`
 - Modify: `src/domain/index.ts` (re-export, follow the file's existing export list style)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // src/domain/share.test.ts
@@ -69,9 +69,9 @@ describe('shareSummary', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify failure** — `pnpm vitest run src/domain/share.test.ts` → FAIL (module not found).
+- [x] **Step 2: Run to verify failure** — `pnpm vitest run src/domain/share.test.ts` → FAIL (module not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // src/domain/share.ts
@@ -113,8 +113,8 @@ export function shareSummary(input: ShareSummaryInput): string {
 
 Re-export from `src/domain/index.ts` alongside the existing exports.
 
-- [ ] **Step 4: Run** `pnpm vitest run src/domain/share.test.ts` → PASS.
-- [ ] **Step 5: Commit** `feat(domain): share path + OG summary helpers`
+- [x] **Step 4: Run** `pnpm vitest run src/domain/share.test.ts` → PASS.
+- [x] **Step 5: Commit** `feat(domain): share path + OG summary helpers`
 
 ---
 
@@ -125,7 +125,7 @@ Re-export from `src/domain/index.ts` alongside the existing exports.
 - Create: `supabase/tests/recipe_shares.test.sql`
 - Modify: `supabase/seed.sql` (share row + flag row)
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 ```sql
 -- 20260611120000_recipe_shares.sql
@@ -274,7 +274,7 @@ values ('public_recipe_shares', true, 100)
 on conflict (key) do nothing;
 ```
 
-- [ ] **Step 2: Write the DB tests** (`supabase/tests/recipe_shares.test.sql`, modelled on `rls.test.sql`: fixtures, `pg_temp` persona helpers via `set_config('role', ...)`, `_t_results` temp table emitted as the final SELECT). Personas: A = owner of H1 (has the recipe), B = editor H1, C = owner H2 (H1 follows H2 — so C is a *follower-of-nothing* relative to H1; use a separate unrelated D for non-member). Assertions:
+- [x] **Step 2: Write the DB tests** (`supabase/tests/recipe_shares.test.sql`, modelled on `rls.test.sql`: fixtures, `pg_temp` persona helpers via `set_config('role', ...)`, `_t_results` temp table emitted as the final SELECT). Personas: A = owner of H1 (has the recipe), B = editor H1, C = owner H2 (H1 follows H2 — so C is a *follower-of-nothing* relative to H1; use a separate unrelated D for non-member). Assertions:
   1. `editor B can insert a share for an H1 recipe` (insert returns rowcount 1)
   2. `member A can read the share token` (select count = 1)
   3. `unrelated D sees no share rows` (count = 0)
@@ -286,9 +286,9 @@ on conflict (key) do nothing;
   9. `flag off returns null` (update `app.feature_flags` set enabled=false, RPC → null; transaction rollback restores)
   10. Storage branch: insert a row into `storage.objects` (`bucket_id='recipe-images'`, `name='00000000-.../hero.jpg'`), point the recipe's `hero_image_path` at it; as anon, `select count(*) from storage.objects where name = ...` = 1 with a live share and = 0 after the share row is deleted.
 
-- [ ] **Step 3: Run** `pnpm test:db` (requires the local stack's Postgres on 54322 — start Docker + `supabase start -x edge-runtime,functions` per the validating-features-visually skill if not running). Expected: new file's assertions all `ok`, existing files stay green (watch `production_readiness.test.sql` and `security_hardening.test.sql` for grant/policy inventory assertions that may need the new objects added).
+- [x] **Step 3: Run** `pnpm test:db` (requires the local stack's Postgres on 54322 — start Docker + `supabase start -x edge-runtime,functions` per the validating-features-visually skill if not running). Expected: new file's assertions all `ok`, existing files stay green (watch `production_readiness.test.sql` and `security_hardening.test.sql` for grant/policy inventory assertions that may need the new objects added).
 
-- [ ] **Step 4: Seed** — append to `supabase/seed.sql`:
+- [x] **Step 4: Seed** — append to `supabase/seed.sql`:
 
 ```sql
 -- Deterministic public share for the Tomato Tarte Tatin so local visual
@@ -302,13 +302,13 @@ on conflict (recipe_id) do nothing;
 
 and add `('public_recipe_shares', true, 100)` to the existing feature-flags insert list.
 
-- [ ] **Step 5: Add types** — in `src/lib/database.types.ts` add `recipe_shares: GenericTable;` to the `Tables` map and to `Functions`:
+- [x] **Step 5: Add types** — in `src/lib/database.types.ts` add `recipe_shares: GenericTable;` to the `Tables` map and to `Functions`:
 
 ```ts
       get_public_recipe: { Args: { share_token: string }; Returns: Json };
 ```
 
-- [ ] **Step 6: Commit** `feat(db): recipe_shares table, get_public_recipe RPC, shared-hero storage branch`
+- [x] **Step 6: Commit** `feat(db): recipe_shares table, get_public_recipe RPC, shared-hero storage branch`
 
 ---
 
@@ -317,7 +317,7 @@ and add `('public_recipe_shares', true, 100)` to the existing feature-flags inse
 **Files:**
 - Modify: `src/feature-flags/registry.ts`
 
-- [ ] **Step 1:** Append to `FLAGS`:
+- [x] **Step 1:** Append to `FLAGS`:
 
 ```ts
   {
@@ -329,7 +329,7 @@ and add `('public_recipe_shares', true, 100)` to the existing feature-flags inse
   },
 ```
 
-- [ ] **Step 2:** `pnpm typecheck` → PASS. Commit `feat(flags): public_recipe_shares runtime flag` (doc-15 table row lands in Task 10 — the CI doc/registry sync check runs on the full branch, keep both in the same PR).
+- [x] **Step 2:** `pnpm typecheck` → PASS. Commit `feat(flags): public_recipe_shares runtime flag` (doc-15 table row lands in Task 10 — the CI doc/registry sync check runs on the full branch, keep both in the same PR).
 
 ---
 
@@ -339,7 +339,7 @@ and add `('public_recipe_shares', true, 100)` to the existing feature-flags inse
 - Create: `supabase/functions/public-recipe/meta.ts`
 - Create: `supabase/functions/public-recipe/meta_test.ts`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 ```ts
 // supabase/functions/public-recipe/meta_test.ts
@@ -372,9 +372,9 @@ Deno.test('buildMetaHtml escapes user content and carries the OG essentials', ()
 });
 ```
 
-- [ ] **Step 2:** `pnpm test:edge` (or `deno test -A --config supabase/functions/deno.json supabase/functions/public-recipe/`) → FAIL (module not found).
+- [x] **Step 2:** `pnpm test:edge` (or `deno test -A --config supabase/functions/deno.json supabase/functions/public-recipe/`) → FAIL (module not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // supabase/functions/public-recipe/meta.ts
@@ -432,7 +432,7 @@ export function buildMetaHtml(opts: MetaHtmlOpts): string {
 }
 ```
 
-- [ ] **Step 4:** Tests PASS. **Step 5: Commit** `feat(edge): public-recipe OG meta builder`
+- [x] **Step 4:** Tests PASS. **Step 5: Commit** `feat(edge): public-recipe OG meta builder`
 
 ---
 
@@ -442,7 +442,7 @@ export function buildMetaHtml(opts: MetaHtmlOpts): string {
 - Create: `supabase/functions/public-recipe/og.ts`
 - Create: `supabase/functions/public-recipe/og_test.ts`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 ```ts
 // supabase/functions/public-recipe/og_test.ts
@@ -488,7 +488,7 @@ Deno.test('og card without a hero renders no img node', () => {
 });
 ```
 
-- [ ] **Step 2:** Run → FAIL. **Step 3: Implement**
+- [x] **Step 2:** Run → FAIL. **Step 3: Implement**
 
 ```ts
 // supabase/functions/public-recipe/og.ts
@@ -615,7 +615,7 @@ export function buildOgElement(data: OgCardData): OgElement {
 }
 ```
 
-- [ ] **Step 4:** Tests PASS. **Step 5: Commit** `feat(edge): public-recipe OG card layout`
+- [x] **Step 4:** Tests PASS. **Step 5: Commit** `feat(edge): public-recipe OG card layout`
 
 ---
 
@@ -625,7 +625,7 @@ export function buildOgElement(data: OgCardData): OgElement {
 - Create: `supabase/functions/public-recipe/index.ts`
 - Modify: `supabase/config.toml` (verify_jwt = false block)
 
-- [ ] **Step 1: Implement the handler**
+- [x] **Step 1: Implement the handler**
 
 ```ts
 // public-recipe: unauthenticated GET surface for the share loop.
@@ -815,7 +815,7 @@ serve(async (req: Request) => {
 
 Note: the seed token is hex; the column default produces 32 hex chars. The `/^[0-9a-f]{16,64}$/` check rejects junk paths early.
 
-- [ ] **Step 2:** Append to `supabase/config.toml`:
+- [x] **Step 2:** Append to `supabase/config.toml`:
 
 ```toml
 # Public share surface: the share token in the path is the credential, and the
@@ -825,8 +825,8 @@ Note: the seed token is hex; the column default produces 32 hex chars. The `/^[0
 verify_jwt = false
 ```
 
-- [ ] **Step 3:** `pnpm test:edge` stays green (index.ts is exercised manually/visually; the pure parts are covered by Tasks 4–5). `deno check` it: `deno check --config supabase/functions/deno.json supabase/functions/public-recipe/index.ts`.
-- [ ] **Step 4: Commit** `feat(edge): public-recipe meta + og.png handler`
+- [x] **Step 3:** `pnpm test:edge` stays green (index.ts is exercised manually/visually; the pure parts are covered by Tasks 4–5). `deno check` it: `deno check --config supabase/functions/deno.json supabase/functions/public-recipe/index.ts`.
+- [x] **Step 4: Commit** `feat(edge): public-recipe meta + og.png handler`
 
 ---
 
@@ -835,7 +835,7 @@ verify_jwt = false
 **Files:**
 - Create: `src/lib/queries/shares.ts`
 
-- [ ] **Step 1: Implement** (typecheck-driven; behaviour is covered by the component tests in Tasks 8–9 and the DB tests)
+- [x] **Step 1: Implement** (typecheck-driven; behaviour is covered by the component tests in Tasks 8–9 and the DB tests)
 
 ```ts
 // src/lib/queries/shares.ts
@@ -956,7 +956,7 @@ export function usePublicHeroImage(path: string | null): string | null {
 }
 ```
 
-- [ ] **Step 2:** `pnpm typecheck` → PASS. **Step 3: Commit** `feat(spa): share-link queries + public recipe read path`
+- [x] **Step 2:** `pnpm typecheck` → PASS. **Step 3: Commit** `feat(spa): share-link queries + public recipe read path`
 
 ---
 
@@ -969,7 +969,7 @@ export function usePublicHeroImage(path: string | null): string | null {
 - Modify: `src/routes/h/$householdId/r/$recipeId/index.tsx` (import the extracted helpers; add Share button)
 - Modify: `src/lib/i18n.en.ts`, `src/lib/i18n.de.ts` (new `share` namespace)
 
-- [ ] **Step 1: Extract** `toDomainRecipe(full, sourceIngredients?)` and `resolveDisplay(...)` into `src/lib/recipe-display.ts` verbatim (generalise the ingredient/step row types so the public payload's id-less rows fit):
+- [x] **Step 1: Extract** `toDomainRecipe(full, sourceIngredients?)` and `resolveDisplay(...)` into `src/lib/recipe-display.ts` verbatim (generalise the ingredient/step row types so the public payload's id-less rows fit):
 
 ```ts
 // src/lib/recipe-display.ts
@@ -1030,7 +1030,7 @@ export function resolveDisplay(
 
 Update the detail route to import these and delete its local copies. `pnpm typecheck && pnpm test:components` must stay green before continuing.
 
-- [ ] **Step 2: i18n keys** — add to `src/lib/i18n.en.ts` (and German equivalents in `i18n.de.ts`):
+- [x] **Step 2: i18n keys** — add to `src/lib/i18n.en.ts` (and German equivalents in `i18n.de.ts`):
 
 ```ts
   share: {
@@ -1055,7 +1055,7 @@ Update the detail route to import these and delete its local copies. `pnpm typec
   },
 ```
 
-- [ ] **Step 3: ShareDialog failing tests** (mock pattern from `RecipeCardDeleteButton.test.tsx`: mock `react-i18next`, `@/lib/queries/shares`, `@/ui/primitives/Toast`):
+- [x] **Step 3: ShareDialog failing tests** (mock pattern from `RecipeCardDeleteButton.test.tsx`: mock `react-i18next`, `@/lib/queries/shares`, `@/ui/primitives/Toast`):
 
 ```tsx
 // src/ui/recipe/ShareDialog.test.tsx
@@ -1131,7 +1131,7 @@ describe('ShareDialog', () => {
 });
 ```
 
-- [ ] **Step 4:** Run `pnpm vitest run src/ui/recipe/ShareDialog.test.tsx` → FAIL. **Step 5: Implement**
+- [x] **Step 4:** Run `pnpm vitest run src/ui/recipe/ShareDialog.test.tsx` → FAIL. **Step 5: Implement**
 
 ```tsx
 // src/ui/recipe/ShareDialog.tsx
@@ -1229,7 +1229,7 @@ export function ShareDialog({ recipeId }: ShareDialogProps) {
 
 (Check `useToast`'s `push` signature in `src/ui/primitives/Toast.tsx` and match it exactly.)
 
-- [ ] **Step 6: Detail page integration** — in `src/routes/h/$householdId/r/$recipeId/index.tsx`, next to the Edit link (inside the `canEdit && (...)` block, wrapping both in a flex row container):
+- [x] **Step 6: Detail page integration** — in `src/routes/h/$householdId/r/$recipeId/index.tsx`, next to the Edit link (inside the `canEdit && (...)` block, wrapping both in a flex row container):
 
 ```tsx
 {canEdit && (
@@ -1242,8 +1242,8 @@ export function ShareDialog({ recipeId }: ShareDialogProps) {
 
 with `const shareEnabled = useFeatureFlag('public_recipe_shares');` near the other hooks.
 
-- [ ] **Step 7:** `pnpm vitest run src/ui/recipe/ShareDialog.test.tsx` → PASS; `pnpm test:components` green; `pnpm typecheck && pnpm lint`.
-- [ ] **Step 8: Commit** `feat(spa): share dialog on the recipe detail page`
+- [x] **Step 7:** `pnpm vitest run src/ui/recipe/ShareDialog.test.tsx` → PASS; `pnpm test:components` green; `pnpm typecheck && pnpm lint`.
+- [x] **Step 8: Commit** `feat(spa): share dialog on the recipe detail page`
 
 ---
 
@@ -1253,7 +1253,7 @@ with `const shareEnabled = useFeatureFlag('public_recipe_shares');` near the oth
 - Create: `src/routes/r/$token.tsx`
 - Create: `src/ui/recipe/PublicRecipePage.test.tsx`
 
-- [ ] **Step 1: Failing component test** (test the page component exported from the route file):
+- [x] **Step 1: Failing component test** (test the page component exported from the route file):
 
 ```tsx
 // src/ui/recipe/PublicRecipePage.test.tsx
@@ -1338,7 +1338,7 @@ taking `{ token, search, onSearchChange }` props, test that directly, and keep
 the route file as a thin wrapper. Prefer that split if the first render fails
 on router internals.)
 
-- [ ] **Step 2:** Run → FAIL. **Step 3: Implement the route**
+- [x] **Step 2:** Run → FAIL. **Step 3: Implement the route**
 
 ```tsx
 // src/routes/r/$token.tsx
@@ -1519,8 +1519,8 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
 
 `DisplayIngredient` requires an `id: string` — synthesised from `position`. The `toDomainRecipe` call adapts the RPC payload into the `DisplayableRecipe` shape from Task 8 (write the literal object mapping, no casts). The route renders outside `AppShell` — confirm `__root.tsx` only wraps `/h/*` routes with the shell chrome; if the shell is unconditional, mirror however `/auth/login` opts out.
 
-- [ ] **Step 4:** routeTree regeneration: run `pnpm build` (the TanStack Router Vite plugin rewrites `src/routeTree.gen.ts`). Then `pnpm vitest run src/ui/recipe/PublicRecipePage.test.tsx` → PASS; `pnpm typecheck && pnpm lint && pnpm test:components`.
-- [ ] **Step 5: Commit** `feat(spa): public /r/$token recipe landing page`
+- [x] **Step 4:** routeTree regeneration: run `pnpm build` (the TanStack Router Vite plugin rewrites `src/routeTree.gen.ts`). Then `pnpm vitest run src/ui/recipe/PublicRecipePage.test.tsx` → PASS; `pnpm typecheck && pnpm lint && pnpm test:components`.
+- [x] **Step 5: Commit** `feat(spa): public /r/$token recipe landing page`
 
 ---
 
@@ -1530,7 +1530,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
 - Modify: `vercel.json`, `index.html`
 - Modify: `docs/00-overview.md`, `docs/04-data-model.md`, `docs/15-roadmap-and-flags.md`
 
-- [ ] **Step 1: vercel.json** — insert BEFORE the existing SPA catch-all rewrite:
+- [x] **Step 1: vercel.json** — insert BEFORE the existing SPA catch-all rewrite:
 
 ```json
     {
@@ -1548,7 +1548,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
 
 (Hardcoding the project ref matches the existing CSP in the same file. If re2 rejects the inline `(?i)` group position, use `(?i).*(bot|...).*`.)
 
-- [ ] **Step 2: index.html** — add after the existing description meta:
+- [x] **Step 2: index.html** — add after the existing description meta:
 
 ```html
     <meta property="og:type" content="website" />
@@ -1560,12 +1560,12 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
 
 (Confirm `public/icons/icon-512.png` exists; otherwise use the largest icon present.)
 
-- [ ] **Step 3: docs**
+- [x] **Step 3: docs**
   - `docs/00-overview.md` out-of-scope bullet → `Public/anonymous browsing of collections outside the follow model (opt-in single-recipe share links shipped 2026-06; see docs/superpowers/specs/2026-06-11-public-recipe-share-design.md).`
   - `docs/15-roadmap-and-flags.md`: add flag-table row `| feature_flags.public_recipe_shares | runtime | true | true | true | true | [15](./15-roadmap-and-flags.md) (this doc) | Share links GA for 30 days with no kill-switch use |` and a short paragraph under v1 describing the share-link landing surface (opt-in, revocable, OG unfurl).
   - `docs/04-data-model.md`: add a `recipe_shares` section with the DDL + RLS from Task 2 and a note on the storage policy branch + `get_public_recipe`.
 
-- [ ] **Step 4:** `pnpm lint` (Biome also checks JSON). Commit `feat(share): crawler rewrite, site OG defaults, docs`
+- [x] **Step 4:** `pnpm lint` (Biome also checks JSON). Commit `feat(share): crawler rewrite, site OG defaults, docs`
 
 ---
 
@@ -1574,7 +1574,7 @@ function PublicFrame({ children }: { children: React.ReactNode }) {
 **Files:**
 - Create: `e2e/public-share.spec.ts`
 
-- [ ] **Step 1: E2E spec** (mirror the conventions in `e2e/smoke.spec.ts` — base URL, fixtures):
+- [x] **Step 1: E2E spec** (mirror the conventions in `e2e/smoke.spec.ts` — base URL, fixtures):
 
 ```ts
 import { expect, test } from '@playwright/test';
@@ -1595,26 +1595,26 @@ test('an unknown token shows the inactive state', async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Full local verification** —
+- [x] **Step 2: Full local verification** —
   - `pnpm typecheck && pnpm lint`
   - `pnpm test:unit && pnpm test:components`
   - `pnpm test:db` (stack running)
   - `pnpm test:edge`
   - `pnpm build`
-- [ ] **Step 3: Commit** `test(e2e): public share landing smoke`
+- [x] **Step 3: Commit** `test(e2e): public share landing smoke`
 
 ---
 
 ### Task 12: Visual validation (REQUIRED)
 
-- [ ] **Step 1:** Invoke the `validating-features-visually` skill and follow it exactly (Docker daemon, Supabase CLI tarball, `supabase start -x edge-runtime,functions`, `pnpm db:reset`, `pnpm build && pnpm preview`).
-- [ ] **Step 2:** Drive Playwright through, at desktop (1280×800) and mobile (390×844):
+- [x] **Step 1:** Invoke the `validating-features-visually` skill and follow it exactly (Docker daemon, Supabase CLI tarball, `supabase start -x edge-runtime,functions`, `pnpm db:reset`, `pnpm build && pnpm preview`).
+- [x] **Step 2:** Drive Playwright through, at desktop (1280×800) and mobile (390×844):
   1. Logged-out visit to `/r/a1b2c3d4e5f60718293a4b5c6d7e8f90` — hero/title/tags/ingredients/steps/CTA, servings scaling, unit toggle.
   2. Unknown token `/r/deaddead...` inactive state.
   3. Login as alice → recipe detail → Share button → dialog on/off/copy states.
   4. Adjacent surface: the recipe detail page itself (regression from the header/button change).
-- [ ] **Step 3:** Screenshot each step, review for overflow/flash/contrast issues, fix anything found, re-run.
-- [ ] **Step 4:** Final `pnpm typecheck && pnpm lint`, commit fixes, push branch.
+- [x] **Step 3:** Screenshot each step, review for overflow/flash/contrast issues, fix anything found, re-run.
+- [x] **Step 4:** Final `pnpm typecheck && pnpm lint`, commit fixes, push branch.
 
 ---
 
