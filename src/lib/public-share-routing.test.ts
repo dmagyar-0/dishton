@@ -14,9 +14,15 @@ const config = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../vercel.json', import.meta.url)), 'utf8'),
 ) as { rewrites: Rewrite[] };
 
-// vercel.json UA values use Go's inline (?i) flag; translate it to a JS 'i' flag.
+// vercel.json UA values are RE2 (Go) patterns with a leading (?i) flag; strip
+// that one construct and use a JS 'i' flag instead. Any other inline flag would
+// silently mis-translate (and thus mis-route), so fail loudly if one appears.
 function uaRegex(value: string): RegExp {
-  return new RegExp(value.replace(/^\(\?i\)/, ''), 'i');
+  const body = value.replace(/^\(\?i\)/, '');
+  if (body.includes('(?i)')) {
+    throw new Error(`unsupported inline flag in UA pattern: ${value}`);
+  }
+  return new RegExp(body, 'i');
 }
 
 const shareRules = config.rewrites.filter((r) => r.source === '/r/:token');
@@ -25,7 +31,9 @@ const browserish = uaRegex(shareRules.find((r) => r.missing)?.missing?.[0]?.valu
 
 // Mirrors Vercel's first-match-wins evaluation: rule 1 fires when the UA
 // matches the allowlist; rule 2 ("missing" mozilla) fires when the UA has no
-// mozilla token. Either one sends the request to the Edge Function.
+// mozilla token. Either one sends the request to the Edge Function. This OR
+// model is valid only because both rules share one destination; if they ever
+// diverged, this would need sequential if-else.
 function routedToEdge(ua: string): boolean {
   return allow.test(ua) || !browserish.test(ua);
 }
