@@ -1,5 +1,6 @@
 export * from './recipe.ts';
 export * from './scale.ts';
+export * from './share.ts';
 export * from './fractions.ts';
 export * from './language.ts';
 export * from './translation-key.ts';
