@@ -94,6 +94,14 @@ Adds (one PR can ship one of these without the others, but the phase is
    guarded by a runtime flag (`feature_flags.follows_enabled`). The table
    itself ships in MVP as part of doc 04 to avoid a destructive
    migration later.
+6. **Public recipe share links.** Opt-in, revocable, per-recipe public
+   pages at `/r/<token>` with OG unfurl (meta + generated card image) —
+   the sharing loop's landing surface. Editors toggle a link from the
+   recipe detail page; anon reads go exclusively through the
+   `get_public_recipe` definer RPC, and the
+   `feature_flags.public_recipe_shares` row is a kill switch (default on:
+   sharing is already opt-in per recipe). Spec:
+   `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md`.
 
 ## v2
 
@@ -142,6 +150,7 @@ the codebase ships with at MVP.
 | `VITE_FEATURE_TRANSLATION_CACHE` | build-time | `true` | `true` | `false` | `true` | [06](./06-recipe-domain.md) + [07](./07-ai-integration.md) | Translation toggle is on in production for 30 days |
 | `feature_flags.follows_enabled` | runtime | `true` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Following has been on in production for 30 days |
 | `feature_flags.public_household_pages` | runtime | `false` | `false` | `false` | `false` | [15](./15-roadmap-and-flags.md) (this doc) | v2 ships |
+| `feature_flags.public_recipe_shares` | runtime | `true` | `true` | `true` | `true` | [15](./15-roadmap-and-flags.md) (this doc) | Share links GA for 30 days with no kill-switch use |
 
 Conventions:
 

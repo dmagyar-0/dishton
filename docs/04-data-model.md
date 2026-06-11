@@ -436,6 +436,44 @@ create policy imports_self on storage.objects
 Object naming convention: `recipe-images/<uid>/<recipe-id>.<ext>` and
 `imports/<uid>/<job-id>.<ext>`.
 
+> Amendment (2026-06, migration `20260611120000_recipe_shares.sql`): the
+> `recipe_images_read` policy now delegates to the SECURITY DEFINER helper
+> `app.can_read_recipe_image(name)`. The inline subqueries above only work for
+> roles holding a grant on `app.recipes`; anon has none, and the public share
+> page reads storage through RLS as anon. The helper preserves the
+> member/follower and own-folder branches and adds a third: any object that is
+> the `hero_image_path` of a recipe with a live `app.recipe_shares` row.
+
+## Public recipe shares (2026-06 addition)
+
+Opt-in public links for single recipes (the sharing loop's landing surface;
+spec: `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md`).
+Shipped in migration `20260611120000_recipe_shares.sql`.
+
+```sql
+create table app.recipe_shares (
+  recipe_id  uuid primary key references app.recipes(id) on delete cascade,
+  token      text not null unique default app.gen_share_token(), -- 32 hex chars
+  created_by uuid references app.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+```
+
+- Row exists ⇔ link is live; revoke = delete. Re-enabling generates a fresh
+  token (no UPDATE policy). The 128-bit random token is the access secret.
+- RLS: SELECT for household members (`recipe_shares_member_read`);
+  INSERT/DELETE for recipe editors (`recipe_shares_editor_insert` /
+  `recipe_shares_editor_delete`). No anon grant at all — followers and anon
+  cannot enumerate share rows.
+- The only anon read path is `app.get_public_recipe(share_token text)`:
+  SECURITY DEFINER, executable by `anon`/`authenticated`/`service_role`,
+  returning a whitelisted jsonb projection (recipe fields + ordered
+  ingredients/steps + tags + `household_name`; no ids, no profiles, no
+  timestamps). It returns `null` for unknown tokens and whenever the
+  `feature_flags.public_recipe_shares` kill switch is off.
+- Consumers: the SPA route `/r/$token` (anon supabase-js) and the
+  `public-recipe` Edge Function (OG meta + card image for crawlers).
+
 ## Seed data (`supabase/seed.sql`)
 
 ```sql

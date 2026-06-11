@@ -40,4 +40,11 @@ export const FLAGS: FlagDefinition[] = [
     description: 'v2 placeholder; always off in MVP and v1.',
     ownerDoc: 'docs/15-roadmap-and-flags.md',
   },
+  {
+    key: 'public_recipe_shares',
+    transport: 'runtime',
+    description:
+      'Kill switch for public recipe share links: gates the Share button and all anon reads via get_public_recipe.',
+    ownerDoc: 'docs/15-roadmap-and-flags.md',
+  },
 ];

@@ -28,6 +28,13 @@
 
     <title>Dishton</title>
     <meta name="description" content="Your household's recipe pantry." />
+    <!-- Site-level unfurl defaults. Recipe share links (/r/<token>) get rich
+         per-recipe tags from the public-recipe Edge Function via the bot
+         rewrite in vercel.json; everything else falls back to these. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Dishton" />
+    <meta property="og:title" content="Dishton" />
+    <meta property="og:description" content="Your household's recipe pantry." />
   </head>
   <body>
     <div id="root"></div>

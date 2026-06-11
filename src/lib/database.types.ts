@@ -29,6 +29,7 @@ export type Database = {
       recipe_ingredients: GenericTable;
       recipe_steps: GenericTable;
       recipe_tags: GenericTable;
+      recipe_shares: GenericTable;
       recipe_translations: GenericTable;
       import_jobs: GenericTable;
       ai_rate_budget: GenericTable;
@@ -62,6 +63,7 @@ export type Database = {
         Args: { p_recipe: string; p_import_path: string };
         Returns: void;
       };
+      get_public_recipe: { Args: { share_token: string }; Returns: Json };
       [k: string]: { Args: Record<string, unknown>; Returns: unknown };
     };
     Enums: Record<string, never>;

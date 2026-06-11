@@ -1,13 +1,7 @@
-import type { Quantity, Recipe } from '@/domain';
 import {
-  convert,
   formatDisplayQuantity,
   formatNumber,
-  niceQuantity,
   normaliseBcp47,
-  pickDisplayUnit,
-  quantityIsEmpty,
-  quantityToNumber,
   scale,
   scaleToServings,
 } from '@/domain';
@@ -15,6 +9,7 @@ import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { useCachedTranslations, useTranslateRecipe } from '@/lib/queries/translations';
+import { resolveDisplay, toDomainRecipe } from '@/lib/recipe-display';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
@@ -22,6 +17,7 @@ import { Skeleton } from '@/ui/primitives/Skeleton';
 import { type DisplayIngredient, IngredientsCard } from '@/ui/recipe/IngredientsCard';
 import { LanguageToggle } from '@/ui/recipe/LanguageToggle';
 import { ServingsScaler } from '@/ui/recipe/ServingsScaler';
+import { ShareDialog } from '@/ui/recipe/ShareDialog';
 import { UnitToggle } from '@/ui/recipe/UnitToggle';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Pencil } from 'lucide-react';
@@ -51,9 +47,6 @@ export const Route = createFileRoute('/h/$householdId/r/$recipeId/')({
   component: RecipeDetailPage,
 });
 
-type FullRecipe = ReturnType<typeof useRecipe>['data'];
-type FullIngredient = NonNullable<FullRecipe>['ingredients'][number];
-
 // The translatable payload swapped in when a cached translation is shown.
 type TranslationPayload = {
   title?: string;
@@ -61,69 +54,6 @@ type TranslationPayload = {
   steps?: { body?: string }[];
   ingredients?: { ingredient_name?: string | null; raw_text?: string }[];
 };
-
-// Build a domain Recipe from the loaded FullRecipe so we can run the tested
-// scale() pipeline (which snaps via niceQuantity in the stored unit) before the
-// display-side unit conversion. scalable persistence is deferred (the DB has no
-// such column), so every ingredient is treated as scalable — matching current
-// behaviour.
-function toDomainRecipe(full: NonNullable<FullRecipe>): Recipe {
-  return {
-    title: full.recipe.title,
-    description: full.recipe.description,
-    source_type: full.recipe.source_type,
-    source_url: full.recipe.source_url,
-    source_language: full.recipe.source_language,
-    canonical_unit_system: full.recipe.canonical_unit_system,
-    servings: full.recipe.servings,
-    total_time_min: full.recipe.total_time_min,
-    hero_image_path: full.recipe.hero_image_path,
-    tags: full.tags,
-    ingredients: full.ingredients.map((ing) => ({
-      position: ing.position,
-      raw_text: ing.raw_text,
-      quantity: ing.quantity,
-      unit: ing.unit,
-      ingredient_name: ing.ingredient_name,
-      notes: ing.notes,
-      scalable: true,
-      non_scalable_qty: null,
-      section: ing.section,
-    })),
-    steps: full.steps.map((s) => ({
-      position: s.position,
-      body: s.body,
-      duration_min: s.duration_min,
-    })),
-  };
-}
-
-// Resolve the quantity + unit a row should display: scale via the domain
-// pipeline, then convert to the preferred display unit. Stored fractions
-// round-trip unchanged when neither scaling nor conversion changes the value.
-function resolveDisplay(
-  source: FullIngredient,
-  scaledQty: Quantity | null,
-  displayUnits: 'metric' | 'imperial',
-): { displayQuantity: Quantity | null; displayUnit: string | null } {
-  if (quantityIsEmpty(scaledQty) || !source.unit) {
-    return { displayQuantity: null, displayUnit: null };
-  }
-  // scaledQty is non-empty here.
-  const scaledNumber = quantityToNumber(scaledQty as Quantity);
-  const target = pickDisplayUnit(source.unit, scaledNumber, displayUnits);
-  if (target === source.unit) {
-    // No conversion: prefer the value the scale pipeline produced, which keeps
-    // a stored exact fraction (e.g. 1/3) faithful when the factor is 1.
-    return { displayQuantity: scaledQty, displayUnit: source.unit };
-  }
-  try {
-    const converted = convert(scaledNumber, source.unit, target);
-    return { displayQuantity: niceQuantity(converted, target), displayUnit: target };
-  } catch {
-    return { displayQuantity: scaledQty, displayUnit: source.unit };
-  }
-}
 
 function RecipeDetailPage() {
   const { householdId, recipeId } = Route.useParams();
@@ -135,6 +65,7 @@ function RecipeDetailPage() {
   const q = useRecipe(recipeId);
 
   const translationEnabled = useFeatureFlag('translation_cache');
+  const shareEnabled = useFeatureFlag('public_recipe_shares');
   const cachedLangsQ = useCachedTranslations(recipeId);
 
   const displayUnits = search.units ?? profile?.preferred_unit_system ?? 'metric';
@@ -322,15 +253,18 @@ function RecipeDetailPage() {
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <h1 className="font-display text-display leading-tight">{displayed.recipe.title}</h1>
         {canEdit && (
-          <Link
-            to="/h/$householdId/r/$recipeId/edit"
-            params={{ householdId, recipeId }}
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink sm:mt-2"
-            aria-label={t('recipe.edit_action')}
-          >
-            <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
-            <span>{t('recipe.edit_action')}</span>
-          </Link>
+          <div className="flex shrink-0 items-center gap-2 sm:mt-2">
+            {shareEnabled && <ShareDialog recipeId={recipeId} />}
+            <Link
+              to="/h/$householdId/r/$recipeId/edit"
+              params={{ householdId, recipeId }}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink"
+              aria-label={t('recipe.edit_action')}
+            >
+              <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
+              <span>{t('recipe.edit_action')}</span>
+            </Link>
+          </div>
         )}
       </div>
       {displayed.recipe.description && (

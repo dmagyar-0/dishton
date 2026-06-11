@@ -449,6 +449,28 @@ export default {
     away_summary_done: '{{count}} Rezept(e) importiert.',
     away_summary_failed: '{{count}} Import(e) konnten nicht abgeschlossen werden.',
   },
+  share: {
+    action: 'Teilen',
+    dialog_title: 'Dieses Rezept teilen',
+    dialog_body:
+      'Wer den Link hat, kann dieses Rezept ansehen — ganz ohne Konto. Jederzeit abschaltbar; der alte Link funktioniert dann sofort nicht mehr.',
+    toggle_label: 'Öffentlicher Link',
+    copy_link: 'Link kopieren',
+    link_copied: 'Link kopiert',
+    share_failed: 'Teilen konnte nicht aktualisiert werden. Bitte erneut versuchen.',
+    regenerate_hint: 'Beim erneuten Aktivieren entsteht eine neue Adresse.',
+  },
+  public: {
+    from_household: 'Aus der Rezeptkammer von {{name}}',
+    cta_title: 'Koch es selbst',
+    cta_body:
+      'Speichere dieses Rezept in deiner eigenen Rezeptkammer und sammle alle Lieblingsrezepte an einem Ort.',
+    cta_action: 'Eigene Rezeptkammer starten',
+    inactive_title: 'Dieser Link ist nicht mehr aktiv',
+    inactive_body:
+      'Wer ihn geteilt hat, hat ihn vielleicht deaktiviert. Frag nach einem neuen Link.',
+    inactive_action: 'Dishton entdecken',
+  },
   household_errors: {
     last_owner:
       'Du bist die einzige Besitzerin/der einzige Besitzer. Befördere zuerst jemanden oder lösche den Haushalt.',

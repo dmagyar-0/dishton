@@ -1,6 +1,17 @@
 {
   "rewrites": [
     {
+      "source": "/r/:token",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|facebookexternalhit|whatsapp|slack|telegram|discord|twitter|linkedin|pinterest|skype|embedly|quora|vkshare|crawler|spider|preview).*"
+        }
+      ],
+      "destination": "https://hdfpnxjxrcupuxrgrnpf.supabase.co/functions/v1/public-recipe/:token"
+    },
+    {
       "source": "/((?!api/|functions/|icons/|assets/|paper-grain.svg|manifest.webmanifest|offline.html|sw.js|workbox-.*\\.js|registerSW.js).*)",
       "destination": "/index.html"
     }
