@@ -40,7 +40,7 @@ jobs:
           # at by the time this job runs.
           ref: ${{ github.event.workflow_run.head_sha }}
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
 
       - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1

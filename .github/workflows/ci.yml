@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
+          # v5's package-manager-cache default probes for pnpm before
+          # `corepack enable` has installed it and fails the step; the
+          # pnpm store is cached explicitly below instead.
+          package-manager-cache: false
       - run: corepack enable
       - id: cache-key
         run: echo "value=${{ hashFiles('pnpm-lock.yaml') }}" >> "$GITHUB_OUTPUT"
@@ -41,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
@@ -51,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm lint
       # Fail the build if the feature-flag registry, docs/15, and .env.example
@@ -76,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm test:unit
 
@@ -86,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm test:components
 
@@ -96,7 +100,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm test:coverage
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
@@ -154,7 +158,7 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
       # Source maps are emitted as 'hidden' (vite.config.ts) for upload to
@@ -185,7 +189,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with: { node-version: 22 }
+        with: { node-version: 22, package-manager-cache: false }
       - name: Ensure base ref is available
         run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref || 'main' }}:refs/remotes/origin/${{ github.event.pull_request.base.ref || 'main' }}" || git fetch --no-tags origin main
       - name: Enforce migration policy (forward-only + new migration on schema change)
