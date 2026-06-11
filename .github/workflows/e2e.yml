@@ -39,7 +39,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
 
-      - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+      - uses: supabase/setup-cli@15c01d6a622c7804cb69435a015cda772eb27156 # v2.99.0 (node24)
         with: { version: 2.99.0 }
 
       - name: Provision Edge Function env (AI mock)
