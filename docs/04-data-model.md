@@ -471,8 +471,11 @@ create table app.recipe_shares (
   ingredients/steps + tags + `household_name`; no ids, no profiles, no
   timestamps). It returns `null` for unknown tokens and whenever the
   `feature_flags.public_recipe_shares` kill switch is off.
-- Consumers: the SPA route `/r/$token` (anon supabase-js) and the
-  `public-recipe` Edge Function (OG meta + card image for crawlers).
+- Consumers: the SPA route `/r/$token` (anon supabase-js, for browsers) and
+  the `public-recipe` Edge Function, which serves non-browser/unknown UAs a
+  server-rendered, indexable recipe page (Schema.org `Recipe` JSON-LD +
+  visible HTML + OG card). See
+  `docs/superpowers/specs/2026-06-11-agent-readable-public-recipe-design.md`.
 
 ## Seed data (`supabase/seed.sql`)
 

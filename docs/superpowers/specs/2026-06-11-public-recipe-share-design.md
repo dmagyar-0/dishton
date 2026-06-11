@@ -3,6 +3,12 @@
 Date: 2026-06-11
 Status: approved for implementation (task-directed; amends doc 00 scope, see §9)
 
+> Amended 2026-06-11 by
+> `docs/superpowers/specs/2026-06-11-agent-readable-public-recipe-design.md`:
+> the crawler page now serves the full recipe (Recipe JSON-LD + visible HTML),
+> the bot rewrite is broadened to all non-browser UAs, and §2/§5/§8's
+> `noindex` + meta-refresh are dropped (pages are now indexable).
+
 ## 1. What we're building
 
 The landing surface of Dishton's sharing loop: a household member shares a
