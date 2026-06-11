@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { sharePath, shareSummary } from './share.ts';
+import {
+  type ShareIngredient,
+  type ShareRecipe,
+  ingredientLine,
+  isoDuration,
+  recipeJsonLd,
+  sharePath,
+  shareSummary,
+} from './share.ts';
 
 describe('sharePath', () => {
   it('builds the public route path from a token', () => {
@@ -48,5 +56,96 @@ describe('shareSummary', () => {
     expect(
       shareSummary({ description: null, servings: 2, total_time_min: 0, ingredientCount: 2 }),
     ).toBe('2 servings · 2 ingredients');
+  });
+});
+
+const potatoes: ShareIngredient = {
+  raw_text: '800g waxy potatoes',
+  ingredient_name: 'waxy potatoes',
+  quantity: 800,
+  unit: 'g',
+  notes: null,
+};
+const eggs: ShareIngredient = {
+  raw_text: null,
+  ingredient_name: 'eggs',
+  quantity: 6,
+  unit: null,
+  notes: 'hard-boiled',
+};
+const sampleRecipe: ShareRecipe = {
+  title: 'Rakott Krumpli',
+  description: 'Hungarian layered potato casserole.',
+  servings: 4,
+  total_time_min: 80,
+  source_url: 'https://example.com/rakott',
+  source_language: 'en',
+  tags: ['hungarian', 'comfort'],
+  ingredients: [potatoes, eggs],
+  steps: [
+    { body: 'Boil the potatoes.', position: 0 },
+    { body: 'Layer and bake.', position: 1 },
+  ],
+};
+
+describe('ingredientLine', () => {
+  it('prefers the raw imported line', () => {
+    expect(ingredientLine(potatoes)).toBe('800g waxy potatoes');
+  });
+  it('composes qty/unit/name with notes in parens when there is no raw_text', () => {
+    expect(ingredientLine(eggs)).toBe('6 eggs (hard-boiled)');
+  });
+  it('drops a missing quantity and unit', () => {
+    expect(
+      ingredientLine({
+        raw_text: null,
+        ingredient_name: 'salt',
+        quantity: null,
+        unit: null,
+        notes: null,
+      }),
+    ).toBe('salt');
+  });
+});
+
+describe('isoDuration', () => {
+  it('formats minutes as an ISO-8601 duration', () => {
+    expect(isoDuration(80)).toBe('PT80M');
+  });
+  it('returns null for null or non-positive input', () => {
+    expect(isoDuration(null)).toBeNull();
+    expect(isoDuration(0)).toBeNull();
+  });
+});
+
+describe('recipeJsonLd', () => {
+  const opts = {
+    url: 'https://app.example/r/tok123',
+    imageUrl: 'https://fns.example/og.png',
+    householdName: 'My Recipes',
+  };
+  it('maps the recipe into a Schema.org Recipe object', () => {
+    const ld = recipeJsonLd(sampleRecipe, opts);
+    expect(ld['@type']).toBe('Recipe');
+    expect(ld.name).toBe('Rakott Krumpli');
+    expect(ld.recipeYield).toBe('4');
+    expect(ld.totalTime).toBe('PT80M');
+    expect(ld.inLanguage).toBe('en');
+    expect(ld.keywords).toBe('hungarian, comfort');
+    expect(ld.recipeIngredient).toEqual(['800g waxy potatoes', '6 eggs (hard-boiled)']);
+    expect(ld.recipeInstructions).toEqual([
+      { '@type': 'HowToStep', text: 'Boil the potatoes.' },
+      { '@type': 'HowToStep', text: 'Layer and bake.' },
+    ]);
+    expect(ld.author).toEqual({ '@type': 'Organization', name: 'My Recipes' });
+  });
+  it('omits totalTime, keywords, and description when absent', () => {
+    const ld = recipeJsonLd(
+      { ...sampleRecipe, description: null, total_time_min: null, tags: [] },
+      opts,
+    );
+    expect(ld.totalTime).toBeUndefined();
+    expect(ld.keywords).toBeUndefined();
+    expect(ld.description).toBeUndefined();
   });
 });
