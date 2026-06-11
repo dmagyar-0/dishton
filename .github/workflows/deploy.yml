@@ -1,24 +1,44 @@
 name: Deploy
 
+# Gated on CI: this fires when the CI workflow finishes for a push to main and
+# only proceeds on success, so a red commit can never deploy. (Direct `push`
+# triggering ran deploys in parallel with — and regardless of — CI.)
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+
+# Deploys must serialize: two quick merges previously raced `db push` /
+# `functions deploy`, and the older Vercel build could finish last and win.
+# cancel-in-progress stays false — never kill a deploy mid-migration.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+# Least privilege; all deploy credentials are dedicated secrets, not the token.
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-24.04
-    # Exposed at job scope so step-level `if:` conditions can read it (step
-    # `env:` is not evaluated until after `if:`).
-    env:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # Deploy exactly the commit CI validated, not whatever main points
+          # at by the time this job runs.
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
 
-      - uses: supabase/setup-cli@v1
-        with: { version: latest }
+      - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+        with: { version: 2.99.0 }
       - name: Link Supabase project
         run: supabase link --project-ref $SUPABASE_PROJECT_REF
         env:
@@ -68,7 +88,7 @@ jobs:
           cat >> .vercel/.env.production.local <<EOF
           VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          VITE_RELEASE_SHA=${{ github.sha }}
+          VITE_RELEASE_SHA=${{ github.event.workflow_run.head_sha }}
           VITE_SENTRY_DSN_FRONTEND=${{ secrets.SENTRY_DSN_FRONTEND }}
           EOF
 
@@ -81,24 +101,55 @@ jobs:
       # the artifact. Vite emits 'hidden' source maps (no sourceMappingURL in
       # the shipped JS), so they are uploaded here and never served to the
       # browser. Skipped cleanly when SENTRY_AUTH_TOKEN is absent so an
-      # un-configured environment still deploys.
+      # un-configured environment still deploys. The token is scoped to this
+      # single step — npx-fetched CLIs in other steps never see it.
       - name: Upload source maps to Sentry
-        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
         run: |
-          npx --yes @sentry/cli@2 sourcemaps inject .vercel/output
-          npx --yes @sentry/cli@2 sourcemaps upload \
-            --release "${{ github.sha }}" \
+          npx --yes @sentry/cli@2.58.6 sourcemaps inject .vercel/output
+          npx --yes @sentry/cli@2.58.6 sourcemaps upload \
+            --release "${{ github.event.workflow_run.head_sha }}" \
             .vercel/output
         env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
       - name: Strip source maps from deploy artifact
         run: find .vercel/output -name '*.map' -delete
 
+      # Mirror of the CI bundle gate, against the artifact that actually ships.
+      - name: Fail if server-secret markers leaked into the artifact
+        run: |
+          if grep -rlE 'sk-ant-|whsec_|SUPABASE_SERVICE_ROLE_KEY|SENTRY_AUTH_TOKEN' .vercel/output; then
+            echo "Server-secret marker found in the deploy artifact." >&2
+            exit 1
+          fi
+          echo "Artifact is clean."
+
       - name: Deploy prebuilt to Vercel
-        run: npx --yes vercel@53.2.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+        id: vercel-deploy
+        run: |
+          url="$(npx --yes vercel@53.2.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN")"
+          echo "deployed: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke-check the deployment
+        # Minimal post-deploy probe: the SPA shell must come back 200 with the
+        # React mount point. Retries cover Vercel's propagation lag.
+        run: |
+          url="${{ steps.vercel-deploy.outputs.url }}"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 15 "$url" | grep -q 'id="root"'; then
+              echo "Smoke check passed."
+              exit 0
+            fi
+            echo "Smoke attempt ${attempt} failed; retrying in 10s..." >&2
+            sleep 10
+          done
+          echo "Smoke check failed for $url" >&2
+          exit 1

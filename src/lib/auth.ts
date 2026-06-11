@@ -8,10 +8,20 @@
 //   5. subscribe onAuthStateChange       -> repeat 3+4 on SIGNED_IN, clear on SIGNED_OUT
 
 import type { Session, User } from '@supabase/supabase-js';
+import type { QueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { clearUserContext, setHouseholdContext, setUserContext } from '../observability/sentry';
 import { applyUiLanguage } from './i18n';
 import { supabase } from './supabase';
+
+// The TanStack Query cache holds the previous user's recipes in memory after
+// sign-out (no page reload happens), so it must be cleared alongside the SW
+// caches. main.tsx hands us the client at startup — same pattern as
+// installSessionRecovery.
+let registeredQueryClient: QueryClient | null = null;
+export function registerQueryClient(qc: QueryClient): void {
+  registeredQueryClient = qc;
+}
 
 // Force re-auth across deploys: a session minted under build A must not survive
 // into build B. We stamp the running build's SHA into localStorage on sign-in
@@ -53,16 +63,28 @@ async function clearUserScopedCaches(): Promise<void> {
   if (typeof caches === 'undefined') return;
   try {
     await Promise.all(USER_DATA_CACHES.map((name) => caches.delete(name)));
-    // Drain the BackgroundSync replay queue so a queued mutation from the
-    // signed-out user can't replay under the next account. The queue is backed
-    // by IndexedDB ('workbox-background-sync' → store 'requests'); deleting the
-    // whole DB is the simplest reliable clear and Workbox recreates it lazily.
+    // Drain any legacy BackgroundSync replay queue. The /rest/ route no longer
+    // configures backgroundSync (it stored Authorization headers at rest in
+    // IndexedDB for queued GETs), but devices that installed an older SW may
+    // still hold a queue — keep deleting it for a few releases.
     const idb = (globalThis as { indexedDB?: IDBFactory }).indexedDB;
     idb?.deleteDatabase('workbox-background-sync');
   } catch (err) {
     // Cache eviction is best-effort; a failure here must not block sign-out.
     console.error('[auth] failed to clear user-scoped caches', err);
   }
+}
+
+// Everything user-scoped that survives outside the Supabase session itself:
+// SW runtime caches, the in-memory query cache, Sentry identity. Every
+// sign-out path (explicit, SIGNED_OUT event, stale-build force-logout) must
+// run this — a shared device handing the next user a previous user's cached
+// recipes is exactly the leak these caches otherwise create.
+async function clearUserScopedState(): Promise<void> {
+  await clearUserScopedCaches();
+  registeredQueryClient?.clear();
+  clearUserContext();
+  setHouseholdContext(null);
 }
 
 export type Profile = {
@@ -102,11 +124,15 @@ export const useAuth = create<AuthState>((set) => ({
   setProfile: (profile) => set({ profile }),
   setMemberships: (memberships) => set({ memberships, hydrated: true }),
   signOut: async () => {
-    await supabase.auth.signOut();
-    await clearUserScopedCaches();
-    clearUserContext();
-    setHouseholdContext(null);
-    set({ session: null, user: null, profile: null, memberships: [], hydrated: true });
+    try {
+      // Local scope: sign out THIS device. The profile page offers an explicit
+      // "sign out everywhere" that passes { scope: 'global' }.
+      await supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      // A thrown signOut (network down) must not skip cache/identity cleanup.
+      await clearUserScopedState();
+      set({ session: null, user: null, profile: null, memberships: [], hydrated: true });
+    }
   },
 }));
 
@@ -164,11 +190,19 @@ export async function bootstrapAuth(): Promise<void> {
   if (BUILD_SHA && data.session) {
     const storedSha = readStoredSha();
     if (storedSha && storedSha !== BUILD_SHA) {
-      await supabase.auth.signOut();
-      clearStoredSha();
-      useAuth.getState().setSession(null);
-      useAuth.getState().setProfile(null);
-      useAuth.getState().setMemberships([]);
+      // This force-logout runs BEFORE subscribeAuthChanges, so the SIGNED_OUT
+      // handler below never sees it — the user-scoped cleanup must happen
+      // explicitly here or the previous build's cached recipes/images survive
+      // the very logout that exists to fence them off.
+      try {
+        await supabase.auth.signOut();
+      } finally {
+        await clearUserScopedState();
+        clearStoredSha();
+        useAuth.getState().setSession(null);
+        useAuth.getState().setProfile(null);
+        useAuth.getState().setMemberships([]);
+      }
       subscribeAuthChanges();
       return;
     }
@@ -217,9 +251,7 @@ function subscribeAuthChanges(): void {
       }
     } else if (event === 'SIGNED_OUT') {
       clearStoredSha();
-      await clearUserScopedCaches();
-      clearUserContext();
-      setHouseholdContext(null);
+      await clearUserScopedState();
       useAuth.getState().setProfile(null);
       useAuth.getState().setMemberships([]);
     }

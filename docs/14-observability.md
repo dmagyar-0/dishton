@@ -137,10 +137,14 @@ Required events per import function:
 - `request.end` (level=`info`, `latency_ms` for the whole request)
 - `request.error` (level=`error`, `error` populated)
 
-Sentry is also wired in Edge Functions via `@sentry/deno` with
-`VITE_SENTRY_DSN_FUNCTIONS`'s sibling `SENTRY_DSN_FUNCTIONS`; only
-exceptions go to Sentry, while structured progress lines go to Logtail.
-This keeps Sentry quotas predictable.
+> **Current posture (2026-06):** Edge Functions do NOT ship to Sentry.
+> `SENTRY_DSN_FUNCTIONS` is declared in `_shared/env.ts` but unused; the
+> only Edge Function telemetry is the structured stdout above, forwarded
+> by the platform log drain. Error visibility therefore depends on a
+> Better Stack alert on `event=request.error` — see
+> [runbooks/alerting.md](./runbooks/alerting.md) for the exact queries
+> and the dashboard-side setup this requires. Wiring `@sentry/deno`
+> remains a roadmap item, not a shipped feature.
 
 ## AI cost dashboard — `app.v_ai_daily_cost`
 
@@ -167,30 +171,32 @@ where status = 'done'
 group by 1, 2;
 ```
 
-RLS on the view: only profiles whose role in the household is `owner` may
-select rows. The view is exposed via PostgREST and read by a small admin
-panel in the SPA at `/admin/cost`.
+Access: the base view is service-role-only; owner-scoped reads go through
+the SECURITY DEFINER function `app.v_ai_daily_cost_for_household`, which
+verifies the caller owns the household.
 
-UI:
-
-- Route: `/admin/cost` (gated by `useIsHouseholdOwner()`).
-- Renders a 30-day stacked bar chart (tokens_in vs tokens_out) plus a
-  jobs-per-day line, scoped to the current household.
-- Uses the design system from
-  [03-design-system.md](./03-design-system.md); no third-party chart
-  library beyond what doc 03 already permits.
-
-Cost guard: when the day's `tokens_total` exceeds 90% of the configured
-daily Anthropic spend budget (the per-minute reservation in
-`app.ai_rate_budget` is for short-window throttling, not daily spend), the
-panel shows a banner linking to the rate-budget docs and the import flow
-displays a passive notice ("AI imports may be slow today").
+> **Current posture (2026-06):** the view + owner-gated function exist in
+> the schema, but there is NO `/admin/cost` UI route — cost inspection is
+> a SQL query away (Dashboard → SQL editor →
+> `select * from app.v_ai_daily_cost_for_household('<household>')`).
+> Daily Anthropic spend alerting is handled at the provider: set a usage
+> limit + email alert in the Anthropic console (see
+> [runbooks/alerting.md](./runbooks/alerting.md)). The owner-facing chart
+> and the 90%-of-budget banner described in earlier revisions are
+> unbuilt roadmap items.
 
 ## Error budgets and SLOs
 
-Targets (windowed over the trailing 7 days, computed via Logtail
-saved-queries plus a small Supabase scheduled function that writes the
-result into `app.slo_snapshots`):
+> **Current posture (2026-06):** these targets are aspirational. There is
+> no `app.slo_snapshots` table, no scheduled snapshot function, and no
+> automated burn-rate alerting; the only alerting that exists is what is
+> configured by hand in Better Stack / Sentry / the Anthropic console per
+> [runbooks/alerting.md](./runbooks/alerting.md). Treat the table below
+> as the definition of "healthy" when reading dashboards manually.
+
+Targets (windowed over the trailing 7 days, intended to be computed via
+Logtail saved-queries plus a small Supabase scheduled function writing
+into `app.slo_snapshots` — neither exists yet):
 
 | Indicator | Target |
 |---|---|

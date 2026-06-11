@@ -9,6 +9,7 @@ import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { z } from 'zod';
 import {
   HttpError,
+  assertHouseholdMember,
   corsHeaders,
   getCallerPreferredLanguage,
   getHouseholdAllowedTags,
@@ -16,7 +17,8 @@ import {
   resolveCaller,
 } from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
-import { withRateBudget } from '../_shared/ai/rate-budget.ts';
+import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
+import { rehostRemoteHeroImage } from '../_shared/scrape/rehost-image.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
 import { runDetached } from '../_shared/import-runner.ts';
 import { env } from '../_shared/env.ts';
@@ -119,6 +121,10 @@ serve(async (req: Request) => {
     emit('request.start', { url_host: safeHost(body.url) });
 
     await caller.client.rpc('reap_stuck_imports');
+
+    // The job row and the saved recipe are scoped to this household; reject
+    // a household the caller doesn't belong to before doing any work.
+    await assertHouseholdMember(caller.client, caller.profileId, body.household_id);
 
     const { count } = await caller.client
       .from('import_jobs')
@@ -278,6 +284,12 @@ serve(async (req: Request) => {
 
       const result = budget.value!;
       if (!result.ok) {
+        // `upstream` means the model call itself failed — nothing was spent,
+        // so hand the reservation back. parse/schema failures consumed real
+        // tokens and stay charged.
+        if (result.reason === 'upstream') {
+          await refundBudgets(callerProfileId, 1200);
+        }
         emit(
           'request.needs_review',
           {
@@ -322,9 +334,23 @@ serve(async (req: Request) => {
         ai_tokens_out: result.usage.output,
       });
 
+      // The model's hero_image_path came out of an untrusted caption. Re-host
+      // it into our own bucket (SSRF-guarded) so household members' browsers
+      // never load an attacker-chosen URL.
+      const heroImagePath = await rehostRemoteHeroImage(
+        callerClient,
+        callerProfileId,
+        result.recipe.hero_image_path,
+      );
+
       return {
         ok: true,
-        draft: { ...result.recipe, source_type: 'instagram' as const, source_url: body.url },
+        draft: {
+          ...result.recipe,
+          hero_image_path: heroImagePath,
+          source_type: 'instagram' as const,
+          source_url: body.url,
+        },
         thumbnailUrl: oe.thumbnail_url ?? null,
         usage: result.usage,
         model: result.model,

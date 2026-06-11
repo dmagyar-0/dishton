@@ -23,6 +23,21 @@ function admin() {
 
 export type BudgetReason = 'ok' | 'rate_limit';
 
+// Release both reservations after a model call that never produced work
+// (thrown error or an `upstream` failure). Best-effort: a refund failure must
+// not mask the original error, and both windows self-heal within 60s anyway.
+export async function refundBudgets(profileId: string, tokens: number): Promise<void> {
+  try {
+    await admin().rpc('app_refund_profile_ai_budget', {
+      p_profile: profileId,
+      p_tokens: tokens,
+    });
+    await admin().rpc('app_refund_ai_budget', { p_tokens: tokens });
+  } catch {
+    /* window self-heals */
+  }
+}
+
 export async function withRateBudget<T>(
   profileId: string,
   estimatedTokens: number,
@@ -51,6 +66,14 @@ export async function withRateBudget<T>(
     return { status: 'rate_limit' };
   }
 
-  const value = await fn();
-  return { status: 'ok', value };
+  try {
+    const value = await fn();
+    return { status: 'ok', value };
+  } catch (e) {
+    // The reserved tokens were never spent — the call threw before Anthropic
+    // produced anything. Hand them back so transient failures don't wedge the
+    // user out of their per-minute window.
+    await refundBudgets(profileId, estimatedTokens);
+    throw e;
+  }
 }

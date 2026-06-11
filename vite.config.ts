@@ -44,7 +44,11 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'recipe-images',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              // Signed URLs rotate hourly (storage.ts re-mints after 55 min)
+              // and the token is part of the cache key, so entries are dead
+              // weight beyond the hour. Short retention also bounds how long
+              // a private photo outlives its signed URL on a shared device.
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
@@ -55,10 +59,11 @@ export default defineConfig({
             options: {
               cacheName: 'supabase-rest',
               networkTimeoutSeconds: 4,
-              backgroundSync: {
-                name: 'supabase-rest-sync',
-                options: { maxRetentionTime: 24 * 60 },
-              },
+              // No backgroundSync here: Workbox runtime routes only queue GETs
+              // (it never replayed mutations), and the queue persisted whole
+              // requests — Authorization headers included — in IndexedDB for
+              // up to a day. clearUserScopedCaches still drops any legacy
+              // queue DB left by older service workers.
               expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
             },
           },

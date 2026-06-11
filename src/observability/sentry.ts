@@ -2,6 +2,27 @@
 // DSN comes from VITE_SENTRY_DSN_FRONTEND; empty disables Sentry.
 
 import * as Sentry from '@sentry/react';
+import { scrubUrl } from '../lib/scrub-url';
+
+// Auth flows put tokens in URLs (PKCE `?code=`, legacy recovery fragments).
+// Scrub every URL-shaped field before an event/transaction/breadcrumb leaves
+// the browser so Sentry can never store something that mints a session.
+function scrubEventUrls<T extends Sentry.Event>(event: T): T {
+  if (event.request?.url) event.request.url = scrubUrl(event.request.url);
+  if (typeof event.transaction === 'string') event.transaction = scrubUrl(event.transaction);
+  return event;
+}
+
+function scrubBreadcrumbUrls(crumb: Sentry.Breadcrumb): Sentry.Breadcrumb {
+  const data = crumb.data;
+  if (data) {
+    for (const key of ['url', 'from', 'to']) {
+      const value = data[key];
+      if (typeof value === 'string') data[key] = scrubUrl(value);
+    }
+  }
+  return crumb;
+}
 
 export function initSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN_FRONTEND;
@@ -22,6 +43,9 @@ export function initSentry(): void {
     tracesSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 1.0,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0.5,
+    beforeSend: (event) => scrubEventUrls(event),
+    beforeSendTransaction: (event) => scrubEventUrls(event),
+    beforeBreadcrumb: (crumb) => scrubBreadcrumbUrls(crumb),
   });
 }
 

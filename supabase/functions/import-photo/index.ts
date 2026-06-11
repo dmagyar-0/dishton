@@ -10,14 +10,16 @@ import { z } from 'zod';
 import {
   type AppClient,
   HttpError,
+  assertHouseholdMember,
   corsHeaders,
   getCallerPreferredLanguage,
   getHouseholdAllowedTags,
   jsonResponse,
   resolveCaller,
 } from '../_shared/auth.ts';
+import { sniffImageContentType } from '../_shared/scrape/image-bytes.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
-import { withRateBudget } from '../_shared/ai/rate-budget.ts';
+import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
 import { runDetached } from '../_shared/import-runner.ts';
 import { isOwnedStoragePath } from '../_shared/storage-path.ts';
@@ -59,6 +61,18 @@ async function assertValidImageObject(client: AppClient, path: string): Promise<
   if (size > MAX_OBJECT_BYTES) throw new HttpError(413, 'photo_too_large');
   const mime = (meta.mimetype ?? '').toLowerCase();
   if (!ALLOWED_IMAGE_TYPES.has(mime)) throw new HttpError(415, 'not_image');
+}
+
+// The stored mimetype is whatever Content-Type the uploader declared — i.e.
+// attacker-controlled. Read the first bytes through the signed URL and check
+// the magic numbers before handing the URL to the vision model.
+async function assertImageMagicBytes(signedUrl: string): Promise<void> {
+  const res = await fetch(signedUrl, { headers: { range: 'bytes=0-31' } });
+  if (!res.ok) throw new HttpError(404, 'object_not_found');
+  const head = new Uint8Array(await res.arrayBuffer());
+  if (sniffImageContentType(head.slice(0, 32)) === null) {
+    throw new HttpError(415, 'not_image');
+  }
 }
 
 type AiUsage = { input: number; output: number; cache_read?: number; cache_write?: number };
@@ -119,6 +133,10 @@ serve(async (req: Request) => {
       }
     }
 
+    // The job row and the saved recipe are scoped to this household; reject
+    // a household the caller doesn't belong to before doing any work.
+    await assertHouseholdMember(caller.client, caller.profileId, body.household_id);
+
     const { data: job, error: jobErr } = await caller.client
       .from('import_jobs')
       .insert({
@@ -146,6 +164,7 @@ serve(async (req: Request) => {
         .from('imports')
         .createSignedUrl(path, 300);
       if (signErr || !signed?.signedUrl) throw new HttpError(404, 'object_not_found');
+      await assertImageMagicBytes(signed.signedUrl);
       signedUrls.push(signed.signedUrl);
     }
 
@@ -183,6 +202,12 @@ serve(async (req: Request) => {
 
       const result = budget.value!;
       if (!result.ok) {
+        // `upstream` means the model call itself failed — nothing was spent,
+        // so hand the reservation back. parse/schema failures consumed real
+        // tokens and stay charged.
+        if (result.reason === 'upstream') {
+          await refundBudgets(callerProfileId, estimatedTokens);
+        }
         return { ok: false, reason: result.reason, raw: result.raw, latencyMs };
       }
 

@@ -6,6 +6,12 @@ on:
   push:
     branches: [main]
 
+# Least privilege: nothing in CI writes to the repo, and the default token
+# otherwise leaks write scope into every step (checkout persists it into
+# .git/config).
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -16,14 +22,14 @@ jobs:
     outputs:
       pnpm-cache: ${{ steps.cache-key.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - run: corepack enable
       - id: cache-key
         run: echo "value=${{ hashFiles('pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ runner.os }}-${{ steps.cache-key.outputs.value }}
@@ -33,8 +39,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm typecheck
@@ -43,8 +49,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm lint
@@ -56,8 +62,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm test:unit
@@ -66,8 +72,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm test:components
@@ -76,12 +82,12 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm test:coverage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: coverage
@@ -91,8 +97,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: denoland/setup-deno@11b63cf76cfcafb4e43f97b6cad24d8e8438f62d # v1.5.2
         with: { deno-version: v1.46.3 }
       - run: deno test -A --config supabase/functions/deno.json supabase/functions
 
@@ -101,7 +107,9 @@ jobs:
     needs: setup
     services:
       postgres:
-        image: postgres:16
+        # Match production (Postgres 17; supabase/config.toml pins local to 17
+        # as well) so RLS/plpgsql behaviour is tested on the engine that runs it.
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
@@ -114,8 +122,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: denoland/setup-deno@11b63cf76cfcafb4e43f97b6cad24d8e8438f62d # v1.5.2
         with: { deno-version: v1.46.3 }
       - name: Stub Supabase auth + storage schemas
         env:
@@ -132,8 +140,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [typecheck, lint, test-unit, test-components]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm build
@@ -142,7 +150,17 @@ jobs:
       # artifact. Strip them here so the CI artifact carries no .map files.
       - name: Strip source maps from CI artifact
         run: find dist -name '*.map' -delete
-      - uses: actions/upload-artifact@v4
+      # Last line of defence against a server secret getting baked into the
+      # client bundle (docs/13). The anon key is public by design; these
+      # markers must never appear.
+      - name: Fail if server-secret markers leaked into the bundle
+        run: |
+          if grep -rlE 'sk-ant-|whsec_|SUPABASE_SERVICE_ROLE_KEY|SENTRY_AUTH_TOKEN' dist/; then
+            echo "Server-secret marker found in the client bundle." >&2
+            exit 1
+          fi
+          echo "Bundle is clean."
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist
           path: dist/
@@ -152,9 +170,9 @@ jobs:
     runs-on: ubuntu-24.04
     needs: setup
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22 }
       - name: Ensure base ref is available
         run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref || 'main' }}:refs/remotes/origin/${{ github.event.pull_request.base.ref || 'main' }}" || git fetch --no-tags origin main
@@ -170,6 +188,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: always()
     needs:
+      - setup
       - typecheck
       - lint
       - test-unit
@@ -181,9 +200,12 @@ jobs:
       - build
     steps:
       - name: Verify all CI jobs succeeded
+        # `skipped` must fail too: if `setup` breaks, every downstream job
+        # reports `skipped` (not `failure`) and a grep for failures alone
+        # would let a PR merge with zero tests run.
         run: |
           echo "Aggregated results: ${{ join(needs.*.result, ', ') }}"
-          if echo "${{ join(needs.*.result, ',') }}" | grep -qE 'failure|cancelled'; then
+          if echo "${{ join(needs.*.result, ',') }}" | grep -qE 'failure|cancelled|skipped'; then
             echo "One or more required CI jobs did not succeed."
             exit 1
           fi

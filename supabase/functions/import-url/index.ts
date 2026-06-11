@@ -12,6 +12,7 @@ import { parseHTML } from 'npm:linkedom@0.18';
 import { z } from 'zod';
 import {
   HttpError,
+  assertHouseholdMember,
   corsHeaders,
   getCallerPreferredLanguage,
   getHouseholdAllowedTags,
@@ -20,7 +21,8 @@ import {
 } from '../_shared/auth.ts';
 import { callAndValidate } from '../_shared/ai/validate.ts';
 import { isMockMode } from '../_shared/ai/mock.ts';
-import { withRateBudget } from '../_shared/ai/rate-budget.ts';
+import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
+import { rehostRemoteHeroImage } from '../_shared/scrape/rehost-image.ts';
 import { structuringFromHtml } from '../_shared/ai/prompts.ts';
 import { extractRecipeJsonLd } from '../_shared/scrape/recipe-jsonld.ts';
 import { SsrfError, safeFetch } from '../_shared/scrape/ssrf-guard.ts';
@@ -129,6 +131,10 @@ serve(async (req: Request) => {
 
     await caller.client.rpc('reap_stuck_imports');
 
+    // The job row and the saved recipe are scoped to this household; reject
+    // a household the caller doesn't belong to before doing any work.
+    await assertHouseholdMember(caller.client, caller.profileId, body.household_id);
+
     const { count } = await caller.client
       .from('import_jobs')
       .select('id', { count: 'exact', head: true })
@@ -206,6 +212,12 @@ serve(async (req: Request) => {
 
       const result = budget.value!;
       if (!result.ok) {
+        // `upstream` means the model call itself failed — nothing was spent,
+        // so hand the reservation back. parse/schema failures consumed real
+        // tokens and stay charged.
+        if (result.reason === 'upstream') {
+          await refundBudgets(callerProfileId, 4000);
+        }
         logAiCall({
           request_id: requestId,
           function: 'import-url',
@@ -233,9 +245,24 @@ serve(async (req: Request) => {
         ok: true,
       });
 
+      // The model's hero_image_path came out of an untrusted page. Re-host it
+      // into our own bucket (SSRF-guarded) so household members' browsers
+      // never load an attacker-chosen URL; on any failure the draft simply
+      // ships without a hero.
+      const heroImagePath = await rehostRemoteHeroImage(
+        callerClient,
+        callerProfileId,
+        result.recipe.hero_image_path,
+      );
+
       return {
         ok: true,
-        draft: { ...result.recipe, source_type: 'url' as const, source_url: body.url },
+        draft: {
+          ...result.recipe,
+          hero_image_path: heroImagePath,
+          source_type: 'url' as const,
+          source_url: body.url,
+        },
         usage: result.usage,
         model: result.model,
         latencyMs,

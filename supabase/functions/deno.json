@@ -1,12 +1,11 @@
 {
   "imports": {
-    "zod": "npm:zod@^3",
-    "@noble/hashes/sha256": "npm:@noble/hashes@^1/sha256",
-    "@noble/hashes/utils": "npm:@noble/hashes@^1/utils",
-    "@std/assert": "jsr:@std/assert@^1"
+    "zod": "npm:zod@3.25.76",
+    "@noble/hashes/sha256": "npm:@noble/hashes@1.8.0/sha256",
+    "@noble/hashes/utils": "npm:@noble/hashes@1.8.0/utils",
+    "@std/assert": "jsr:@std/assert@1.0.14"
   },
   "nodeModulesDir": false,
-  "lock": false,
   "tasks": {
     "test": "deno test -A"
   }
