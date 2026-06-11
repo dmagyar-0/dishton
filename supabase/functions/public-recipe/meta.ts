@@ -66,8 +66,12 @@ export function buildRecipePage(opts: RecipePageOpts): string {
   const prose = recipe.description?.trim()
     ? `<p>${escapeHtml(recipe.description.trim())}</p>`
     : '';
-  const source = recipe.source_url
-    ? `<p>Source: <a href="${escapeHtml(recipe.source_url)}">${escapeHtml(recipe.source_url)}</a></p>`
+  // Only link http(s) sources: escapeHtml can't neutralise a `javascript:`/`data:`
+  // URI scheme, and source_url is user-controlled, so allowlist the scheme.
+  const safeSourceUrl =
+    recipe.source_url && /^https?:\/\//i.test(recipe.source_url) ? recipe.source_url : null;
+  const source = safeSourceUrl
+    ? `<p>Source: <a href="${escapeHtml(safeSourceUrl)}">${escapeHtml(safeSourceUrl)}</a></p>`
     : '';
 
   return `<!doctype html>

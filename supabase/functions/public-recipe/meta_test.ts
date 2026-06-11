@@ -96,3 +96,12 @@ Deno.test('buildRecipePage omits optional blocks when their data is absent', () 
   assert(!html.includes('class="tags"'));
   assert(!html.includes('Source:'));
 });
+
+Deno.test('buildRecipePage drops a non-http(s) source_url (no javascript: href)', () => {
+  const danger = page({ source_url: 'javascript:alert(document.cookie)' });
+  assert(!danger.includes('javascript:'));
+  assert(!danger.includes('Source:'));
+  // a normal http(s) url still renders as a link
+  const ok = page({ source_url: 'https://example.com/recipe' });
+  assertStringIncludes(ok, '<a href="https://example.com/recipe">');
+});
