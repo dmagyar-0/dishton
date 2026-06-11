@@ -11,8 +11,8 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { shareSummary } from '../_shared/domain/share.ts';
-import { buildMetaHtml } from './meta.ts';
+import { shareSummary, type ShareRecipe } from '../_shared/domain/share.ts';
+import { buildRecipePage } from './meta.ts';
 import { buildOgElement } from './og.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -24,14 +24,7 @@ const APP_ORIGIN = Deno.env.get('PUBLIC_APP_ORIGIN') ?? 'https://dishton.vercel.
 const CACHE_OK = 'public, max-age=300, s-maxage=3600';
 
 type PublicRecipePayload = {
-  recipe: {
-    title: string;
-    description: string | null;
-    servings: number;
-    total_time_min: number | null;
-    hero_image_path: string | null;
-    ingredients: unknown[];
-  };
+  recipe: ShareRecipe & { hero_image_path: string | null };
   household_name: string;
 };
 
@@ -144,8 +137,9 @@ function handleMeta(token: string, payload: PublicRecipePayload): Response {
     total_time_min: payload.recipe.total_time_min,
     ingredientCount: payload.recipe.ingredients.length,
   });
-  const html = buildMetaHtml({
-    title: payload.recipe.title,
+  const html = buildRecipePage({
+    recipe: payload.recipe,
+    householdName: payload.household_name,
     description,
     canonicalUrl,
     ogImageUrl,
@@ -155,7 +149,6 @@ function handleMeta(token: string, payload: PublicRecipePayload): Response {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': CACHE_OK,
-      'x-robots-tag': 'noindex',
     },
   });
 }
