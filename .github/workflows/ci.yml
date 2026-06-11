@@ -57,6 +57,18 @@ jobs:
       # Fail the build if the feature-flag registry, docs/15, and .env.example
       # drift apart (the guard promised in src/feature-flags/registry.ts).
       - run: node scripts/check-flag-registry.mjs
+      # Validate the workflow files themselves. GitHub rejects an invalid
+      # workflow only when its trigger fires — deploy.yml's workflow_run
+      # trigger meant a validation error surfaced only AFTER merge, as an
+      # instant no-op failure on main (e.g. `secrets` is not allowed in `if:`
+      # conditionals). Pinned by version + sha256.
+      - name: actionlint (workflow validity)
+        run: |
+          curl -sLo /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz
+          echo "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint
 
   test-unit:
     runs-on: ubuntu-24.04
