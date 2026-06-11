@@ -1,6 +1,7 @@
 // public-recipe: unauthenticated GET surface for the share loop.
-//   GET /public-recipe/<token>          -> OG meta HTML (crawlers; humans get
-//                                          a meta-refresh to /r/<token>)
+//   GET /public-recipe/<token>          -> server-rendered recipe page for
+//                                          non-browser UAs: Schema.org Recipe
+//                                          JSON-LD + visible HTML + OG meta
 //   GET /public-recipe/<token>/og.png   -> 1200x630 OG card PNG (Satori)
 // verify_jwt is off (supabase/config.toml): the token in the path is the
 // credential; reads go through the same get_public_recipe RPC as the SPA.
