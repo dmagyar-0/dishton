@@ -47,7 +47,7 @@
     "convert-units": "^2",
     "date-fns": "^4",
     "i18next": "^24",
-    "i18next-http-backend": "^3",
+    "i18next-http-backend": "^4",
     "lucide-react": "^0.460",
     "motion": "^12",
     "nanoid": "^5",
