@@ -106,6 +106,17 @@ describe('ingredientLine', () => {
       }),
     ).toBe('salt');
   });
+  it('includes the unit when composing from structured fields', () => {
+    expect(
+      ingredientLine({
+        raw_text: null,
+        ingredient_name: 'milk',
+        quantity: 200,
+        unit: 'ml',
+        notes: null,
+      }),
+    ).toBe('200 ml milk');
+  });
 });
 
 describe('isoDuration', () => {
@@ -126,6 +137,9 @@ describe('recipeJsonLd', () => {
   };
   it('maps the recipe into a Schema.org Recipe object', () => {
     const ld = recipeJsonLd(sampleRecipe, opts);
+    expect(ld['@context']).toBe('https://schema.org');
+    expect(ld.url).toBe('https://app.example/r/tok123');
+    expect(ld.image).toEqual(['https://fns.example/og.png']);
     expect(ld['@type']).toBe('Recipe');
     expect(ld.name).toBe('Rakott Krumpli');
     expect(ld.recipeYield).toBe('4');

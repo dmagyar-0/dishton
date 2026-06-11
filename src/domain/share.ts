@@ -38,6 +38,9 @@ export function shareSummary(input: ShareSummaryInput): string {
 export type ShareIngredient = {
   raw_text: string | null;
   ingredient_name: string;
+  // numeric value from the get_public_recipe RPC projection (a DB float; any
+  // display fractions are resolved upstream) — deliberately not the SPA's
+  // Quantity union.
   quantity: number | null;
   unit: string | null;
   notes: string | null;
