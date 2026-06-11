@@ -168,8 +168,12 @@ function FollowCodeCard({
   );
 
   const copyCode = async () => {
-    await navigator.clipboard.writeText(code.code);
-    push({ variant: 'success', title: t('household_settings.sharing.code_copied') });
+    try {
+      await navigator.clipboard.writeText(code.code);
+      push({ variant: 'success', title: t('household_settings.sharing.code_copied') });
+    } catch {
+      push({ variant: 'error', title: t('household_settings.sharing.copy_failed') });
+    }
   };
 
   const onRevoke = async () => {
@@ -200,32 +204,35 @@ function FollowCodeCard({
         'hover:-rotate-[0.25deg]',
       )}
     >
-      <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={() => void copyCode()}
-          className="min-w-0 flex-1 break-all text-left font-display tracking-[0.15em] text-aubergine text-base sm:text-lg sm:tracking-[0.2em]"
-          title={t('household_settings.sharing.copy_code')}
-        >
+      <button
+        type="button"
+        onClick={() => void copyCode()}
+        className="block w-full text-left"
+        title={t('household_settings.sharing.copy_code')}
+      >
+        <span className="block break-all pr-8 font-display tracking-[0.15em] text-aubergine text-base sm:text-lg sm:tracking-[0.2em]">
           {code.code}
-        </button>
-        {isOwner && (
-          <IconButton
-            variant="ghost"
-            label={t('household_settings.sharing.revoke')}
-            onClick={() => setConfirmOpen(true)}
-            disabled={revoke.isPending}
-          >
-            <X size={16} strokeWidth={1.5} />
-          </IconButton>
-        )}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Badge variant="outline" className="text-xs">
-          {t('household_settings.members.expires_in', { when: expiresIn })}
-        </Badge>
-        <span className="text-ink-soft text-xs">{t('household_settings.sharing.tap_to_copy')}</span>
-      </div>
+        </span>
+        <span className="mt-2 flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="text-xs">
+            {t('household_settings.members.expires_in', { when: expiresIn })}
+          </Badge>
+          <span className="text-ink-soft text-xs">
+            {t('household_settings.sharing.tap_to_copy')}
+          </span>
+        </span>
+      </button>
+      {isOwner && (
+        <IconButton
+          variant="ghost"
+          label={t('household_settings.sharing.revoke')}
+          onClick={() => setConfirmOpen(true)}
+          disabled={revoke.isPending}
+          className="absolute right-2 top-2"
+        >
+          <X size={16} strokeWidth={1.5} />
+        </IconButton>
+      )}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
