@@ -28,13 +28,19 @@ add or rotate secrets without reverse-engineering the system.
 | `local` | `http://localhost:5173` | `supabase start` (Docker) | `vite preview` (optional) | developer machine |
 | `production` | `dishton.app` | `dishton-prod` Supabase project | `dishton` Vercel project, `production` env | until intentionally retired |
 
-> **There is no preview environment.** Earlier revisions of this doc
-> described per-PR Supabase branches + Vercel preview deployments; that
-> pipeline was never built (`SUPABASE_PROJECT_REF_PREVIEW` in
-> `.env.example` is reserved for it). The role is covered by the fully
-> local e2e stack: every PR runs the Playwright smoke suite against a
-> real local Supabase + the production SPA bundle (`e2e.yml`), with AI
-> mocked at the Edge Function boundary.
+> **Preview environments are partial and not load-bearing.** The Vercel
+> GitHub integration auto-deploys an SPA preview per branch/PR, and the
+> Supabase GitHub integration is connected for preview branches but
+> skips PRs whenever the dashboard's concurrent-branch limit is reached
+> (see the bot comments on any PR) — so a preview SPA may run against
+> whatever Supabase project the Vercel *Preview* env vars point at, not
+> an isolated branch. Treat previews as a UI smoke surface only. The
+> authoritative pre-merge gate is the fully local e2e stack: every PR
+> runs the Playwright suite against a real local Supabase + the
+> production SPA bundle (`e2e.yml`), with AI mocked at the Edge Function
+> boundary. (`SUPABASE_PROJECT_REF_PREVIEW` in `.env.example` is
+> reserved for a first-class preview pipeline; none of the workflows
+> implement one.)
 
 Rules:
 
