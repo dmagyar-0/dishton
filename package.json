@@ -35,9 +35,9 @@
   "dependencies": {
     "@hookform/resolvers": "^3",
     "@noble/hashes": "^1.5.0",
-    "@radix-ui/react-dialog": "^1.1.2",
-    "@radix-ui/react-slider": "^1.2.1",
-    "@radix-ui/react-tabs": "^1.1.1",
+    "@radix-ui/react-dialog": "^1.1.16",
+    "@radix-ui/react-slider": "^1.4.0",
+    "@radix-ui/react-tabs": "^1.1.14",
     "@sentry/react": "^8",
     "@supabase/supabase-js": "^2",
     "@tanstack/react-query": "^5",
@@ -61,7 +61,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9",
-    "@playwright/test": "^1.48",
+    "@playwright/test": "^1.60",
     "@tailwindcss/vite": "^4",
     "@tanstack/router-vite-plugin": "^1",
     "@testing-library/jest-dom": "^6",
@@ -79,6 +79,6 @@
     "vite": "^6",
     "vite-plugin-pwa": "^0.20",
     "vitest": "^2",
-    "workbox-window": "^7.4.0"
+    "workbox-window": "^7.4.1"
   }
 }
