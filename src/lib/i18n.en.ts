@@ -250,6 +250,7 @@ export default {
       tap_to_copy: 'Tap to copy',
       copy_code: 'Copy code',
       code_copied: 'Code copied',
+      copy_failed: "Couldn't copy code",
       revoke: 'Revoke',
       revoke_confirm_title: 'Revoke this follow code?',
       revoke_confirm_body: 'It will stop working immediately. You can always generate a new one.',

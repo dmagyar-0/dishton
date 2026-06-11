@@ -254,6 +254,7 @@ export default {
       tap_to_copy: 'Zum Kopieren tippen',
       copy_code: 'Code kopieren',
       code_copied: 'Code kopiert',
+      copy_failed: 'Code konnte nicht kopiert werden',
       revoke: 'Widerrufen',
       revoke_confirm_title: 'Folge-Code widerrufen?',
       revoke_confirm_body:
