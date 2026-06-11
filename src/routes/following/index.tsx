@@ -1,4 +1,4 @@
-import { useFeatureFlag } from '@/feature-flags';
+import { useFeatureFlagStatus } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { type AddFollowInput, AddFollowSchema } from '@/lib/forms/household';
 import { useAddFollow, useFollowedHouseholds, useUnfollow } from '@/lib/queries/households';
@@ -20,12 +20,21 @@ export const Route = createFileRoute('/following/')({
 
 // FLAG: follows_enabled — the /following surface only exists when following is
 // turned on (off by default in MVP production per docs/15). We gate at render
-// rather than in beforeLoad because the runtime flag is fetched client-side via
-// useFeatureFlag; an unauthenticated/flag-off user is redirected home. Exported
-// for the colocated flag-gating test.
+// rather than in beforeLoad because the runtime flag is fetched client-side.
+// On a cold load the flag value isn't known yet, so we wait for it to resolve
+// before deciding: redirecting on the transient default-off value throws a
+// redirect mid-render and trips the error boundary. Once resolved, a flag-off
+// user is redirected home. Exported for the colocated flag-gating test.
 export function FollowingGate() {
-  const followsEnabled = useFeatureFlag('follows_enabled');
-  if (!followsEnabled) {
+  const { enabled, isResolved } = useFeatureFlagStatus('follows_enabled');
+  if (!isResolved) {
+    return (
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        <Skeleton className="h-40" />
+      </main>
+    );
+  }
+  if (!enabled) {
     throw redirect({ to: '/' });
   }
   return <FollowingPage />;

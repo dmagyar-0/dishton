@@ -249,6 +249,9 @@ export default {
       owner_only_notice: 'Nur Besitzer:innen können Folge-Codes ausstellen.',
       generate_follow_code: 'Folge-Code erzeugen',
       outstanding_codes: 'Offene Folge-Codes',
+      redeem_hint:
+        'Schick einen Code an einen anderen Haushalt. Dort wird er auf der Folgen-Seite eingefügt, um euren Rezepten zu folgen.',
+      tap_to_copy: 'Zum Kopieren tippen',
       copy_code: 'Code kopieren',
       code_copied: 'Code kopiert',
       revoke: 'Widerrufen',

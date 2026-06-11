@@ -7,10 +7,13 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
 
-// Feature flag is toggled per-test via this mutable holder.
-const flags: Record<string, boolean> = { follows_enabled: true };
+// Feature flag is toggled per-test via this mutable holder. `resolved` models
+// the runtime-flag loading window: until the DB read returns, the gate must not
+// act on the default-off value.
+const flag = { enabled: true, resolved: true };
 vi.mock('@/feature-flags', () => ({
-  useFeatureFlag: (key: string) => flags[key] ?? false,
+  useFeatureFlag: () => flag.enabled,
+  useFeatureFlagStatus: () => ({ enabled: flag.enabled, isResolved: flag.resolved }),
 }));
 
 // redirect() throws in the real router; mock it to a recognisable sentinel so
@@ -77,18 +80,29 @@ vi.mock('@/ui/household/dialogs/ConfirmDialog', () => ({ ConfirmDialog: () => nu
 import { FollowingGate } from './index';
 
 afterEach(() => {
-  flags.follows_enabled = true;
+  flag.enabled = true;
+  flag.resolved = true;
 });
 
 describe('FollowingGate (follows_enabled flag)', () => {
   it('renders the following page when the flag is on', () => {
-    flags.follows_enabled = true;
+    flag.enabled = true;
     render(<FollowingGate />);
     expect(screen.getByText('following.title')).toBeInTheDocument();
   });
 
   it('redirects (throws) when the flag is off', () => {
-    flags.follows_enabled = false;
+    flag.enabled = false;
     expect(() => render(<FollowingGate />)).toThrow();
+  });
+
+  it('waits (no redirect) while the flag is still resolving', () => {
+    // Default-off value is in effect during the loading window; the gate must
+    // not redirect/throw until the real value is known, or a cold page load
+    // trips the error boundary.
+    flag.enabled = false;
+    flag.resolved = false;
+    expect(() => render(<FollowingGate />)).not.toThrow();
+    expect(screen.queryByText('following.title')).not.toBeInTheDocument();
   });
 });

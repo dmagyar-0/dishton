@@ -245,6 +245,9 @@ export default {
       owner_only_notice: 'Only owners can issue follow codes.',
       generate_follow_code: 'Generate follow code',
       outstanding_codes: 'Outstanding follow codes',
+      redeem_hint:
+        'Send a code to another household. They paste it on their Following page to subscribe to your recipes.',
+      tap_to_copy: 'Tap to copy',
       copy_code: 'Copy code',
       code_copied: 'Code copied',
       revoke: 'Revoke',
