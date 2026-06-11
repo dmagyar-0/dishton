@@ -115,7 +115,10 @@ Dependency tiers (a doc never assumes a doc from a later tier):
 - Native mobile apps (PWA install only).
 - Meal planning, shopping-list export, nutrition computation.
 - Multi-household role hierarchies beyond `owner` / `editor`.
-- Public/anonymous recipe sharing outside the follow model.
+- Public/anonymous browsing of collections outside the follow model. (Opt-in,
+  revocable single-recipe share links shipped 2026-06 as the sharing loop's
+  landing surface; see
+  `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md`.)
 - Self-hosting Supabase or running our own LLMs.
 
 These may appear in `15-roadmap-and-flags.md` as future work but are not built now.
