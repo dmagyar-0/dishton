@@ -113,7 +113,15 @@ describe('convert', () => {
           if (a === b) return;
           const ca = convert(a, from, to);
           const cb = convert(b, from, to);
-          expect(Math.sign(a - b)).toBe(Math.sign(ca - cb));
+          // Non-strict: conversion scales by a positive factor, which is
+          // monotone — but inputs one ULP apart can round to the SAME
+          // converted value (CI hit a=0.10000000000000064 vs
+          // b=…63 oz→mg), so equal outputs are fine; an inverted order is not.
+          if (a < b) {
+            expect(ca).toBeLessThanOrEqual(cb);
+          } else {
+            expect(ca).toBeGreaterThanOrEqual(cb);
+          }
         },
       ),
       { numRuns: 100 },
