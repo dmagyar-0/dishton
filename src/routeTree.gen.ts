@@ -14,6 +14,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
 import { Route as FollowingIndexRouteImport } from './routes/following/index'
+import { Route as RTokenRouteImport } from './routes/r/$token'
 import { Route as AuthUpdatePasswordRouteImport } from './routes/auth/update-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthResetRouteImport } from './routes/auth/reset'
@@ -49,6 +50,11 @@ const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
 const FollowingIndexRoute = FollowingIndexRouteImport.update({
   id: '/following/',
   path: '/following/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RTokenRoute = RTokenRouteImport.update({
+  id: '/r/$token',
+  path: '/r/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthUpdatePasswordRoute = AuthUpdatePasswordRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth/update-password': typeof AuthUpdatePasswordRoute
+  '/r/$token': typeof RTokenRoute
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/draft': typeof HHouseholdIdDraftRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth/update-password': typeof AuthUpdatePasswordRoute
+  '/r/$token': typeof RTokenRoute
   '/following': typeof FollowingIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
   '/h/$householdId/draft': typeof HHouseholdIdDraftRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/auth/reset': typeof AuthResetRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth/update-password': typeof AuthUpdatePasswordRoute
+  '/r/$token': typeof RTokenRoute
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/draft': typeof HHouseholdIdDraftRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/signup'
     | '/auth/update-password'
+    | '/r/$token'
     | '/following/'
     | '/onboarding/'
     | '/h/$householdId/draft'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/signup'
     | '/auth/update-password'
+    | '/r/$token'
     | '/following'
     | '/onboarding'
     | '/h/$householdId/draft'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/signup'
     | '/auth/update-password'
+    | '/r/$token'
     | '/following/'
     | '/onboarding/'
     | '/h/$householdId/draft'
@@ -230,6 +242,7 @@ export interface RootRouteChildren {
   AuthResetRoute: typeof AuthResetRoute
   AuthSignupRoute: typeof AuthSignupRoute
   AuthUpdatePasswordRoute: typeof AuthUpdatePasswordRoute
+  RTokenRoute: typeof RTokenRoute
   FollowingIndexRoute: typeof FollowingIndexRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
   HHouseholdIdDraftRoute: typeof HHouseholdIdDraftRoute
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/following'
       fullPath: '/following/'
       preLoaderRoute: typeof FollowingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$token': {
+      id: '/r/$token'
+      path: '/r/$token'
+      fullPath: '/r/$token'
+      preLoaderRoute: typeof RTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/update-password': {
@@ -366,6 +386,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthResetRoute: AuthResetRoute,
   AuthSignupRoute: AuthSignupRoute,
   AuthUpdatePasswordRoute: AuthUpdatePasswordRoute,
+  RTokenRoute: RTokenRoute,
   FollowingIndexRoute: FollowingIndexRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
   HHouseholdIdDraftRoute: HHouseholdIdDraftRoute,
