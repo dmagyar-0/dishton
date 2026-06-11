@@ -43,7 +43,7 @@ jobs:
         with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
 
-      - uses: supabase/setup-cli@15c01d6a622c7804cb69435a015cda772eb27156 # v2.99.0 (node24)
+      - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1 (node20 — repo was merged into supabase/cli; newer tags are not resolvable action refs)
         with: { version: 2.99.0 }
       - name: Link Supabase project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
