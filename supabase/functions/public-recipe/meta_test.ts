@@ -84,3 +84,15 @@ Deno.test('buildRecipePage neutralises a script-laden title in body and JSON-LD'
   assertStringIncludes(html, '&lt;script&gt;alert(1)&lt;/script&gt;');
   assertStringIncludes(html, '\\u003c/script\\u003e\\u003cscript\\u003ealert(1)');
 });
+
+Deno.test('buildRecipePage omits optional blocks when their data is absent', () => {
+  const html = page({ description: null, tags: [], source_url: null });
+  // core content still renders
+  assertStringIncludes(html, '<h1>Rakott Krumpli</h1>');
+  assertStringIncludes(html, '<li>800g waxy potatoes</li>');
+  assertStringIncludes(html, '<li>Boil the potatoes.</li>');
+  // optional blocks are absent
+  assert(!html.includes('Hungarian layered potato casserole'));
+  assert(!html.includes('class="tags"'));
+  assert(!html.includes('Source:'));
+});
