@@ -55,7 +55,7 @@
     "react-dom": "^19",
     "react-hook-form": "^7",
     "react-i18next": "^15",
-    "tailwind-merge": "^2",
+    "tailwind-merge": "^3",
     "zod": "^3",
     "zustand": "^5"
   },
