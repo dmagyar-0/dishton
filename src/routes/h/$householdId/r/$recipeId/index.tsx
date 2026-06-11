@@ -6,10 +6,10 @@ import {
   scaleToServings,
 } from '@/domain';
 import { useFeatureFlag } from '@/feature-flags';
-import { resolveDisplay, toDomainRecipe } from '@/lib/recipe-display';
 import { useAuth } from '@/lib/auth';
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { useCachedTranslations, useTranslateRecipe } from '@/lib/queries/translations';
+import { resolveDisplay, toDomainRecipe } from '@/lib/recipe-display';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
@@ -17,6 +17,7 @@ import { Skeleton } from '@/ui/primitives/Skeleton';
 import { type DisplayIngredient, IngredientsCard } from '@/ui/recipe/IngredientsCard';
 import { LanguageToggle } from '@/ui/recipe/LanguageToggle';
 import { ServingsScaler } from '@/ui/recipe/ServingsScaler';
+import { ShareDialog } from '@/ui/recipe/ShareDialog';
 import { UnitToggle } from '@/ui/recipe/UnitToggle';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Pencil } from 'lucide-react';
@@ -64,6 +65,7 @@ function RecipeDetailPage() {
   const q = useRecipe(recipeId);
 
   const translationEnabled = useFeatureFlag('translation_cache');
+  const shareEnabled = useFeatureFlag('public_recipe_shares');
   const cachedLangsQ = useCachedTranslations(recipeId);
 
   const displayUnits = search.units ?? profile?.preferred_unit_system ?? 'metric';
@@ -251,15 +253,18 @@ function RecipeDetailPage() {
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <h1 className="font-display text-display leading-tight">{displayed.recipe.title}</h1>
         {canEdit && (
-          <Link
-            to="/h/$householdId/r/$recipeId/edit"
-            params={{ householdId, recipeId }}
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink sm:mt-2"
-            aria-label={t('recipe.edit_action')}
-          >
-            <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
-            <span>{t('recipe.edit_action')}</span>
-          </Link>
+          <div className="flex shrink-0 items-center gap-2 sm:mt-2">
+            {shareEnabled && <ShareDialog recipeId={recipeId} />}
+            <Link
+              to="/h/$householdId/r/$recipeId/edit"
+              params={{ householdId, recipeId }}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink"
+              aria-label={t('recipe.edit_action')}
+            >
+              <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
+              <span>{t('recipe.edit_action')}</span>
+            </Link>
+          </div>
         )}
       </div>
       {displayed.recipe.description && (

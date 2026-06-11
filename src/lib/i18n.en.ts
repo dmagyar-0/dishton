@@ -437,6 +437,26 @@ export default {
     away_summary_done: '{{count}} recipe(s) imported.',
     away_summary_failed: "{{count}} import(s) couldn't be finished.",
   },
+  share: {
+    action: 'Share',
+    dialog_title: 'Share this recipe',
+    dialog_body:
+      'Anyone with the link can view this recipe — no account needed. Turn it off any time; the old link stops working immediately.',
+    toggle_label: 'Public link',
+    copy_link: 'Copy link',
+    link_copied: 'Link copied',
+    share_failed: "Couldn't update sharing. Try again.",
+    regenerate_hint: 'Turning the link back on creates a new address.',
+  },
+  public: {
+    from_household: "From {{name}}'s pantry",
+    cta_title: 'Cook it yourself',
+    cta_body: 'Save this recipe into your own pantry and keep every recipe you love in one place.',
+    cta_action: 'Start your own pantry',
+    inactive_title: 'This link is no longer active',
+    inactive_body: 'The cook who shared it may have turned it off. Ask them for a fresh link.',
+    inactive_action: 'Explore Dishton',
+  },
   household_errors: {
     last_owner: "You're the only owner. Promote another member first, or delete the household.",
     not_a_member: 'You are not a member of this household.',
