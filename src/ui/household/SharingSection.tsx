@@ -83,6 +83,7 @@ export function SharingSection({ householdId, isOwner }: Props) {
             <h3 className="font-body text-sm text-ink-soft uppercase tracking-wide">
               {t('household_settings.sharing.outstanding_codes')}
             </h3>
+            <p className="text-ink-soft text-sm">{t('household_settings.sharing.redeem_hint')}</p>
             <ul className="space-y-3">
               {codes.data.map((code) => (
                 <FollowCodeCard
@@ -199,19 +200,15 @@ function FollowCodeCard({
         'hover:-rotate-[0.25deg]',
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={() => void copyCode()}
-          className="font-display tracking-[0.2em] text-aubergine text-lg"
+          className="min-w-0 flex-1 break-all text-left font-display tracking-[0.15em] text-aubergine text-base sm:text-lg sm:tracking-[0.2em]"
           title={t('household_settings.sharing.copy_code')}
         >
           {code.code}
         </button>
-        <Badge variant="outline" className="text-xs">
-          {t('household_settings.members.expires_in', { when: expiresIn })}
-        </Badge>
-        <div className="flex-1" />
         {isOwner && (
           <IconButton
             variant="ghost"
@@ -222,6 +219,12 @@ function FollowCodeCard({
             <X size={16} strokeWidth={1.5} />
           </IconButton>
         )}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="text-xs">
+          {t('household_settings.members.expires_in', { when: expiresIn })}
+        </Badge>
+        <span className="text-ink-soft text-xs">{t('household_settings.sharing.tap_to_copy')}</span>
       </div>
       <ConfirmDialog
         open={confirmOpen}

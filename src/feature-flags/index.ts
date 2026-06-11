@@ -19,12 +19,11 @@ function readBuildTime(key: string): boolean {
   return v === 'true' || v === '1';
 }
 
-export function useFeatureFlag(key: string): boolean {
-  // The hook below runs unconditionally; `enabled` short-circuits the actual
-  // DB fetch when the flag is build-time so the React rules are satisfied.
+function useFlagQuery(key: string, isRuntime: boolean) {
+  // Runs unconditionally so the React rules are satisfied; `enabled`
+  // short-circuits the actual DB fetch when the flag is build-time.
   // FLAG: keep this dispatch in sync with registry.ts.
-  const isRuntime = RUNTIME.has(key);
-  const { data } = useQuery({
+  return useQuery({
     queryKey: ['feature-flag', key],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,8 +37,25 @@ export function useFeatureFlag(key: string): boolean {
     enabled: isRuntime,
     staleTime: 60_000,
   });
+}
+
+export function useFeatureFlag(key: string): boolean {
+  const { data } = useFlagQuery(key, RUNTIME.has(key));
   if (BUILD_TIME.has(key)) return readBuildTime(key);
   return data === true;
+}
+
+/**
+ * Like {@link useFeatureFlag}, but also reports whether the flag value is known
+ * yet. Build-time flags are always resolved. Runtime flags are unresolved while
+ * their first DB read is in flight — callers that gate routing on a flag must
+ * wait for `isResolved` before acting, or a cold page load decides on the
+ * default-off value and (e.g.) redirects/crashes before the real value arrives.
+ */
+export function useFeatureFlagStatus(key: string): { enabled: boolean; isResolved: boolean } {
+  const query = useFlagQuery(key, RUNTIME.has(key));
+  if (BUILD_TIME.has(key)) return { enabled: readBuildTime(key), isResolved: true };
+  return { enabled: query.data === true, isResolved: !query.isLoading };
 }
 
 export type { FlagDefinition };
