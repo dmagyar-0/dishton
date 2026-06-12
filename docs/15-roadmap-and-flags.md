@@ -100,8 +100,12 @@ Adds (one PR can ship one of these without the others, but the phase is
    recipe detail page; anon reads go exclusively through the
    `get_public_recipe` definer RPC, and the
    `feature_flags.public_recipe_shares` row is a kill switch (default on:
-   sharing is already opt-in per recipe). Spec:
-   `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md`.
+   sharing is already opt-in per recipe). Non-browser/agent UAs are routed to
+   a server-rendered, indexable recipe page (Schema.org JSON-LD + visible
+   HTML) so AI agents and crawlers can read the recipe without JavaScript
+   (amended 2026-06). Specs:
+   `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md`,
+   `docs/superpowers/specs/2026-06-11-agent-readable-public-recipe-design.md`.
 
 ## v2
 

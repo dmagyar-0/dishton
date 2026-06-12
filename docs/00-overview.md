@@ -117,8 +117,9 @@ Dependency tiers (a doc never assumes a doc from a later tier):
 - Multi-household role hierarchies beyond `owner` / `editor`.
 - Public/anonymous browsing of collections outside the follow model. (Opt-in,
   revocable single-recipe share links shipped 2026-06 as the sharing loop's
-  landing surface; see
-  `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md`.)
+  landing surface — made agent-readable and search-indexable 2026-06; see
+  `docs/superpowers/specs/2026-06-11-public-recipe-share-design.md` and
+  `docs/superpowers/specs/2026-06-11-agent-readable-public-recipe-design.md`.)
 - Self-hosting Supabase or running our own LLMs.
 
 These may appear in `15-roadmap-and-flags.md` as future work but are not built now.

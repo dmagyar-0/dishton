@@ -6,7 +6,18 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(bot|facebookexternalhit|whatsapp|slack|telegram|discord|twitter|linkedin|pinterest|skype|embedly|quora|vkshare|crawler|spider|preview).*"
+          "value": "(?i).*(bot|crawler|spider|facebookexternalhit|embedly|quora|vkshare|chatgpt|oai-searchbot|anthropic|claude|perplexity|google-extended|bytespider|cohere|gemini|bard).*"
+        }
+      ],
+      "destination": "https://hdfpnxjxrcupuxrgrnpf.supabase.co/functions/v1/public-recipe/:token"
+    },
+    {
+      "source": "/r/:token",
+      "missing": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*mozilla.*"
         }
       ],
       "destination": "https://hdfpnxjxrcupuxrgrnpf.supabase.co/functions/v1/public-recipe/:token"
