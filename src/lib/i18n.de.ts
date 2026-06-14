@@ -39,6 +39,7 @@ export default {
     my_recipes: 'Meine Rezepte',
     following: 'Folge ich',
     import: 'Import',
+    import_action: 'Rezept importieren',
     profile: 'Profil',
     household_settings: 'Einstellungen',
   },

@@ -38,6 +38,7 @@ export default {
     my_recipes: 'Receptjeim',
     following: 'Követett',
     import: 'Importálás',
+    import_action: 'Recept importálása',
     profile: 'Profil',
     household_settings: 'Beállítások',
   },
