@@ -11,6 +11,7 @@ import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
+import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -234,6 +235,18 @@ function RecipeListPage() {
           ))}
         </ul>
       )}
+
+      {/* Always-visible shortcut to the import flow. `fixed` keeps it pinned to
+          the bottom-center of the viewport as the recipe list scrolls. */}
+      <Link
+        to="/h/$householdId/import"
+        params={{ householdId }}
+        aria-label={t('nav.import_action')}
+        title={t('nav.import_action')}
+        className="fixed bottom-6 left-1/2 z-40 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-saffron text-saffron-ink shadow-press-lg transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-px active:translate-y-0"
+      >
+        <Plus size={28} strokeWidth={2.25} aria-hidden="true" />
+      </Link>
     </main>
   );
 }
