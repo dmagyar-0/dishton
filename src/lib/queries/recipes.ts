@@ -14,6 +14,9 @@ export type RecipeListRow = {
   source_type: 'url' | 'instagram' | 'photo' | 'manual';
   created_at: string;
   recipe_tags: { tag: string }[] | null;
+  // Set on rows that are pantry links to a followed household's recipe (see
+  // recipe-links.ts), so the home grid can badge them. Absent on own recipes.
+  is_link?: boolean;
 };
 
 export function useRecipeList(householdId: string) {

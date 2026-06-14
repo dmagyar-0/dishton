@@ -7,6 +7,7 @@ import {
 } from '@/domain';
 import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
+import { useLinkedRecipeIds, usePantryHouseholdId } from '@/lib/queries/recipe-links';
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { useCachedTranslations, useTranslateRecipe } from '@/lib/queries/translations';
 import { resolveDisplay, toDomainRecipe } from '@/lib/recipe-display';
@@ -16,6 +17,7 @@ import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { type DisplayIngredient, IngredientsCard } from '@/ui/recipe/IngredientsCard';
 import { LanguageToggle } from '@/ui/recipe/LanguageToggle';
+import { RecipeDetailSaveButton } from '@/ui/recipe/RecipeDetailSaveButton';
 import { ServingsScaler } from '@/ui/recipe/ServingsScaler';
 import { ShareDialog } from '@/ui/recipe/ShareDialog';
 import { UnitToggle } from '@/ui/recipe/UnitToggle';
@@ -60,12 +62,20 @@ function RecipeDetailPage() {
   const search = Route.useSearch();
   const nav = useNavigate({ from: Route.fullPath });
   const profile = useAuth((s) => s.profile);
+  const memberships = useAuth((s) => s.memberships);
   const canEdit = useIsRecipeEditor(householdId);
   const { t } = useTranslation();
   const q = useRecipe(recipeId);
 
   const translationEnabled = useFeatureFlag('translation_cache');
   const shareEnabled = useFeatureFlag('public_recipe_shares');
+  const followsEnabled = useFeatureFlag('follows_enabled');
+  // Viewing a recipe from a household you follow (not one you belong to): offer
+  // a save-to-pantry toggle. The recipe's own household_id is the route param.
+  const isMember = memberships.some((m) => m.household_id === householdId);
+  const pantryId = usePantryHouseholdId();
+  const canSaveLink = followsEnabled && !isMember && pantryId.length > 0;
+  const linkedIds = useLinkedRecipeIds(pantryId, canSaveLink);
   const cachedLangsQ = useCachedTranslations(recipeId);
 
   const displayUnits = search.units ?? profile?.preferred_unit_system ?? 'metric';
@@ -264,6 +274,16 @@ function RecipeDetailPage() {
               <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
               <span>{t('recipe.edit_action')}</span>
             </Link>
+          </div>
+        )}
+        {canSaveLink && (
+          <div className="flex shrink-0 items-center gap-2 sm:mt-2">
+            <RecipeDetailSaveButton
+              recipeId={recipeId}
+              recipeTitle={displayed.recipe.title}
+              pantryHouseholdId={pantryId}
+              saved={linkedIds.data?.has(recipeId) ?? false}
+            />
           </div>
         )}
       </div>
