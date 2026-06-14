@@ -86,7 +86,7 @@ type WorkResult =
     }
   | {
       ok: false;
-      reason: 'parse' | 'schema' | 'rate_limit' | 'upstream';
+      reason: 'parse' | 'schema' | 'empty' | 'rate_limit' | 'upstream';
       raw: string | null;
       latencyMs: number;
     };
@@ -235,7 +235,14 @@ serve(async (req: Request) => {
 
     const onFinish = async (value: WorkResult): Promise<void> => {
       if (!value.ok) {
-        if (value.reason === 'rate_limit' || value.reason === 'upstream') {
+        // 'empty' = a schema-valid but content-less draft (no ingredients and
+        // no steps); fail with a clear "no recipe found" message rather than
+        // saving a blank recipe and reporting success.
+        if (
+          value.reason === 'rate_limit' ||
+          value.reason === 'upstream' ||
+          value.reason === 'empty'
+        ) {
           await callerClient
             .from('import_jobs')
             .update({

@@ -156,6 +156,30 @@ Deno.test('callAndValidate: schema failure twice surfaces reason=schema after on
   assertEquals(mock.calls.length, 2);
 });
 
+Deno.test('callAndValidate: an empty extraction (no ingredients and no steps) is rejected, not saved', async () => {
+  // The model can return a schema-valid but content-less placeholder when the
+  // source has no recipe (e.g. an Instagram reel whose caption is just a
+  // sentence). Such a draft would otherwise be saved as a blank recipe and the
+  // import reported as successful — to the user, "it didn't give back anything".
+  using mock = anthropic([
+    toolUseResponse(validRecipe({ title: '<UNKNOWN>', ingredients: [], steps: [] })),
+  ]);
+  const res = await callAndValidate(BASE_OPTS);
+  assert(!res.ok, JSON.stringify(res));
+  if (!res.ok) assertEquals(res.reason, 'empty');
+  // No content to extract, so there is nothing to repair: a single call only.
+  assertEquals(mock.calls.length, 1);
+});
+
+Deno.test('callAndValidate: a draft with ingredients but no steps is still accepted', async () => {
+  // An assembly/no-cook recipe (ingredients, zero steps) is legitimate; only a
+  // draft empty on BOTH axes is treated as a non-recipe.
+  using mock = anthropic([toolUseResponse(validRecipe({ steps: [] }))]);
+  const res = await callAndValidate(BASE_OPTS);
+  assert(res.ok, JSON.stringify(res));
+  assertEquals(mock.calls.length, 1);
+});
+
 Deno.test('callAndValidate: a text-only (no tool call) response is not repaired', async () => {
   using mock = anthropic([textResponse('I cannot find a recipe here.')]);
   const res = await callAndValidate(BASE_OPTS);

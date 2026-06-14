@@ -79,7 +79,7 @@ type WorkResult =
     }
   | {
       ok: false;
-      reason: 'parse' | 'schema' | 'rate_limit' | 'upstream' | 'instagram_unavailable';
+      reason: 'parse' | 'schema' | 'empty' | 'rate_limit' | 'upstream' | 'instagram_unavailable';
       raw: string | null;
       captionSource: CaptionSource | null;
       captionLength: number;
@@ -373,12 +373,16 @@ serve(async (req: Request) => {
             .eq('id', jobId);
           return;
         }
-        if (value.reason === 'instagram_unavailable') {
+        if (value.reason === 'instagram_unavailable' || value.reason === 'empty') {
+          // 'empty' = the model returned a schema-valid but content-less draft
+          // (no ingredients and no steps), which happens when the caption has
+          // no recipe in it. Fail with a clear "no recipe found" message rather
+          // than saving a blank recipe.
           await callerClient
             .from('import_jobs')
             .update({
               status: 'failed',
-              error: 'instagram_unavailable',
+              error: value.reason,
               payload: { url: body.url, latency_ms: value.latencyMs },
             })
             .eq('id', jobId);

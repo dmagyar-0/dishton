@@ -491,6 +491,8 @@ export default {
     schema_failed: 'The page is missing some recipe details we need.',
     instagram_unavailable:
       "Instagram couldn't share that post. Try a public post or paste the recipe manually.",
+    empty:
+      "We couldn't find a recipe in that source. Try a different link or post, or add it manually.",
     photo_too_large: 'That photo is over the 10 MB limit. Try a smaller image.',
     photo_too_many: 'You can attach up to {{max}} photos at a time.',
     photo_wrong_type: 'Pick a JPEG or PNG image.',

@@ -506,6 +506,8 @@ export default {
     schema_failed: 'Der Seite fehlen einige Rezeptdetails, die wir brauchen.',
     instagram_unavailable:
       'Instagram hat diesen Post nicht freigegeben. Versuche einen öffentlichen Post oder gib das Rezept manuell ein.',
+    empty:
+      'Wir konnten in dieser Quelle kein Rezept finden. Versuche einen anderen Link oder Post oder gib es manuell ein.',
     photo_too_large: 'Dieses Foto überschreitet das Limit von 10 MB. Versuche ein kleineres Bild.',
     photo_too_many: 'Du kannst bis zu {{max}} Fotos auf einmal anhängen.',
     photo_wrong_type: 'Bitte ein JPEG- oder PNG-Bild auswählen.',

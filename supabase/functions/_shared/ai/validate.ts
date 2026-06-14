@@ -15,7 +15,7 @@ import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 
 export type ValidationResult =
   | { ok: true; recipe: RecipeType; usage: AiResult['usage']; model: string; raw: string }
-  | { ok: false; reason: 'parse' | 'schema' | 'rate_limit' | 'upstream'; raw: string };
+  | { ok: false; reason: 'parse' | 'schema' | 'empty' | 'rate_limit' | 'upstream'; raw: string };
 
 // Force the model to answer through the tool, every call.
 const TOOL_FIELDS = {
@@ -62,6 +62,7 @@ export function sanitizeModelUrls(recipe: RecipeType): RecipeType {
 type Interpreted =
   | { ok: true; recipe: RecipeType; raw: string }
   | { ok: false; reason: 'parse'; raw: string }
+  | { ok: false; reason: 'empty'; raw: string }
   | { ok: false; reason: 'schema'; raw: string; errors: string };
 
 // Turn a raw aiChat result into a parsed outcome. `parse` means the model
@@ -83,6 +84,15 @@ function interpret(result: AiResult): Interpreted {
       .map((iss) => `- ${iss.path.length ? iss.path.join('.') : '(root)'}: ${iss.message}`)
       .join('\n');
     return { ok: false, reason: 'schema', raw, errors };
+  }
+  // A schema-valid but content-less draft (no ingredients AND no steps) is not
+  // a usable recipe — the model emits one when the source has nothing to
+  // extract (e.g. an Instagram reel whose caption carries no recipe). Reject it
+  // here so the importer surfaces it instead of saving a blank recipe and
+  // reporting success. Like 'parse', there is nothing for a repair turn to work
+  // from, so callers surface it immediately rather than spending another call.
+  if (safe.data.ingredients.length === 0 && safe.data.steps.length === 0) {
+    return { ok: false, reason: 'empty', raw };
   }
   // Strip non-http(s) URLs the model may have been coaxed into emitting before
   // the draft is persisted or displayed.
@@ -129,10 +139,10 @@ export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResul
     };
   }
 
-  // A missing tool call ('parse') means the model didn't invoke the tool at
-  // all — a repair turn has nothing to work from, so surface it immediately.
-  if (firstParsed.reason === 'parse') {
-    return { ok: false, reason: 'parse', raw: firstParsed.raw };
+  // A missing tool call ('parse') or a content-less draft ('empty') has nothing
+  // for a repair turn to work from, so surface either immediately.
+  if (firstParsed.reason === 'parse' || firstParsed.reason === 'empty') {
+    return { ok: false, reason: firstParsed.reason, raw: firstParsed.raw };
   }
 
   // One bounded repair turn. Replay the original prompt, show the model the

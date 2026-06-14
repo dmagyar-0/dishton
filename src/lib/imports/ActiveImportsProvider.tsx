@@ -82,6 +82,7 @@ const KNOWN_FAILED_CODES = new Set([
   'not_html',
   'source_too_large',
   'instagram_unavailable',
+  'empty',
   'object_not_found',
   'forbidden_path',
   'not_image',
