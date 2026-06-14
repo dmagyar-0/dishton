@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives/Tabs';
 import { Textarea } from '@/ui/primitives/Textarea';
 import { useToast } from '@/ui/primitives/Toast';
 import { ImportQueue } from '@/ui/recipe/ImportQueue';
+import { DraftWorkspace } from '@/ui/recipe/chat/DraftWorkspace';
 import { RecipeEditForm } from '@/ui/recipe/edit/RecipeEditForm';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -111,6 +112,7 @@ function ImportPage() {
           <TabsTrigger value="url">{t('import.tab_url')}</TabsTrigger>
           <TabsTrigger value="photo">{t('import.tab_photo')}</TabsTrigger>
           <TabsTrigger value="manual">{t('import.tab_manual')}</TabsTrigger>
+          <TabsTrigger value="draft">{t('import.tab_draft')}</TabsTrigger>
         </TabsList>
         <TabsContent value="url">
           <UrlTab householdId={householdId} />
@@ -120,6 +122,9 @@ function ImportPage() {
         </TabsContent>
         <TabsContent value="manual">
           <ManualTab householdId={householdId} />
+        </TabsContent>
+        <TabsContent value="draft">
+          <DraftWorkspace householdId={householdId} />
         </TabsContent>
       </Tabs>
       <ImportQueuePanel householdId={householdId} />
