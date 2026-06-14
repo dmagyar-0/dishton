@@ -30,6 +30,7 @@ export type Database = {
       recipe_steps: GenericTable;
       recipe_tags: GenericTable;
       recipe_shares: GenericTable;
+      recipe_links: GenericTable;
       recipe_translations: GenericTable;
       import_jobs: GenericTable;
       ai_rate_budget: GenericTable;

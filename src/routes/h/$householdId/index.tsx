@@ -1,6 +1,12 @@
+import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { useHousehold } from '@/lib/queries/households';
-import { useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
+import {
+  useLinkedRecipeIds,
+  usePantryHouseholdId,
+  useRecipeLinks,
+} from '@/lib/queries/recipe-links';
+import { type RecipeListRow, useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
 import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
@@ -8,6 +14,9 @@ import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
+import { RecipeCardRemoveLinkButton } from '@/ui/recipe/RecipeCardRemoveLinkButton';
+import { RecipeCardSaveButton } from '@/ui/recipe/RecipeCardSaveButton';
+import { RecipeLinkBadge } from '@/ui/recipe/RecipeLinkBadge';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
@@ -40,6 +49,23 @@ function RecipeListPage() {
   // Only owners/editors may delete; followers can read but their delete would
   // be a silent RLS no-op, so don't offer them the action.
   const isEditor = useIsRecipeEditor(householdId);
+  // Member of the household being viewed? Followers (who reached this page from
+  // /following) are not in `memberships`, so this distinguishes "my pantry"
+  // (own + saved recipes, with delete/remove) from "browsing a followed
+  // household" (their recipes, with a save-to-pantry button).
+  const isMember = memberships.some((m) => m.household_id === householdId);
+  const followsEnabled = useFeatureFlag('follows_enabled');
+  // The household saved links land in / are read from (the user's own pantry).
+  const pantryId = usePantryHouseholdId();
+
+  // Own pantry: pull in the live links saved into this household, badged and
+  // merged with own recipes. Only meaningful for a member view with follows on.
+  const linksEnabled = followsEnabled && isMember;
+  const links = useRecipeLinks(householdId, linksEnabled);
+  // Followed-household browse: which of these recipes are already in my pantry,
+  // so the save toggle can render its "saved" state without a per-card query.
+  const browsingFollowed = followsEnabled && !isMember && pantryId.length > 0;
+  const linkedIds = useLinkedRecipeIds(pantryId, browsingFollowed);
   // Solo = personal household with the current user as only member. We
   // use it to swap in a friendlier headline + empty state for new
   // signups, so the recipe-list page doesn't feel like a clinical
@@ -62,9 +88,21 @@ function RecipeListPage() {
   const list = useRecipeList(householdId);
   const tags = usePopularTags([householdId]);
 
-  const source = searchActive ? search.data : list.data;
-  const sourceFetching = searchActive ? search.isFetching : list.isFetching;
-  const sourceLoading = searchActive ? search.isLoading : list.isLoading;
+  // Browse view = own recipes + saved links, newest first (link rows carry the
+  // save time as their created_at). Text search stays own-household-only.
+  const browseList = useMemo<RecipeListRow[]>(() => {
+    const own = list.data ?? [];
+    const linked = links.data ?? [];
+    if (linked.length === 0) return own;
+    return [...own, ...linked].sort((a, b) =>
+      a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0,
+    );
+  }, [list.data, links.data]);
+
+  const browseLoading = list.isLoading || (linksEnabled && links.isLoading);
+  const source = searchActive ? search.data : browseList;
+  const sourceFetching = searchActive ? search.isFetching : list.isFetching || links.isFetching;
+  const sourceLoading = searchActive ? search.isLoading : browseLoading;
 
   const filtered = useMemo(() => {
     if (!source) return [];
@@ -112,7 +150,7 @@ function RecipeListPage() {
   const showNoMatches =
     !sourceLoading && filtered.length === 0 && (searchActive || selected.length > 0);
   const showEmptyPantry =
-    !searchActive && selected.length === 0 && list.data && list.data.length === 0;
+    !searchActive && selected.length === 0 && !browseLoading && browseList.length === 0;
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
@@ -201,12 +239,33 @@ function RecipeListPage() {
         <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {filtered.map((r) => (
             <li key={r.id} className="group/card relative">
-              {isEditor && (
+              {/* Linked (followed) recipe in my own pantry: badge + remove. */}
+              {r.is_link && (
+                <>
+                  <RecipeLinkBadge />
+                  <RecipeCardRemoveLinkButton
+                    recipeId={r.id}
+                    recipeTitle={r.title}
+                    householdId={householdId}
+                  />
+                </>
+              )}
+              {/* My own recipe: editors get delete. */}
+              {!r.is_link && isMember && isEditor && (
                 <RecipeCardDeleteButton
                   recipeId={r.id}
                   recipeTitle={r.title}
                   householdId={householdId}
                   heroImagePath={r.hero_image_path}
+                />
+              )}
+              {/* Browsing a followed household: save into my pantry. */}
+              {!r.is_link && browsingFollowed && (
+                <RecipeCardSaveButton
+                  recipeId={r.id}
+                  recipeTitle={r.title}
+                  pantryHouseholdId={pantryId}
+                  saved={linkedIds.data?.has(r.id) ?? false}
                 />
               )}
               <Link
