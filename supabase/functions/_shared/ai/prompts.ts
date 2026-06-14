@@ -291,3 +291,24 @@ export function translatePrompt(args: {
     { role: 'user', content: args.recipeJson },
   ];
 }
+
+// Tool-mode translation for the import pipeline. Unlike `translatePrompt`
+// (display-time, text-mode, used by translate-recipe), this re-extracts an
+// already-parsed recipe THROUGH the extract_recipe tool so the result is
+// schema-validated by callAndValidate, and it REWRITES source_language to the
+// target — the importer stores the recipe in the user's language rather than
+// caching a separate translation. Tags are deliberately left untranslated:
+// they must stay a subset of the household whitelist (enforced by save_recipe).
+export function translateExtractedRecipe(args: {
+  recipe: Record<string, unknown>;
+  targetLanguage: string;
+}): AiMessage[] {
+  return [
+    {
+      role: 'system',
+      content:
+        `You translate an already-parsed recipe into ${args.targetLanguage}. Call the extract_recipe tool exactly once with the same recipe, translating ONLY these human-readable fields into ${args.targetLanguage}: title, description, ingredient.raw_text, ingredient.ingredient_name, ingredient.notes, ingredient.section, step.body. Keep EVERY other field identical — including tags (do NOT translate tags), quantity, unit, position, source_type, source_url, canonical_unit_system, servings, total_time_min, scalable, non_scalable_qty, duration_min, hero_image_path. Do not add, drop, reorder, or renumber ingredients or steps. Set source_language to "${args.targetLanguage}".`,
+    },
+    { role: 'user', content: JSON.stringify(args.recipe) },
+  ];
+}

@@ -18,7 +18,7 @@ import {
   resolveCaller,
 } from '../_shared/auth.ts';
 import { sniffImageContentType } from '../_shared/scrape/image-bytes.ts';
-import { callAndValidate } from '../_shared/ai/validate.ts';
+import { callValidateThenTranslate } from '../_shared/ai/validate.ts';
 import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { structuringFromImage } from '../_shared/ai/prompts.ts';
 import { runDetached } from '../_shared/import-runner.ts';
@@ -182,16 +182,18 @@ serve(async (req: Request) => {
         .eq('id', jobId);
 
       const budget = await withRateBudget(callerProfileId, estimatedTokens, () =>
-        callAndValidate({
-          lane: 'vision',
-          messages: structuringFromImage({
-            imageUrls: signedUrls,
-            comment: trimmedComment,
-            targetLanguage,
-            allowedTags,
-          }),
-          estimatedTokens,
-        }),
+        callValidateThenTranslate(
+          {
+            lane: 'vision',
+            messages: structuringFromImage({
+              imageUrls: signedUrls,
+              comment: trimmedComment,
+              allowedTags,
+            }),
+            estimatedTokens,
+          },
+          targetLanguage,
+        ),
       );
 
       const latencyMs = Math.round(performance.now() - t0);

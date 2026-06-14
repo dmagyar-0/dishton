@@ -4,7 +4,7 @@
 
 import { assert, assertEquals } from 'jsr:@std/assert';
 import { installMockFetch, jsonResponse } from '../mock_fetch.ts';
-import { callAndValidate } from './validate.ts';
+import { callAndValidate, callValidateThenTranslate } from './validate.ts';
 import type { AiCallOpts } from './client.ts';
 
 // The env loader is lazy (a Proxy that loads on first access, which happens
@@ -178,6 +178,67 @@ Deno.test('callAndValidate: a draft with ingredients but no steps is still accep
   const res = await callAndValidate(BASE_OPTS);
   assert(res.ok, JSON.stringify(res));
   assertEquals(mock.calls.length, 1);
+});
+
+Deno.test('callValidateThenTranslate: same-language import runs no translation pass', async () => {
+  using mock = anthropic([toolUseResponse(validRecipe({ source_language: 'en' }))]);
+  const res = await callValidateThenTranslate(BASE_OPTS, 'en');
+  assert(res.ok, JSON.stringify(res));
+  assertEquals(mock.calls.length, 1);
+});
+
+Deno.test('callValidateThenTranslate: no target language skips translation', async () => {
+  using mock = anthropic([toolUseResponse(validRecipe({ source_language: 'en' }))]);
+  const res = await callValidateThenTranslate(BASE_OPTS, undefined);
+  assert(res.ok, JSON.stringify(res));
+  assertEquals(mock.calls.length, 1);
+});
+
+Deno.test('callValidateThenTranslate: base-language match (de vs de-DE) skips translation', async () => {
+  using mock = anthropic([toolUseResponse(validRecipe({ source_language: 'de-DE' }))]);
+  const res = await callValidateThenTranslate(BASE_OPTS, 'de');
+  assert(res.ok, JSON.stringify(res));
+  assertEquals(mock.calls.length, 1);
+});
+
+Deno.test('callValidateThenTranslate: cross-language import translates and stores the target language', async () => {
+  using mock = anthropic([
+    toolUseResponse(validRecipe({ title: 'Mock Tarte', source_language: 'en' }), {
+      usage: { input: 1000, output: 500 },
+    }),
+    toolUseResponse(validRecipe({ title: 'Mock torta', source_language: 'hu' }), {
+      usage: { input: 300, output: 200 },
+    }),
+  ]);
+  const res = await callValidateThenTranslate(BASE_OPTS, 'hu');
+  assert(res.ok, JSON.stringify(res));
+  assertEquals(mock.calls.length, 2);
+  if (res.ok) {
+    assertEquals(res.recipe.title, 'Mock torta');
+    assertEquals(res.recipe.source_language, 'hu');
+    // Usage is summed across the structuring + translation calls.
+    assertEquals(res.usage.input, 1300);
+    assertEquals(res.usage.output, 700);
+  }
+});
+
+Deno.test('callValidateThenTranslate: a failed translation pass falls back to the source-language recipe', async () => {
+  using mock = anthropic([
+    toolUseResponse(validRecipe({ title: 'Mock Tarte', source_language: 'en' })),
+    // The translation pass returns an invalid draft twice (servings as a
+    // string), so callAndValidate gives up with reason=schema after one repair.
+    toolUseResponse(validRecipe({ servings: 'four', source_language: 'hu' })),
+    toolUseResponse(validRecipe({ servings: 'four', source_language: 'hu' })),
+  ]);
+  const res = await callValidateThenTranslate(BASE_OPTS, 'hu');
+  // Falls back to the valid untranslated recipe rather than failing the import.
+  assert(res.ok, JSON.stringify(res));
+  if (res.ok) {
+    assertEquals(res.recipe.title, 'Mock Tarte');
+    assertEquals(res.recipe.source_language, 'en');
+  }
+  // structure (1) + translate (1) + translate-repair (1) = 3.
+  assertEquals(mock.calls.length, 3);
 });
 
 Deno.test('callAndValidate: a text-only (no tool call) response is not repaired', async () => {

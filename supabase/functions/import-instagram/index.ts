@@ -16,7 +16,7 @@ import {
   jsonResponse,
   resolveCaller,
 } from '../_shared/auth.ts';
-import { callAndValidate } from '../_shared/ai/validate.ts';
+import { callValidateThenTranslate } from '../_shared/ai/validate.ts';
 import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { rehostRemoteHeroImage } from '../_shared/scrape/rehost-image.ts';
 import { structuringFromCaption } from '../_shared/ai/prompts.ts';
@@ -256,16 +256,18 @@ serve(async (req: Request) => {
         .eq('id', jobId);
 
       const budget = await withRateBudget(callerProfileId, 1200, () =>
-        callAndValidate({
-          lane: 'text',
-          messages: structuringFromCaption({
-            caption,
-            sourceUrl: body.url,
-            targetLanguage,
-            allowedTags,
-          }),
-          estimatedTokens: 1200,
-        }),
+        callValidateThenTranslate(
+          {
+            lane: 'text',
+            messages: structuringFromCaption({
+              caption,
+              sourceUrl: body.url,
+              allowedTags,
+            }),
+            estimatedTokens: 1200,
+          },
+          targetLanguage,
+        ),
       );
 
       const ms = Math.round(performance.now() - t0);

@@ -11,6 +11,7 @@
 
 import { Recipe, type Recipe as RecipeType } from '../domain/recipe.ts';
 import { type AiCallOpts, type AiResult, aiChat, isUpstreamError } from './client.ts';
+import { translateExtractedRecipe } from './prompts.ts';
 import { EXTRACT_RECIPE_TOOL } from './tool-schema.ts';
 
 export type ValidationResult =
@@ -175,4 +176,50 @@ export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResul
     };
   }
   return { ok: false, reason: repairParsed.reason, raw: repairParsed.raw };
+}
+
+// Base subtag of a BCP-47 code ("hu", "de" from "de-DE"); null for empty input.
+function baseLang(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const base = code.toLowerCase().split('-')[0];
+  return base || null;
+}
+
+// Structure a recipe, then translate it into the importer's language when the
+// extracted source differs. The structuring step preserves the source language
+// (reliable extraction + accurate source_language); a dedicated tool-mode
+// translation pass then rewrites the human-readable fields. The inline
+// "translate as you parse" directive was unreliable — extraction models
+// transcribe verbatim — so we split the two concerns.
+//
+// On a translation failure we fall back to the (valid) untranslated recipe:
+// storing the recipe in the source language beats failing the whole import.
+export async function callValidateThenTranslate(
+  structuring: AiCallOpts,
+  targetLanguage: string | undefined,
+): Promise<ValidationResult> {
+  const structured = await callAndValidate(structuring);
+  if (!structured.ok) return structured;
+
+  const target = baseLang(targetLanguage);
+  if (!targetLanguage || !target || baseLang(structured.recipe.source_language) === target) {
+    return structured;
+  }
+
+  // Translation is text-only even when the structuring step used the vision
+  // lane (photo imports), so run the translate pass on the cheaper text lane.
+  const translated = await callAndValidate({
+    lane: 'text',
+    estimatedTokens: structuring.estimatedTokens,
+    messages: translateExtractedRecipe({ recipe: structured.recipe, targetLanguage }),
+  });
+  if (!translated.ok) return structured;
+
+  return {
+    ok: true,
+    recipe: translated.recipe,
+    usage: sumUsage(structured.usage, translated.usage),
+    model: translated.model,
+    raw: translated.raw,
+  };
 }
