@@ -6,6 +6,7 @@ export type HouseholdSettings = {
   id: string;
   name: string;
   allowed_tags: string[];
+  primary_tags: string[];
   is_personal: boolean;
 };
 
@@ -49,7 +50,7 @@ export function useHousehold(householdId: string) {
     queryFn: async (): Promise<HouseholdSettings> => {
       const { data, error } = await supabase
         .from('households')
-        .select('id, name, allowed_tags, is_personal')
+        .select('id, name, allowed_tags, primary_tags, is_personal')
         .eq('id', householdId)
         .single();
       if (error) throw error;
@@ -57,6 +58,7 @@ export function useHousehold(householdId: string) {
         id: string;
         name: string;
         allowed_tags?: unknown;
+        primary_tags?: unknown;
         is_personal?: unknown;
       };
       return {
@@ -64,6 +66,9 @@ export function useHousehold(householdId: string) {
         name: row.name,
         allowed_tags: Array.isArray(row.allowed_tags)
           ? (row.allowed_tags as unknown[]).filter((t): t is string => typeof t === 'string')
+          : [],
+        primary_tags: Array.isArray(row.primary_tags)
+          ? (row.primary_tags as unknown[]).filter((t): t is string => typeof t === 'string')
           : [],
         is_personal: row.is_personal === true,
       };
@@ -93,6 +98,23 @@ export function useUpdateHouseholdAllowedTags(householdId: string) {
         .eq('id', householdId);
       if (error) throw error;
       return allowedTags;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['household', householdId] });
+    },
+  });
+}
+
+export function useUpdateHouseholdPrimaryTags(householdId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (primaryTags: string[]) => {
+      const { error } = await supabase
+        .from('households')
+        .update({ primary_tags: primaryTags })
+        .eq('id', householdId);
+      if (error) throw error;
+      return primaryTags;
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['household', householdId] });

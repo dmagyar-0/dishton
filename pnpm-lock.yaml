@@ -26,6 +26,9 @@ importers:
       '@sentry/react':
         specifier: ^8
         version: 8.55.2(react@19.2.5)
+      '@supabase/auth-js':
+        specifier: 2.105.1
+        version: 2.105.1
       '@supabase/supabase-js':
         specifier: ^2
         version: 2.105.1

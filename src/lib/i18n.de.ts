@@ -111,6 +111,8 @@ export default {
     role_label: 'Rezeptsuche',
     query_label: 'Suchbegriff',
     clear: 'Suche löschen',
+    more_tags: 'Mehr Tags',
+    fewer_tags: 'Weniger Tags',
     no_matches_title: 'Keine Treffer',
     no_matches_query:
       'Für "{{query}}" wurde nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
@@ -287,6 +289,12 @@ export default {
     tags_saved: 'Tags aktualisiert',
     tags_save_failed: 'Tags konnten nicht gespeichert werden',
     read_only_notice: 'Nur Haushaltsbesitzer:innen können Tags bearbeiten.',
+    primary_tags_title: 'Haupt-Tags',
+    primary_tags_help:
+      'Haupt-Tags erscheinen zuerst auf der Startseite; der Rest verbirgt sich unter „Mehr Tags“. Tippe unten ein Tag an, um es als Haupt-Tag hervorzuheben.',
+    primary_tags_empty:
+      'Noch keine Haupt-Tags. Tippe unten ein Tag an, um es auf der Startseite hervorzuheben.',
+    primary_tag_toggle: '{{tag}} als Haupt-Tag umschalten',
     common: {
       cancel: 'Abbrechen',
     },
@@ -305,6 +313,17 @@ export default {
       'Neue Importe werden in diese Sprache übersetzt. Gespeicherte Rezepte bleiben unverändert.',
     language_saved: 'Sprache aktualisiert',
     language_save_failed: 'Sprache konnte nicht gespeichert werden',
+    password: {
+      title: 'Passwort ändern',
+      hint: 'Gib dein aktuelles Passwort ein und wähle dann ein neues mit mindestens 10 Zeichen.',
+      current_label: 'Aktuelles Passwort',
+      new_label: 'Neues Passwort',
+      confirm_label: 'Neues Passwort bestätigen',
+      submit: 'Passwort aktualisieren',
+      updated: 'Passwort aktualisiert',
+      current_incorrect: 'Das aktuelle Passwort war nicht korrekt.',
+      update_failed: 'Passwort konnte nicht aktualisiert werden',
+    },
     sign_out: 'Abmelden',
     sign_out_all: 'Von allen Geräten abmelden',
     sign_out_all_hint: 'Meldet dich auf allen Geräten ab, auf denen du angemeldet bist.',

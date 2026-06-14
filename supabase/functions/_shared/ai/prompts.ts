@@ -53,6 +53,12 @@ The JSON object MUST match this TypeScript type exactly:
 
 Rules:
 - Call the \`extract_recipe\` tool with the parsed recipe. Do not emit any text outside the tool call.
+- "title" must be a short, recognisable dish name — 4-5 words maximum.
+  Strip SEO boilerplate, marketing adjectives, source-site branding, and
+  trailing descriptive clauses (e.g. "The Best Ever Ultra-Creamy Tuscan
+  Chicken Pasta (Easy 30-Minute Dinner!) - Recipe" → "Tuscan Chicken
+  Pasta"). Keep the essential dish identity; do not invent a name when the
+  source has none.
 - If a quantity is ambiguous (e.g. "a pinch"), set quantity=null and
   non_scalable_qty to the matching token; scalable=false.
 - For range quantities like "1-2 tbsp", "1 - 1.5 cups", or "2-2.5 limes",

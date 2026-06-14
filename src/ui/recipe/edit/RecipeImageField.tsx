@@ -1,3 +1,4 @@
+import { useAuth } from '@/lib/auth';
 import { resizeForUpload } from '@/lib/photo-resize';
 import { RECIPE_IMAGES_BUCKET } from '@/lib/queries/storage';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +23,14 @@ export type RecipeImageFieldProps = {
 
 export function RecipeImageField({ value, onChange, disabled }: RecipeImageFieldProps) {
   const { t } = useTranslation();
+  // Read the user id from the in-memory session, never supabase.auth.getUser().
+  // getUser() is a network round-trip that takes the Supabase auth lock; firing
+  // it the moment the file picker / camera returns — i.e. as a mobile PWA
+  // resumes onto a possibly-dead socket — leaves the upload (and its "uploading"
+  // overlay) hung indefinitely. The edit route is gated by requireAuth, so the
+  // session user is always present, and its id is all the storage path needs
+  // (RLS enforces the real identity on the upload itself).
+  const userId = useAuth((s) => s.user?.id ?? null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +79,7 @@ export function RecipeImageField({ value, onChange, disabled }: RecipeImageField
     setLocalPreview(URL.createObjectURL(file)); // effect revokes any previous
 
     try {
-      const { data, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !data.user) {
+      if (!userId) {
         setError(t('errors.internal'));
         setLocalPreview(null);
         return;
@@ -80,7 +88,7 @@ export function RecipeImageField({ value, onChange, disabled }: RecipeImageField
       // is needed; it converts resized output to JPEG.
       const prepared = await resizeForUpload(file);
       const ext = prepared.type === 'image/png' ? 'png' : 'jpg';
-      const path = `${data.user.id}/${crypto.randomUUID()}.${ext}`;
+      const path = `${userId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from(RECIPE_IMAGES_BUCKET)
         .upload(path, prepared, { contentType: prepared.type, upsert: false });

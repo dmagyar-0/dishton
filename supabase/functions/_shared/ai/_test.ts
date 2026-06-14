@@ -338,6 +338,11 @@ Deno.test('RECIPE_JSON_SHAPE points the model at the household whitelist', () =>
   assertStringIncludes(RECIPE_JSON_SHAPE, 'subset');
 });
 
+Deno.test('RECIPE_JSON_SHAPE asks for a short 4-5 word title', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, '4-5 words maximum');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'short, recognisable dish name');
+});
+
 Deno.test('RECIPE_JSON_SHAPE asks for both Celsius and Fahrenheit on baking-temperature steps', () => {
   assertStringIncludes(RECIPE_JSON_SHAPE, 'Celsius and Fahrenheit');
   assertStringIncludes(RECIPE_JSON_SHAPE, '180°C (350°F)');

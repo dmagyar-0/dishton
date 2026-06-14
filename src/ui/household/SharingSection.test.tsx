@@ -18,8 +18,14 @@ const code = {
 };
 
 const followCodesQuery = { data: [code], isLoading: false };
-const followedQuery = { data: [], isLoading: false };
+const followedQuery = {
+  data: [],
+  isLoading: false,
+  refetch: vi.fn().mockResolvedValue({ data: [] }),
+};
 const followersQuery = { data: [], isLoading: false };
+
+const addFollow = vi.fn().mockResolvedValue('h_followed');
 
 vi.mock('@/lib/queries/households', () => ({
   useHouseholdFollowCodes: () => followCodesQuery,
@@ -28,6 +34,7 @@ vi.mock('@/lib/queries/households', () => ({
   useCreateFollowCode: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRevokeFollowCode: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnfollow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAddFollow: () => ({ mutateAsync: addFollow, isPending: false }),
 }));
 
 const push = vi.fn();
@@ -49,5 +56,23 @@ describe('SharingSection follow code copy', () => {
     await user.click(screen.getByText('household_settings.sharing.tap_to_copy'));
 
     await expect(navigator.clipboard.readText()).resolves.toBe(code.code);
+  });
+
+  it('lets an owner redeem a follow code to follow another household', async () => {
+    const user = userEvent.setup();
+    render(<SharingSection householdId="h_1" isOwner={true} />);
+
+    // The redeem form must be present in the sharing section itself, not only
+    // on a separate flag-gated page.
+    const input = screen.getByLabelText('following.add_title');
+    await user.type(input, 'f_LEBIJFTCMN6S');
+    await user.click(screen.getByRole('button', { name: 'following.add_action' }));
+
+    expect(addFollow).toHaveBeenCalledWith('f_LEBIJFTCMN6S');
+  });
+
+  it('hides the redeem form from non-owners', () => {
+    render(<SharingSection householdId="h_1" isOwner={false} />);
+    expect(screen.queryByLabelText('following.add_title')).toBeNull();
   });
 });

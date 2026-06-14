@@ -1,26 +1,39 @@
 import { useAuth } from '@/lib/auth';
 import { useHousehold } from '@/lib/queries/households';
 import { useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
-import { Badge } from '@/ui/primitives/Badge';
+import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
+import { SearchBar } from '@/ui/search/SearchBar';
+import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
 import { requireAuth } from '../../_guards';
+
+const Search = z.object({
+  q: z.string().optional(),
+  tag: z.union([z.string(), z.array(z.string())]).optional(),
+});
 
 export const Route = createFileRoute('/h/$householdId/')({
   beforeLoad: requireAuth,
+  validateSearch: Search,
   component: RecipeListPage,
 });
+
+type SearchParams = z.infer<typeof Search>;
 
 function RecipeListPage() {
   const { householdId } = Route.useParams();
   const { t } = useTranslation();
-  const list = useRecipeList(householdId);
+  const params = Route.useSearch() as SearchParams;
+  const nav = Route.useNavigate();
   const household = useHousehold(householdId);
   const memberships = useAuth((s) => s.memberships);
   // Only owners/editors may delete; followers can read but their delete would
@@ -35,9 +48,74 @@ function RecipeListPage() {
     memberships.filter((m) => m.household_id === householdId).length === 1 &&
     memberships.length === 1;
 
+  const tagParam = params.tag;
+  const selected = useMemo(
+    () => (Array.isArray(tagParam) ? tagParam : tagParam ? [tagParam] : []),
+    [tagParam],
+  );
+
+  const q = params.q ?? '';
+  const searchActive = q.trim().length >= 2;
+  // Scoped to THIS household only — Home stays single-household.
+  const search = useRecipeSearch(q, [householdId]);
+  const list = useRecipeList(householdId);
+  const tags = usePopularTags([householdId]);
+
+  const source = searchActive ? search.data : list.data;
+  const sourceFetching = searchActive ? search.isFetching : list.isFetching;
+  const sourceLoading = searchActive ? search.isLoading : list.isLoading;
+
+  const filtered = useMemo(() => {
+    if (!source) return [];
+    if (selected.length === 0) return source;
+    return source.filter((r) => {
+      const rt = (r.recipe_tags ?? []).map((t: { tag: string }) => t.tag);
+      return selected.every((tag: string) => rt.includes(tag));
+    });
+  }, [source, selected]);
+
+  // Two-level tag filter: level 1 = the household's configured main tags (in
+  // their configured order); level 2 = the remaining popular tags. Counts come
+  // from popular_tags; main tags with no current count simply show no number.
+  const primary = household.data?.primary_tags ?? [];
+  const countMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const { tag, n } of tags.data ?? []) m.set(tag, n);
+    return m;
+  }, [tags.data]);
+
+  const level1 = useMemo(
+    () => primary.map((tag) => ({ tag, n: countMap.get(tag) })),
+    [primary, countMap],
+  );
+  const level2 = useMemo(
+    () => (tags.data ?? []).filter((tg) => !primary.includes(tg.tag)),
+    [tags.data, primary],
+  );
+
+  const [showMore, setShowMore] = useState(false);
+  // Auto-expand level 2 if a selected tag lives there, so a hidden selected tag
+  // is never invisible.
+  const expanded = showMore || selected.some((tg) => !primary.includes(tg));
+
+  const onToggleTag = (tag: string) =>
+    nav({
+      search: (prev: SearchParams) => {
+        const cur = Array.isArray(prev.tag) ? prev.tag : prev.tag ? [prev.tag] : [];
+        const next = cur.includes(tag) ? cur.filter((tg) => tg !== tag) : [...cur, tag];
+        return { ...prev, tag: next.length === 0 ? undefined : next };
+      },
+    });
+
+  const hasTagUi = level1.length > 0 || level2.length > 0;
+  const showNoMatches =
+    !sourceLoading && filtered.length === 0 && (searchActive || selected.length > 0);
+  const showEmptyPantry =
+    !searchActive && selected.length === 0 && list.data && list.data.length === 0;
+
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
         <h1 className="font-display text-display">
           {isSolo ? t('recipe.list_title_solo') : t('recipe.list_title')}
         </h1>
@@ -51,15 +129,49 @@ function RecipeListPage() {
         </div>
       </header>
 
-      {list.isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-48" />
+      <div className="mb-6 space-y-3">
+        <SearchBar
+          value={q}
+          loading={sourceFetching}
+          onChange={(value) =>
+            nav({
+              search: (prev: SearchParams) => ({
+                ...prev,
+                q: value === '' ? undefined : value,
+              }),
+            })
+          }
+        />
+        {hasTagUi && (
+          <div className="space-y-2">
+            {level1.length > 0 && (
+              <TagStrip tags={level1} selected={selected} onToggle={onToggleTag} />
+            )}
+            {expanded && level2.length > 0 && (
+              <TagStrip tags={level2} selected={selected} onToggle={onToggleTag} />
+            )}
+            {level2.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowMore((v) => !v)}
+                className="text-sm text-ink-soft hover:text-ink underline underline-offset-2 transition-colors duration-[var(--duration-fast)]"
+              >
+                {expanded ? t('search.fewer_tags') : t('search.more_tags')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {sourceLoading && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <Skeleton key={i} className="h-44" />
           ))}
         </div>
       )}
 
-      {list.data && list.data.length === 0 && (
+      {showEmptyPantry && (
         <EmptyState
           title={isSolo ? t('recipe.empty_title_solo') : t('recipe.empty_title')}
           description={isSolo ? t('recipe.empty_body_solo') : ''}
@@ -71,9 +183,25 @@ function RecipeListPage() {
         />
       )}
 
-      {list.data && list.data.length > 0 && (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {list.data.map((r) => (
+      {showNoMatches && (
+        <Card className="p-6">
+          <EmptyState
+            title={t('search.no_matches_title')}
+            description={
+              searchActive
+                ? selected.length > 0
+                  ? t('search.no_matches_query_tags', { query: q })
+                  : t('search.no_matches_query', { query: q })
+                : t('search.no_matches_tags')
+            }
+            action={null}
+          />
+        </Card>
+      )}
+
+      {filtered.length > 0 && (
+        <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {filtered.map((r) => (
             <li key={r.id} className="group/card relative">
               {isEditor && (
                 <RecipeCardDeleteButton
@@ -85,12 +213,12 @@ function RecipeListPage() {
               )}
               <Link
                 to="/h/$householdId/r/$recipeId"
-                params={{ householdId, recipeId: r.id }}
+                params={{ householdId: r.household_id, recipeId: r.id }}
                 className="block group/link"
               >
                 <Card className="p-0 overflow-hidden h-full">
                   {r.hero_image_path && (
-                    <div className="aspect-[16/10] w-full overflow-hidden border-b border-cream-line">
+                    <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
                       <RecipeImage
                         path={r.hero_image_path}
                         alt=""
@@ -98,20 +226,10 @@ function RecipeListPage() {
                       />
                     </div>
                   )}
-                  <div className="p-5">
-                    <h2 className="font-display text-2xl leading-tight mb-2">{r.title}</h2>
-                    {r.description && (
-                      <p className="text-ink-soft text-sm line-clamp-2">{r.description}</p>
-                    )}
-                    {r.recipe_tags && r.recipe_tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {r.recipe_tags.slice(0, 4).map((t) => (
-                          <Badge key={t.tag} variant="outline">
-                            {t.tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                  <div className="p-3">
+                    <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2">
+                      {r.title}
+                    </h2>
                   </div>
                 </Card>
               </Link>
