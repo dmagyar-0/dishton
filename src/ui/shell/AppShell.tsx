@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
 import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
 import { Link, Outlet } from '@tanstack/react-router';
-import { Home, Search, Settings, Sparkles, Upload, User, Users } from 'lucide-react';
+import { Home, Settings, Sparkles, Upload, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const NAV_CLASS = cn(
@@ -48,12 +48,6 @@ export function AppShell() {
                 </Link>
               </li>
             )}
-            <li>
-              <Link to="/search" className={NAV_CLASS} aria-label={t('search.nav')}>
-                <Search size={16} strokeWidth={1.5} />
-                <span className="hidden md:inline">{t('search.nav')}</span>
-              </Link>
-            </li>
             {householdId && (
               <li>
                 <Link

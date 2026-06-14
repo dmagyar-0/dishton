@@ -22,7 +22,11 @@ const mocks = vi.hoisted(() => {
   const removeMock = vi.fn();
   const getUserMock = vi.fn();
   const storageFromMock = vi.fn(() => ({ upload: uploadMock, remove: removeMock }));
-  return { uploadMock, removeMock, getUserMock, storageFromMock };
+  // The authenticated user id is read from the in-memory session store, never a
+  // network getUser() — that call deadlocks the upload when the file picker /
+  // camera returns and the mobile PWA resumes (auth lock + dead socket).
+  const auth = { user: { id: 'u1' } as { id: string } | null };
+  return { uploadMock, removeMock, getUserMock, storageFromMock, auth };
 });
 
 vi.mock('@/lib/supabase', () => ({
@@ -30,6 +34,10 @@ vi.mock('@/lib/supabase', () => ({
     auth: { getUser: mocks.getUserMock },
     storage: { from: mocks.storageFromMock },
   },
+}));
+
+vi.mock('@/lib/auth', () => ({
+  useAuth: <T,>(selector: (s: { user: { id: string } | null }) => T): T => selector(mocks.auth),
 }));
 
 import { RecipeImageField } from './RecipeImageField';
@@ -46,7 +54,6 @@ function fileInput(): HTMLInputElement {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.getUserMock.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
   mocks.uploadMock.mockResolvedValue({ data: { path: 'ok' }, error: null });
   mocks.removeMock.mockResolvedValue({ data: [{}], error: null });
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview');
@@ -74,7 +81,11 @@ describe('RecipeImageField', () => {
 
     await user.upload(fileInput(), jpeg());
 
-    expect(mocks.getUserMock).toHaveBeenCalled();
+    // The upload must NOT depend on a network getUser() round-trip: that call
+    // hangs the upload indefinitely when the mobile PWA resumes after the file
+    // picker / camera returns (auth lock contended on a dead socket). The user
+    // id comes from the already-hydrated session instead.
+    expect(mocks.getUserMock).not.toHaveBeenCalled();
     expect(mocks.storageFromMock).toHaveBeenCalledWith('recipe-images');
     expect(mocks.uploadMock).toHaveBeenCalledTimes(1);
     const call = mocks.uploadMock.mock.calls[0];
