@@ -1,6 +1,6 @@
 import { normaliseBcp47 } from '@/domain/language';
 import { useAuth } from '@/lib/auth';
-import { applyUiLanguage } from '@/lib/i18n';
+import { UI_LANGUAGES, applyUiLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { Button, Card, Input, Select, useToast } from '@/ui/primitives';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -13,9 +13,11 @@ export const Route = createFileRoute('/profile')({
   component: ProfilePage,
 });
 
-// Curated set of languages we offer in the picker. Labels are in their own
-// language so the choice is recognisable regardless of UI locale.
-const LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+// Languages offered for the *recipe* translation default. Recipe content is
+// translated server-side, so we can offer more than the UI ships strings for.
+// Labels are in their own language so the choice is recognisable regardless of
+// UI locale.
+const RECIPE_LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: 'en', label: 'English' },
   { value: 'de', label: 'Deutsch' },
   { value: 'fr', label: 'Français' },
@@ -23,6 +25,11 @@ const LANGUAGE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: 'it', label: 'Italiano' },
   { value: 'hu', label: 'Magyar' },
 ];
+
+// The "Display language" picker only offers locales we actually ship UI
+// strings for (UI_LANGUAGES) — otherwise the interface silently falls back to
+// English while the picker claims another language is selected.
+const DISPLAY_LANGUAGE_OPTIONS = UI_LANGUAGES;
 
 function ProfilePage() {
   const { t } = useTranslation();
@@ -188,7 +195,7 @@ function ProfilePage() {
           <Select
             id="profile-locale"
             value={currentLocale}
-            options={LANGUAGE_OPTIONS}
+            options={DISPLAY_LANGUAGE_OPTIONS}
             disabled={saving || !auth.profile}
             onValueChange={(v) => void onLocaleChange(v)}
           />
@@ -202,7 +209,7 @@ function ProfilePage() {
           <Select
             id="preferred-language"
             value={currentLanguage}
-            options={LANGUAGE_OPTIONS}
+            options={RECIPE_LANGUAGE_OPTIONS}
             disabled={saving || !auth.profile}
             onValueChange={(v) => void onLanguageChange(v)}
           />
