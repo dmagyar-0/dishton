@@ -474,7 +474,7 @@ export default {
     regenerate_hint: 'Turning the link back on creates a new address.',
   },
   public: {
-    from_household: "From {{name}}'s pantry",
+    from_household: 'From {{namePossessive}} pantry',
     cta_title: 'Cook it yourself',
     cta_body: 'Save this recipe into your own pantry and keep every recipe you love in one place.',
     cta_action: 'Start your own pantry',
