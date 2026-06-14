@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth';
 import { UI_LANGUAGES, applyUiLanguage } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { Button, Card, Input, Select, useToast } from '@/ui/primitives';
+import { ChangePasswordCard } from '@/ui/profile/ChangePasswordCard';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -216,6 +217,8 @@ function ProfilePage() {
           <p className="text-ink-soft text-sm">{t('profile.language_hint')}</p>
         </div>
       </Card>
+
+      <ChangePasswordCard />
 
       <Card className="p-6 mt-4 space-y-3">
         <Button

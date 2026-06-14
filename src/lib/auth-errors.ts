@@ -7,6 +7,8 @@ const MAP: Record<string, string> = {
   'Email not confirmed': 'Confirm your email before signing in.',
   'User already registered': 'That email already has an account.',
   'Password should be at least 10 characters.': 'Use a password of at least 10 characters.',
+  'New password should be different from the old password.':
+    'Your new password must be different from your current one.',
 };
 
 const GENERIC = 'Something went wrong. Try again.';
