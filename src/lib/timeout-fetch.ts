@@ -10,9 +10,10 @@
 //
 // Bounding the fetch turns that silent hang into an ordinary rejection: React
 // Query can retry it, and the on-resume recovery handler can re-fire it on a
-// fresh connection (see session-recovery.ts). Note the auth lock itself already
-// self-heals — auth-js steals an orphaned lock after `lockAcquireTimeout` (5s) —
-// so the unbounded fetch is the remaining cause of an indefinite freeze.
+// fresh connection (see session-recovery.ts). The auth lock can no longer
+// strand the app on its own — we run an in-memory lock that a tab freeze can't
+// orphan (see the `lock` option in supabase.ts) — so a request hung on a dead
+// socket is the remaining cause of an indefinite freeze, which this bounds.
 
 // Generous enough not to abort a legitimately slow-but-progressing request on a
 // poor mobile connection, while far below the OS TCP timeout it replaces.

@@ -11,22 +11,41 @@ function setVisibility(state: 'visible' | 'hidden') {
   document.dispatchEvent(new Event('visibilitychange'));
 }
 
+function setOnline(online: boolean) {
+  Object.defineProperty(navigator, 'onLine', { value: online, configurable: true });
+}
+
+// Let the resolved getSession()/.finally() microtask chain run to completion.
+async function flush() {
+  await vi.advanceTimersByTimeAsync(0);
+}
+
 describe('installSessionRecovery', () => {
   let now: number;
   let invalidateQueries: ReturnType<typeof vi.fn>;
   let cleanup: () => void;
+  let reload: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     now = 1_000_000;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
     getSession.mockReset().mockResolvedValue({ data: { session: null } });
     invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    reload = vi.fn();
+    // jsdom's window.location.reload is non-configurable, so stub the whole
+    // location object for the duration of each test.
+    vi.stubGlobal('location', { href: 'http://localhost/', origin: 'http://localhost', reload });
+    setOnline(true);
+    sessionStorage.clear();
     cleanup = installSessionRecovery({ invalidateQueries } as never);
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('refetches active queries after a long background, nudging the session', async () => {
@@ -35,9 +54,8 @@ describe('installSessionRecovery', () => {
     setVisibility('visible');
 
     expect(getSession).toHaveBeenCalledTimes(1);
-    await vi.waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({ refetchType: 'active' });
-    });
+    await flush();
+    expect(invalidateQueries).toHaveBeenCalledWith({ refetchType: 'active' });
   });
 
   it('does nothing after only a brief tab blur', () => {
@@ -64,5 +82,43 @@ describe('installSessionRecovery', () => {
     cleanup();
     window.dispatchEvent(new Event('online'));
     expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it('reloads as a last resort when session validation never settles', async () => {
+    getSession.mockReturnValue(new Promise(() => {})); // wedged: never resolves
+    window.dispatchEvent(new Event('online'));
+
+    expect(reload).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload when validation settles before the watchdog fires', async () => {
+    window.dispatchEvent(new Event('online'));
+    await flush();
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('does not reload while offline', async () => {
+    setOnline(false);
+    getSession.mockReturnValue(new Promise(() => {}));
+    window.dispatchEvent(new Event('online'));
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('does not loop: a second wedge within the guard window does not reload again', async () => {
+    getSession.mockReturnValue(new Promise(() => {}));
+
+    window.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    now += 30_000; // still inside the 60s guard window
+    window.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });
