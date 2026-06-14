@@ -125,7 +125,10 @@ export function PublicRecipePage({
 
         <h1 className="mb-2 font-display text-display leading-tight">{recipe.title}</h1>
         <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-saffron">
-          {t('public.from_household', { name: q.data.household_name })}
+          {t('public.from_household', {
+            name: q.data.household_name,
+            namePossessive: possessive(q.data.household_name),
+          })}
         </p>
         {recipe.description && (
           <p className="mb-8 max-w-prose text-lg leading-relaxed text-ink-soft">
@@ -177,6 +180,14 @@ export function PublicRecipePage({
       </main>
     </PublicFrame>
   );
+}
+
+// English possessive for the attribution line. Names already ending in "s"
+// (e.g. the default "My Recipes") take a bare apostrophe so we don't render
+// the awkward "My Recipes's pantry". Only the English string consumes this;
+// the de/hu templates phrase attribution without a genitive 's.
+function possessive(name: string): string {
+  return /s$/i.test(name) ? `${name}'` : `${name}'s`;
 }
 
 function PublicFrame({ children }: { children: ReactNode }) {
