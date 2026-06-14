@@ -1,6 +1,8 @@
+import { type AddFollowInput, AddFollowSchema } from '@/lib/forms/household';
 import {
   type FollowedHousehold,
   type HouseholdFollowCode,
+  useAddFollow,
   useCreateFollowCode,
   useFollowedHouseholds,
   useFollowersOfHousehold,
@@ -10,9 +12,12 @@ import {
 } from '@/lib/queries/households';
 import { cn } from '@/ui/cn';
 import { Badge, Button, Card, IconButton, Skeleton, useToast } from '@/ui/primitives';
+import { Input } from '@/ui/primitives/Input';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from '@tanstack/react-router';
 import { Share2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from './dialogs/ConfirmDialog';
 import { translateHouseholdError } from './translateError';
@@ -102,6 +107,7 @@ export function SharingSection({ householdId, isOwner }: Props) {
         <h2 className="font-display text-xl mb-1">
           {t('household_settings.sharing.followed_title')}
         </h2>
+        {isOwner && <AddFollowForm householdId={householdId} followed={followed} />}
         {followed.isLoading && <Skeleton className="h-12" />}
         {followed.data && followed.data.length === 0 && (
           <p className="text-ink-soft text-sm">{t('household_settings.sharing.followed_empty')}</p>
@@ -145,6 +151,70 @@ export function SharingSection({ householdId, isOwner }: Props) {
         )}
       </Card>
     </div>
+  );
+}
+
+function AddFollowForm({
+  householdId,
+  followed,
+}: {
+  householdId: string;
+  followed: ReturnType<typeof useFollowedHouseholds>;
+}) {
+  const { t } = useTranslation();
+  const { push } = useToast();
+  const addFollow = useAddFollow(householdId);
+  const form = useForm<AddFollowInput>({ resolver: zodResolver(AddFollowSchema) });
+
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={form.handleSubmit(async (values) => {
+        try {
+          const followedId = await addFollow.mutateAsync(values.code);
+          form.reset({ code: '' });
+          // add_follow returns the followed household id; the followed list was
+          // just invalidated, so refetch it to surface the household name.
+          const refreshed = await followed.refetch();
+          const match = refreshed.data?.find((f) => f.followed_household_id === followedId);
+          push({
+            variant: 'success',
+            title: match
+              ? t('following.add_success', { name: match.household.name })
+              : t('following.add_success_generic'),
+          });
+        } catch (err) {
+          push({
+            variant: 'error',
+            title: t('following.add_failed'),
+            description: translateHouseholdError(t, err),
+          });
+        }
+      })}
+    >
+      <p className="text-ink-soft text-sm">{t('following.add_help')}</p>
+      <div className="flex items-start gap-2">
+        <div className="flex-1">
+          <Input
+            placeholder={t('following.add_placeholder')}
+            autoComplete="off"
+            aria-label={t('following.add_title')}
+            {...form.register('code')}
+          />
+          {form.formState.errors.code && (
+            <p className="text-pomegranate text-sm mt-1">{form.formState.errors.code.message}</p>
+          )}
+        </div>
+        <Button
+          type="submit"
+          variant="secondary"
+          loading={addFollow.isPending}
+          disabled={addFollow.isPending}
+        >
+          {t('following.add_action')}
+        </Button>
+      </div>
+    </form>
   );
 }
 
