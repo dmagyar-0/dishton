@@ -8,7 +8,6 @@ import {
 } from '@/lib/queries/recipe-links';
 import { type RecipeListRow, useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
 import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
-import { cn } from '@/ui/cn';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
@@ -21,7 +20,7 @@ import { RecipeLinkBadge } from '@/ui/recipe/RecipeLinkBadge';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { Plus } from 'lucide-react';
+import { ChefHat, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -275,19 +274,32 @@ function RecipeListPage() {
                 className="block group/link"
               >
                 <Card className="p-0 overflow-hidden h-full">
-                  {r.hero_image_path && (
-                    <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                  {/* Always render the image box — recipes without a hero get a
+                      branded placeholder so every card is the same height. */}
+                  <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                    {r.hero_image_path ? (
                       <RecipeImage
                         path={r.hero_image_path}
                         alt=""
                         className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
                       />
-                    </div>
-                  )}
-                  {/* Imageless linked cards: pad the title clear of the
-                      top-left badge so it never clips the recipe name. */}
-                  <div className={cn('p-3', r.is_link && !r.hero_image_path && 'pt-12')}>
-                    <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2">
+                    ) : (
+                      <div
+                        className="flex h-full w-full items-center justify-center bg-paper"
+                        aria-hidden="true"
+                      >
+                        <ChefHat
+                          size={40}
+                          strokeWidth={1.5}
+                          className="text-ink-muted group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    {/* min-h reserves two lines so single-line titles don't make a
+                        shorter card than wrapped ones; line-clamp caps the overflow. */}
+                    <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
                       {r.title}
                     </h2>
                   </div>
