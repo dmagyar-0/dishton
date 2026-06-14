@@ -79,6 +79,20 @@ describe('formatQuantityForInput', () => {
     expect(formatQuantityForInput({ numerator: 3, denominator: 2 })).toBe('1 1/2');
   });
 
+  it('preserves exact non-eighth fractions instead of snapping', () => {
+    expect(formatQuantityForInput({ numerator: 1, denominator: 3 })).toBe('1/3');
+    expect(formatQuantityForInput({ numerator: 5, denominator: 8 })).toBe('5/8');
+    expect(formatQuantityForInput({ numerator: 7, denominator: 16 })).toBe('7/16');
+  });
+
+  it('round-trips an exact fraction through parseQuantityInput', () => {
+    for (const text of ['1/3', '2/3', '5/8', '7/16', '1 1/3']) {
+      const parsed = parseQuantityInput(text);
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) expect(formatQuantityForInput(parsed.value)).toBe(text);
+    }
+  });
+
   it('round-trips via parseQuantityInput', () => {
     const cases = [null, 0, 2, 1.5, { numerator: 3, denominator: 4 }] as const;
     for (const q of cases) {
