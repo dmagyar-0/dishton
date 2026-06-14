@@ -83,8 +83,13 @@ export function resolveDisplay(
   scaledQty: Quantity | null,
   displayUnits: 'metric' | 'imperial',
 ): { displayQuantity: Quantity | null; displayUnit: string | null } {
-  if (quantityIsEmpty(scaledQty) || !source.unit) {
+  if (quantityIsEmpty(scaledQty)) {
     return { displayQuantity: null, displayUnit: null };
+  }
+  if (!source.unit) {
+    // No unit to convert to — show the amount as-is (e.g. "1/3" with no unit)
+    // rather than hiding it. scaledQty is non-empty here.
+    return { displayQuantity: scaledQty, displayUnit: null };
   }
   // scaledQty is non-empty here.
   const scaledNumber = quantityToNumber(scaledQty as Quantity);

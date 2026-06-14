@@ -1,3 +1,5 @@
+import type { Quantity } from './recipe.ts';
+
 function gcd(a: number, b: number): number {
   let x = Math.abs(Math.trunc(a));
   let y = Math.abs(Math.trunc(b));
@@ -45,6 +47,29 @@ export function formatFraction(f: NiceFraction): string {
   // is no whole part (e.g. "-1 1/2" vs "-1/2").
   if (f.whole === 0) return `${f.numerator}/${f.denominator}`;
   return `${f.whole} ${f.numerator}/${f.denominator}`;
+}
+
+/**
+ * Format an exact stored fraction (numerator/denominator) as a reduced mixed
+ * number, honoring whatever the user entered — e.g. 1/3 → "1/3", 5/8 → "5/8",
+ * 7/3 → "2 1/3". Unlike niceFraction this does NOT snap to eighths, so
+ * non-eighth fractions like thirds survive display. Denominator is assumed
+ * positive (per the Quantity schema).
+ */
+export function formatExactFraction(numerator: number, denominator: number): string {
+  if (denominator === 0) return String(numerator);
+  const sign = numerator < 0 ? -1 : 1;
+  const num = Math.abs(numerator);
+  const den = Math.abs(denominator);
+  const whole = Math.floor(num / den);
+  const rem = num - whole * den;
+  if (rem === 0) return String(sign * whole);
+  const g = gcd(rem, den);
+  return formatFraction({
+    whole: sign * whole,
+    numerator: whole === 0 ? sign * (rem / g) : rem / g,
+    denominator: den / g,
+  });
 }
 
 /**
@@ -116,17 +141,23 @@ export function isFractionFriendlyUnit(unit: string | null | undefined): boolean
 }
 
 /**
- * Render a numeric quantity for a given unit, choosing a mixed-number fraction
- * for fraction-friendly cooking units and a plain decimal otherwise. Large
- * values (>= 10) drop the fraction part to reduce clutter even for friendly
- * units. The numeric `formatDecimal` is injected so this module stays pure and
- * free of locale concerns. Per docs/06 display pipeline.
+ * Render a quantity for a given unit. An exact stored fraction (numerator/
+ * denominator) is honored verbatim for any unit — including grams/ml and
+ * unitless — so a value the user typed as "1/3" or "5/8" shows as that
+ * fraction rather than being snapped to eighths or shown as a decimal. Plain
+ * numbers choose a mixed-number fraction for fraction-friendly cooking units
+ * and a decimal otherwise; values >= 10 drop the fraction part to reduce
+ * clutter. The numeric `formatDecimal` is injected so this module stays pure
+ * and free of locale concerns. Per docs/06 display pipeline.
  */
 export function formatDisplayQuantity(
-  value: number,
+  value: Quantity,
   unit: string | null | undefined,
   formatDecimal: (value: number) => string,
 ): string {
+  if (typeof value === 'object') {
+    return formatExactFraction(value.numerator, value.denominator);
+  }
   if (!Number.isFinite(value)) return formatDecimal(value);
   if (isFractionFriendlyUnit(unit) && !shouldHideFraction(value)) {
     return formatFraction(niceFraction(value, 8));

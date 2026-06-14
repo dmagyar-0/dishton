@@ -74,6 +74,16 @@ describe('IngredientRowEditor', () => {
     expect(onChange).toHaveBeenCalledWith({ quantity: { numerator: 1, denominator: 2 } });
   });
 
+  it('parses a comma decimal quantity on blur', async () => {
+    const user = userEvent.setup();
+    renderRow();
+    const qty = screen.getByPlaceholderText('recipe.quantity_placeholder');
+    await user.clear(qty);
+    await user.type(qty, '0,5');
+    await user.tab();
+    expect(onChange).toHaveBeenCalledWith({ quantity: 0.5 });
+  });
+
   it('surfaces an error when the quantity input is invalid', async () => {
     const user = userEvent.setup();
     renderRow();

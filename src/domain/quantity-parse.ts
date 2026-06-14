@@ -1,15 +1,17 @@
-import { formatFraction, niceFraction, shouldHideFraction } from './fractions';
+import { formatExactFraction, formatFraction, niceFraction, shouldHideFraction } from './fractions';
 import type { Quantity } from './recipe';
 
 export type ParsedQuantity = { ok: true; value: Quantity | null } | { ok: false; error: 'invalid' };
 
 const MIXED_FRACTION_RE = /^(\d+)\s+(\d+)\s*\/\s*(\d+)$/;
 const FRACTION_RE = /^(\d+)\s*\/\s*(\d+)$/;
-const DECIMAL_RE = /^(\d+)(?:\.(\d+))?$/;
+// Decimal separator may be a dot or a comma (e.g. "1.5" or "0,5") so locales
+// that write decimals with a comma can enter quantities the way they expect.
+const DECIMAL_RE = /^(\d+)(?:[.,](\d+))?$/;
 
 // Parses user input from a single quantity text field.
-// Accepts: "" or "0" → null/0, decimals like "1.5", fractions like "1/2",
-// mixed numbers like "1 1/2". Returns a Quantity that the Recipe schema
+// Accepts: "" or "0" → null/0, decimals like "1.5" or "0,5", fractions like
+// "1/2", mixed numbers like "1 1/2". Returns a Quantity that the Recipe schema
 // accepts (either a number or {numerator, denominator}). Mixed fractions
 // collapse to a single numerator/denominator (e.g. 1 1/2 → 3/2).
 export function parseQuantityInput(raw: string): ParsedQuantity {
@@ -40,7 +42,7 @@ export function parseQuantityInput(raw: string): ParsedQuantity {
 
   const decimal = DECIMAL_RE.exec(trimmed);
   if (decimal) {
-    const n = Number(trimmed);
+    const n = Number(trimmed.replace(',', '.'));
     if (!Number.isFinite(n)) return { ok: false, error: 'invalid' };
     return { ok: true, value: n };
   }
@@ -48,15 +50,15 @@ export function parseQuantityInput(raw: string): ParsedQuantity {
   return { ok: false, error: 'invalid' };
 }
 
-// Turns a stored Quantity back into a text the user can edit.
-// Whole numbers and large decimals stay as plain numbers; small non-integers
-// render as mixed fractions ("1 1/2") matching how the rest of the app
-// formats quantities for display.
+// Turns a stored Quantity back into a text the user can edit. An exact stored
+// fraction is shown verbatim (e.g. "1/3", "5/8", "1 1/2") so editing never
+// silently rewrites the value to the nearest eighth. Whole numbers and large
+// decimals stay as plain numbers; small non-integer decimals render as mixed
+// fractions matching how the rest of the app formats quantities for display.
 export function formatQuantityForInput(q: Quantity | null): string {
   if (q === null) return '';
   if (typeof q === 'object') {
-    if (q.denominator === 1) return String(q.numerator);
-    return formatFraction(niceFraction(q.numerator / q.denominator, 8));
+    return formatExactFraction(q.numerator, q.denominator);
   }
   if (Number.isInteger(q)) return String(q);
   if (shouldHideFraction(q)) return String(q);

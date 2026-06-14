@@ -1,5 +1,5 @@
 import type { Recipe } from '@/domain';
-import { formatNumber, formatUnit, quantityToNumber } from '@/domain';
+import { formatDisplayQuantity, formatNumber, formatUnit } from '@/domain';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
 import { useMemo } from 'react';
@@ -60,7 +60,9 @@ export function DraftPreviewCard({ draft }: { draft: Recipe }) {
             <ul className="space-y-1">
               {group.items.map((ing) => {
                 const qty =
-                  ing.quantity != null ? formatNumber(quantityToNumber(ing.quantity)) : null;
+                  ing.quantity != null
+                    ? formatDisplayQuantity(ing.quantity, ing.unit, formatNumber)
+                    : null;
                 const unit = ing.unit ? formatUnit(ing.unit) : null;
                 return (
                   <li

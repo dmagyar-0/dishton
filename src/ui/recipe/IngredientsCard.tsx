@@ -1,5 +1,5 @@
 import type { Quantity } from '@/domain';
-import { formatUnit, quantityToNumber } from '@/domain';
+import { formatUnit } from '@/domain';
 import type { FullRecipe } from '@/lib/queries/recipes';
 import { cn } from '@/ui/cn';
 import { Card } from '@/ui/primitives/Card';
@@ -19,7 +19,7 @@ export type IngredientsCardProps = {
   // of unit/fraction logic.
   formatDecimal: (value: number) => string;
   formatDisplayQuantity: (
-    value: number,
+    value: Quantity,
     unit: string | null | undefined,
     formatDecimal: (value: number) => string,
   ) => string;
@@ -103,11 +103,7 @@ function IngredientRow({
 }) {
   const hasQty = ing.displayQuantity != null;
   const qtyText = hasQty
-    ? formatDisplayQuantity(
-        quantityToNumber(ing.displayQuantity as Quantity),
-        ing.displayUnit,
-        formatDecimal,
-      )
+    ? formatDisplayQuantity(ing.displayQuantity as Quantity, ing.displayUnit, formatDecimal)
     : null;
   const unitText = ing.displayUnit ? formatUnit(ing.displayUnit) : null;
 

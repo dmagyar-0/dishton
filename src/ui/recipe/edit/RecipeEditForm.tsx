@@ -1,5 +1,5 @@
 import { normaliseBcp47 } from '@/domain';
-import { type Ingredient, Recipe, type Step } from '@/domain/recipe';
+import { Ingredient, Recipe, type Step } from '@/domain/recipe';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
@@ -11,9 +11,26 @@ import { Plus } from 'lucide-react';
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
 import { IngredientRowEditor, type IngredientRowValue } from './IngredientRowEditor';
 import { RecipeImageField } from './RecipeImageField';
 import { StepRowEditor, type StepRowValue } from './StepRowEditor';
+
+// Validation schema for the edit form. It mirrors the frozen Recipe contract
+// but relaxes a single rule for hand-entry ergonomics: the "Original line"
+// (raw_text) is optional as long as the ingredient has a name. This keeps the
+// canonical Recipe schema (raw_text min 1) untouched while letting users fill
+// just the structured fields. The refine error is surfaced on the raw_text
+// path so it renders under that input, matching the existing copy
+// ("Add a name or description for this ingredient.").
+const EditRecipe = Recipe.extend({
+  ingredients: z.array(
+    Ingredient.extend({ raw_text: z.string() }).refine(
+      (ing) => ing.raw_text.trim().length > 0 || (ing.ingredient_name?.trim().length ?? 0) > 0,
+      { path: ['raw_text'], message: 'ingredient_text_required' },
+    ),
+  ),
+});
 
 export type RecipeEditFormProps = {
   defaultValues: Recipe;
@@ -59,9 +76,10 @@ export function RecipeEditForm({
   } = useForm<Recipe>({
     defaultValues,
     mode: 'onBlur',
-    // Validate against the frozen Recipe contract client-side: source_language
-    // (BCP-47), source_url (URL), ingredient raw_text (min 1), etc.
-    resolver: zodResolver(Recipe),
+    // Validate against the Recipe contract client-side (source_language as
+    // BCP-47, source_url as URL, etc.) with the edit-only relaxation that an
+    // ingredient's "Original line" is optional when it has a name.
+    resolver: zodResolver(EditRecipe),
   });
 
   const submit = handleSubmit(async (values) => {

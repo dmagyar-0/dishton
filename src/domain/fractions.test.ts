@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   formatDisplayQuantity,
+  formatExactFraction,
   formatFraction,
   isFractionFriendlyUnit,
   niceFraction,
@@ -153,6 +154,26 @@ describe('isFractionFriendlyUnit', () => {
   });
 });
 
+describe('formatExactFraction', () => {
+  it('renders simple fractions verbatim, including non-eighths', () => {
+    expect(formatExactFraction(1, 2)).toBe('1/2');
+    expect(formatExactFraction(1, 3)).toBe('1/3');
+    expect(formatExactFraction(2, 3)).toBe('2/3');
+    expect(formatExactFraction(5, 8)).toBe('5/8');
+    expect(formatExactFraction(7, 16)).toBe('7/16');
+  });
+  it('renders mixed numbers and whole numbers', () => {
+    expect(formatExactFraction(7, 3)).toBe('2 1/3');
+    expect(formatExactFraction(3, 2)).toBe('1 1/2');
+    expect(formatExactFraction(6, 3)).toBe('2');
+    expect(formatExactFraction(3, 1)).toBe('3');
+  });
+  it('reduces before rendering', () => {
+    expect(formatExactFraction(2, 4)).toBe('1/2');
+    expect(formatExactFraction(4, 2)).toBe('2');
+  });
+});
+
 describe('formatDisplayQuantity', () => {
   const dec = (v: number) => String(Number(v.toFixed(2)));
 
@@ -164,6 +185,12 @@ describe('formatDisplayQuantity', () => {
   it('renders decimals for non-fraction-friendly units', () => {
     expect(formatDisplayQuantity(1.5, 'g', dec)).toBe('1.5');
     expect(formatDisplayQuantity(200, 'ml', dec)).toBe('200');
+  });
+  it('honors an exact stored fraction for any unit, including non-eighths', () => {
+    expect(formatDisplayQuantity({ numerator: 1, denominator: 3 }, 'cup_us', dec)).toBe('1/3');
+    expect(formatDisplayQuantity({ numerator: 5, denominator: 8 }, 'g', dec)).toBe('5/8');
+    expect(formatDisplayQuantity({ numerator: 2, denominator: 3 }, null, dec)).toBe('2/3');
+    expect(formatDisplayQuantity({ numerator: 7, denominator: 3 }, 'tbsp', dec)).toBe('2 1/3');
   });
   it('drops fractions for large fraction-friendly values (>= 10)', () => {
     expect(formatDisplayQuantity(12.5, 'cup_us', dec)).toBe('12.5');

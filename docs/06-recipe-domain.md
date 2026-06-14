@@ -277,6 +277,20 @@ export function formatFraction(f: ReturnType<typeof niceFraction>): string {
 }
 ```
 
+### Exact stored fractions are honored on display
+
+`niceQuantity` / `niceFraction` snap to eighths, which is right for **scaled**
+values (where the multiplied amount is approximate anyway). But a quantity the
+user typed as an exact fraction is stored verbatim as `{numerator, denominator}`
+and must survive display unchanged — otherwise `1/3 cup` would render as `3/8`.
+
+So when a quantity is a fraction *object* (not a scaled number), the display and
+editor paths render it with `formatExactFraction(numerator, denominator)` — a
+reduced mixed number with **no eighths snapping**, for any unit (including
+grams/ml and unitless). Plain numbers keep the eighths behaviour above. Scaling
+still goes through `niceQuantity`, so a scaled fraction returns to the snapped
+decimal/eighths path. A quantity with no unit is shown as-is rather than hidden.
+
 ### Invariants (enforced by `fast-check` property tests)
 
 For all positive `factor`, integer `n ≥ 1`, and any `recipe`:
