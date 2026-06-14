@@ -156,7 +156,7 @@ describe('RecipeEditForm', () => {
     expect(screen.getByText('recipe.step_body_required')).toBeInTheDocument();
   });
 
-  it('surfaces a row error and blocks submit when an ingredient line is emptied', async () => {
+  it('submits when the original line is emptied but the ingredient still has a name', async () => {
     const onSubmit = vi.fn();
     const user = userEvent.setup();
     render(
@@ -168,6 +168,26 @@ describe('RecipeEditForm', () => {
       />,
     );
     await user.clear(screen.getByDisplayValue('500 g tomatoes'));
+    await user.click(screen.getByRole('button', { name: 'recipe.edit_save' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const submitted = onSubmit.mock.calls[0]?.[0] as Recipe;
+    expect(submitted.ingredients[0]?.raw_text).toBe('');
+    expect(submitted.ingredients[0]?.ingredient_name).toBe('tomatoes');
+  });
+
+  it('blocks submit when both the original line and the name are emptied', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <RecipeEditForm
+        defaultValues={sampleRecipe()}
+        allowedTags={ALLOWED}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    await user.clear(screen.getByDisplayValue('500 g tomatoes'));
+    await user.clear(screen.getByDisplayValue('tomatoes'));
     await user.click(screen.getByRole('button', { name: 'recipe.edit_save' }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText('recipe.ingredient_text_required')).toBeInTheDocument();

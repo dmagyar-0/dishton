@@ -5,11 +5,13 @@ export type ParsedQuantity = { ok: true; value: Quantity | null } | { ok: false;
 
 const MIXED_FRACTION_RE = /^(\d+)\s+(\d+)\s*\/\s*(\d+)$/;
 const FRACTION_RE = /^(\d+)\s*\/\s*(\d+)$/;
-const DECIMAL_RE = /^(\d+)(?:\.(\d+))?$/;
+// Decimal separator may be a dot or a comma (e.g. "1.5" or "0,5") so locales
+// that write decimals with a comma can enter quantities the way they expect.
+const DECIMAL_RE = /^(\d+)(?:[.,](\d+))?$/;
 
 // Parses user input from a single quantity text field.
-// Accepts: "" or "0" → null/0, decimals like "1.5", fractions like "1/2",
-// mixed numbers like "1 1/2". Returns a Quantity that the Recipe schema
+// Accepts: "" or "0" → null/0, decimals like "1.5" or "0,5", fractions like
+// "1/2", mixed numbers like "1 1/2". Returns a Quantity that the Recipe schema
 // accepts (either a number or {numerator, denominator}). Mixed fractions
 // collapse to a single numerator/denominator (e.g. 1 1/2 → 3/2).
 export function parseQuantityInput(raw: string): ParsedQuantity {
@@ -40,7 +42,7 @@ export function parseQuantityInput(raw: string): ParsedQuantity {
 
   const decimal = DECIMAL_RE.exec(trimmed);
   if (decimal) {
-    const n = Number(trimmed);
+    const n = Number(trimmed.replace(',', '.'));
     if (!Number.isFinite(n)) return { ok: false, error: 'invalid' };
     return { ok: true, value: n };
   }

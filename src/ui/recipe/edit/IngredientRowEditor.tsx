@@ -147,7 +147,7 @@ export function IngredientRowEditor({
 
       <div className="ml-10 flex items-center justify-between gap-2">
         <Input
-          placeholder={t('recipe.field_ingredient_raw_text')}
+          placeholder={t('recipe.raw_text_placeholder')}
           value={value.raw_text}
           onChange={(e) => onChange({ raw_text: e.target.value })}
           className="flex-1 text-sm text-ink-soft"

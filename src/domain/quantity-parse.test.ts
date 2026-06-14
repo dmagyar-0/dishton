@@ -13,6 +13,12 @@ describe('parseQuantityInput', () => {
     expect(parseQuantityInput(' 250 ')).toEqual({ ok: true, value: 250 });
   });
 
+  it('parses a decimal written with a comma separator', () => {
+    expect(parseQuantityInput('0,5')).toEqual({ ok: true, value: 0.5 });
+    expect(parseQuantityInput('1,5')).toEqual({ ok: true, value: 1.5 });
+    expect(parseQuantityInput(' 12,75 ')).toEqual({ ok: true, value: 12.75 });
+  });
+
   it('parses a simple fraction', () => {
     expect(parseQuantityInput('1/2')).toEqual({
       ok: true,
@@ -38,6 +44,7 @@ describe('parseQuantityInput', () => {
   it('rejects garbage', () => {
     expect(parseQuantityInput('abc')).toEqual({ ok: false, error: 'invalid' });
     expect(parseQuantityInput('1.2.3')).toEqual({ ok: false, error: 'invalid' });
+    expect(parseQuantityInput('1,2,3')).toEqual({ ok: false, error: 'invalid' });
     expect(parseQuantityInput('1/0')).toEqual({ ok: false, error: 'invalid' });
     expect(parseQuantityInput('-1')).toEqual({ ok: false, error: 'invalid' });
     expect(parseQuantityInput('1/')).toEqual({ ok: false, error: 'invalid' });
