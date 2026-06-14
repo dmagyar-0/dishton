@@ -11,7 +11,7 @@ import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { Plus } from 'lucide-react';
+import { ChefHat, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -215,17 +215,32 @@ function RecipeListPage() {
                 className="block group/link"
               >
                 <Card className="p-0 overflow-hidden h-full">
-                  {r.hero_image_path && (
-                    <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                  {/* Always render the image box — recipes without a hero get a
+                      branded placeholder so every card is the same height. */}
+                  <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                    {r.hero_image_path ? (
                       <RecipeImage
                         path={r.hero_image_path}
                         alt=""
                         className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
                       />
-                    </div>
-                  )}
+                    ) : (
+                      <div
+                        className="flex h-full w-full items-center justify-center bg-paper"
+                        aria-hidden="true"
+                      >
+                        <ChefHat
+                          size={40}
+                          strokeWidth={1.5}
+                          className="text-ink-muted group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div className="p-3">
-                    <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2">
+                    {/* min-h reserves two lines so single-line titles don't make a
+                        shorter card than wrapped ones; line-clamp caps the overflow. */}
+                    <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
                       {r.title}
                     </h2>
                   </div>
