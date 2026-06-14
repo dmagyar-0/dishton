@@ -111,6 +111,8 @@ export default {
     role_label: 'Rezeptsuche',
     query_label: 'Suchbegriff',
     clear: 'Suche löschen',
+    more_tags: 'Mehr Tags',
+    fewer_tags: 'Weniger Tags',
     no_matches_title: 'Keine Treffer',
     no_matches_query:
       'Für "{{query}}" wurde nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
@@ -287,6 +289,12 @@ export default {
     tags_saved: 'Tags aktualisiert',
     tags_save_failed: 'Tags konnten nicht gespeichert werden',
     read_only_notice: 'Nur Haushaltsbesitzer:innen können Tags bearbeiten.',
+    primary_tags_title: 'Haupt-Tags',
+    primary_tags_help:
+      'Haupt-Tags erscheinen zuerst auf der Startseite; der Rest verbirgt sich unter „Mehr Tags“. Tippe unten ein Tag an, um es als Haupt-Tag hervorzuheben.',
+    primary_tags_empty:
+      'Noch keine Haupt-Tags. Tippe unten ein Tag an, um es auf der Startseite hervorzuheben.',
+    primary_tag_toggle: '{{tag}} als Haupt-Tag umschalten',
     common: {
       cancel: 'Abbrechen',
     },

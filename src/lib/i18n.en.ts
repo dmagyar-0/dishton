@@ -109,6 +109,8 @@ export default {
     role_label: 'Recipes search',
     query_label: 'Search query',
     clear: 'Clear search',
+    more_tags: 'More tags',
+    fewer_tags: 'Fewer tags',
     no_matches_title: 'No matches',
     no_matches_query: 'Nothing matched "{{query}}". Try a different word or clear the filters.',
     no_matches_query_tags:
@@ -281,6 +283,11 @@ export default {
     tags_saved: 'Tags updated',
     tags_save_failed: "Couldn't save tags",
     read_only_notice: 'Only household owners can edit tags.',
+    primary_tags_title: 'Main tags',
+    primary_tags_help:
+      'Main tags show first on Home; the rest tuck under “More tags”. Tap a tag below to feature it as a main tag.',
+    primary_tags_empty: 'No main tags yet. Tap a tag below to feature it on Home.',
+    primary_tag_toggle: 'Toggle {{tag}} as a main tag',
     common: {
       cancel: 'Cancel',
     },
