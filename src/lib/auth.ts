@@ -236,9 +236,9 @@ function subscribeAuthChanges(): void {
   // /onboarding whenever memberships are empty (a non-reactive beforeLoad), so
   // deferring this load — e.g. to a setTimeout macrotask — lets that redirect
   // win the race and strands freshly-signed-in users on /onboarding. The fetch
-  // timeout (timeout-fetch.ts) already bounds how long this can hold the auth
-  // lock, and auth-js steals an orphaned lock after 5s, so the inline await is
-  // safe from the resume-hang this client otherwise guards against.
+  // timeout (timeout-fetch.ts) bounds how long this can hold the auth lock, and
+  // the in-memory lock (see supabase.ts) can't be orphaned by a tab freeze, so
+  // the inline await is safe from the resume-hang this client guards against.
   supabase.auth.onAuthStateChange(async (event, session) => {
     useAuth.getState().setSession(session);
     if (event === 'SIGNED_IN' && session?.user) {

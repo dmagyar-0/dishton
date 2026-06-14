@@ -6,7 +6,9 @@
 // re-fires those requests on resume — a view that was mid-load (reading a recipe)
 // or a mutation that was in flight (deleting one) stays stuck until a manual
 // reload. This re-validates the session and refetches the on-screen queries when
-// the app comes back to the foreground, so it recovers on its own.
+// the app comes back to the foreground, so it recovers on its own. If that
+// validation never settles — the app is truly wedged — it reloads as a last
+// resort, automating the manual refresh a user would otherwise reach for.
 
 import type { QueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
@@ -17,6 +19,36 @@ const MIN_HIDDEN_MS = 10_000;
 // Collapse the burst of resume events the browser can fire together (pageshow +
 // visibilitychange) into a single recovery.
 const DEBOUNCE_MS = 1_000;
+// Safety net: if validating the session on resume hasn't settled within this
+// window, treat the app as wedged and reload — automating the manual refresh
+// that recovers it. Comfortably longer than the auth lock's 5s acquire timeout
+// and a slow-but-progressing refresh, yet shorter than the 30s fetch timeout a
+// dead-socket request would otherwise hang for, so a genuine hang reloads at
+// ~12s instead of stranding the user.
+const WEDGE_RELOAD_MS = 12_000;
+// Never reload more than once per window — a backend that is genuinely down must
+// not trap the tab in a reload loop. Survives the reload via sessionStorage.
+const RELOAD_GUARD_KEY = 'dishton.recovery.reloaded_at';
+const RELOAD_GUARD_MS = 60_000;
+
+function reloadIfNotLooping(): void {
+  // Offline: a reload can't re-validate the session and only flashes the app
+  // shell. Wait for the `online` event to drive another recovery instead.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  let lastReloadAt = 0;
+  try {
+    lastReloadAt = Number(sessionStorage.getItem(RELOAD_GUARD_KEY)) || 0;
+  } catch {
+    /* private mode / storage disabled — best effort */
+  }
+  if (Date.now() - lastReloadAt < RELOAD_GUARD_MS) return;
+  try {
+    sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+  window.location.reload();
+}
 
 export function installSessionRecovery(queryClient: QueryClient): () => void {
   if (typeof document === 'undefined' || typeof window === 'undefined') {
@@ -32,7 +64,15 @@ export function installSessionRecovery(queryClient: QueryClient): () => void {
     lastRecoverAt = now;
     // Nudge Supabase to validate/refresh the token (bounded by the fetch timeout
     // in timeout-fetch.ts), then refetch only the queries currently on screen.
+    // The in-memory auth lock (supabase.ts) should keep this from ever wedging,
+    // but as a last resort an unsettled validation past WEDGE_RELOAD_MS reloads.
+    let settled = false;
+    const watchdog = window.setTimeout(() => {
+      if (!settled) reloadIfNotLooping();
+    }, WEDGE_RELOAD_MS);
     void supabase.auth.getSession().finally(() => {
+      settled = true;
+      window.clearTimeout(watchdog);
       void queryClient.invalidateQueries({ refetchType: 'active' });
     });
   };
