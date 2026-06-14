@@ -139,7 +139,7 @@ function DraftPage() {
     <main className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="font-display text-display mb-4">{t('chat.title')}</h1>
 
-      <div className="md:hidden mb-3 flex gap-2">
+      <div className="md:hidden mb-3 flex flex-wrap gap-2">
         <Button variant="ghost" size="sm" onClick={() => setHistoryOpen(true)}>
           {t('chat.history')}
         </Button>
