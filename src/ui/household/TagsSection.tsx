@@ -1,5 +1,10 @@
-import { DEFAULT_HOUSEHOLD_TAGS, normalizeTag } from '@/domain/default-tags';
-import { type HouseholdSettings, useUpdateHouseholdAllowedTags } from '@/lib/queries/households';
+import { DEFAULT_HOUSEHOLD_TAGS, DEFAULT_PRIMARY_TAGS, normalizeTag } from '@/domain/default-tags';
+import {
+  type HouseholdSettings,
+  useUpdateHouseholdAllowedTags,
+  useUpdateHouseholdPrimaryTags,
+} from '@/lib/queries/households';
+import { cn } from '@/ui/cn';
 import { Button, Card, IconButton, Input, Skeleton, Tag, useToast } from '@/ui/primitives';
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -16,12 +21,16 @@ export function TagsSection({ household, householdId, isLoading, isOwner }: Prop
   const { t } = useTranslation();
   const { push } = useToast();
   const update = useUpdateHouseholdAllowedTags(householdId);
+  const updatePrimary = useUpdateHouseholdPrimaryTags(householdId);
 
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const tags = household?.allowed_tags ?? [];
   const tagSet = useMemo(() => new Set(tags), [tags]);
+
+  const primaryTags = household?.primary_tags ?? [];
+  const primarySet = useMemo(() => new Set(primaryTags), [primaryTags]);
 
   const persist = async (next: string[]): Promise<void> => {
     try {
@@ -30,6 +39,20 @@ export function TagsSection({ household, householdId, isLoading, isOwner }: Prop
     } catch {
       push({ variant: 'error', title: t('household_settings.tags_save_failed') });
     }
+  };
+
+  const persistPrimary = async (next: string[]): Promise<void> => {
+    try {
+      await updatePrimary.mutateAsync(next);
+      push({ variant: 'success', title: t('household_settings.tags_saved') });
+    } catch {
+      push({ variant: 'error', title: t('household_settings.tags_save_failed') });
+    }
+  };
+
+  const togglePrimary = async (tag: string): Promise<void> => {
+    const next = primarySet.has(tag) ? primaryTags.filter((x) => x !== tag) : [...primaryTags, tag];
+    await persistPrimary(next);
   };
 
   const addTag = async (): Promise<void> => {
@@ -53,6 +76,7 @@ export function TagsSection({ household, householdId, isLoading, isOwner }: Prop
 
   const resetToDefaults = async (): Promise<void> => {
     await persist([...DEFAULT_HOUSEHOLD_TAGS]);
+    await persistPrimary([...DEFAULT_PRIMARY_TAGS]);
   };
 
   return (
@@ -66,6 +90,49 @@ export function TagsSection({ household, householdId, isLoading, isOwner }: Prop
 
       {household && (
         <>
+          <div className="space-y-2 pb-4 border-b border-cream-line">
+            <div>
+              <h3 className="font-medium text-sm">{t('household_settings.primary_tags_title')}</h3>
+              <p className="text-ink-soft text-sm">{t('household_settings.primary_tags_help')}</p>
+            </div>
+            {tags.length === 0 ? (
+              <p className="text-ink-soft text-sm">{t('household_settings.primary_tags_empty')}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2" role="group">
+                {tags.map((tag) => {
+                  const active = primarySet.has(tag);
+                  const pillClass = cn(
+                    'rounded-[var(--radius-pill)] border px-3 py-1 text-sm transition-colors',
+                    'duration-[var(--duration-fast)]',
+                    active
+                      ? 'bg-sage text-sage-ink border-sage'
+                      : 'bg-paper-2 text-ink border-cream-line hover:bg-paper',
+                  );
+                  if (!isOwner) {
+                    return (
+                      <span key={tag} className={pillClass}>
+                        {tag}
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      aria-pressed={active}
+                      aria-label={t('household_settings.primary_tag_toggle', { tag })}
+                      onClick={() => void togglePrimary(tag)}
+                      disabled={updatePrimary.isPending}
+                      className={pillClass}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-1.5" aria-label={t('household_settings.tags_title')}>
             {tags.length === 0 && (
               <p className="text-ink-soft text-sm">{t('household_settings.tags_empty')}</p>
