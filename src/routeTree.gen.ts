@@ -22,7 +22,6 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as HHouseholdIdIndexRouteImport } from './routes/h/$householdId/index'
 import { Route as HHouseholdIdSettingsRouteImport } from './routes/h/$householdId/settings'
 import { Route as HHouseholdIdImportRouteImport } from './routes/h/$householdId/import'
-import { Route as HHouseholdIdDraftRouteImport } from './routes/h/$householdId/draft'
 import { Route as HHouseholdIdRRecipeIdIndexRouteImport } from './routes/h/$householdId/r/$recipeId/index'
 import { Route as HHouseholdIdRRecipeIdEditRouteImport } from './routes/h/$householdId/r/$recipeId/edit'
 
@@ -91,11 +90,6 @@ const HHouseholdIdImportRoute = HHouseholdIdImportRouteImport.update({
   path: '/h/$householdId/import',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HHouseholdIdDraftRoute = HHouseholdIdDraftRouteImport.update({
-  id: '/h/$householdId/draft',
-  path: '/h/$householdId/draft',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HHouseholdIdRRecipeIdIndexRoute =
   HHouseholdIdRRecipeIdIndexRouteImport.update({
     id: '/h/$householdId/r/$recipeId/',
@@ -120,7 +114,6 @@ export interface FileRoutesByFullPath {
   '/r/$token': typeof RTokenRoute
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
-  '/h/$householdId/draft': typeof HHouseholdIdDraftRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId/': typeof HHouseholdIdIndexRoute
@@ -138,7 +131,6 @@ export interface FileRoutesByTo {
   '/r/$token': typeof RTokenRoute
   '/following': typeof FollowingIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
-  '/h/$householdId/draft': typeof HHouseholdIdDraftRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId': typeof HHouseholdIdIndexRoute
@@ -157,7 +149,6 @@ export interface FileRoutesById {
   '/r/$token': typeof RTokenRoute
   '/following/': typeof FollowingIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
-  '/h/$householdId/draft': typeof HHouseholdIdDraftRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
   '/h/$householdId/': typeof HHouseholdIdIndexRoute
@@ -177,7 +168,6 @@ export interface FileRouteTypes {
     | '/r/$token'
     | '/following/'
     | '/onboarding/'
-    | '/h/$householdId/draft'
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
     | '/h/$householdId/'
@@ -195,7 +185,6 @@ export interface FileRouteTypes {
     | '/r/$token'
     | '/following'
     | '/onboarding'
-    | '/h/$householdId/draft'
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
     | '/h/$householdId'
@@ -213,7 +202,6 @@ export interface FileRouteTypes {
     | '/r/$token'
     | '/following/'
     | '/onboarding/'
-    | '/h/$householdId/draft'
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
     | '/h/$householdId/'
@@ -232,7 +220,6 @@ export interface RootRouteChildren {
   RTokenRoute: typeof RTokenRoute
   FollowingIndexRoute: typeof FollowingIndexRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
-  HHouseholdIdDraftRoute: typeof HHouseholdIdDraftRoute
   HHouseholdIdImportRoute: typeof HHouseholdIdImportRoute
   HHouseholdIdSettingsRoute: typeof HHouseholdIdSettingsRoute
   HHouseholdIdIndexRoute: typeof HHouseholdIdIndexRoute
@@ -333,13 +320,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HHouseholdIdImportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/h/$householdId/draft': {
-      id: '/h/$householdId/draft'
-      path: '/h/$householdId/draft'
-      fullPath: '/h/$householdId/draft'
-      preLoaderRoute: typeof HHouseholdIdDraftRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/h/$householdId/r/$recipeId/': {
       id: '/h/$householdId/r/$recipeId/'
       path: '/h/$householdId/r/$recipeId'
@@ -368,7 +348,6 @@ const rootRouteChildren: RootRouteChildren = {
   RTokenRoute: RTokenRoute,
   FollowingIndexRoute: FollowingIndexRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
-  HHouseholdIdDraftRoute: HHouseholdIdDraftRoute,
   HHouseholdIdImportRoute: HHouseholdIdImportRoute,
   HHouseholdIdSettingsRoute: HHouseholdIdSettingsRoute,
   HHouseholdIdIndexRoute: HHouseholdIdIndexRoute,
