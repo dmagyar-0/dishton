@@ -122,10 +122,16 @@ export function DraftWorkspace({ householdId }: { householdId: string }) {
 
       <TabsContent value="chat">
         <div className="flex flex-col gap-4">
-          <div className="min-h-[40vh]">
+          <div className="min-h-[30dvh]">
             <ChatThread messages={messages.data ?? []} thinking={thinking} />
           </div>
-          <ChatComposer onSend={onSend} disabled={send.isPending} />
+          {/* Pin the composer to the bottom of the viewport. The thread grows
+              the page, so on an empty chat (the default sub-tab) a tall fixed
+              reserve used to shove the composer below the fold on mobile —
+              sticky keeps it on screen at every viewport and message count. */}
+          <div className="sticky bottom-0 -mx-4 border-t border-cream-line bg-paper/95 px-4 py-3 backdrop-blur">
+            <ChatComposer onSend={onSend} disabled={send.isPending} />
+          </div>
         </div>
       </TabsContent>
 
