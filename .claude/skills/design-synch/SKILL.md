@@ -51,6 +51,25 @@ It also drops a stable copy at `/tmp/design-sync-artifacts` that survives branch
 operations. Pushing is the one manual step (so you stay in control of what
 leaves the box).
 
+### Cross-platform & safe on a real dev machine
+
+`run.sh` runs on the Linux sandbox **and** a local macOS/Windows checkout — it
+adapts per OS (`uname`) instead of assuming the sandbox:
+
+- **Docker engine** is started for you if it's down — `dockerd` on Linux, Docker
+  Desktop on macOS/Windows — with a bounded wait that fails loudly instead of
+  hanging if it never comes up.
+- **Playwright** installs `--with-deps` only on Linux (those are apt packages and
+  error elsewhere).
+- **Your `.env.local` is preserved.** The script overwrites it to point at the
+  local stack, then an `EXIT` trap restores your original (or removes the temp
+  one in the sandbox) — even if the run fails partway.
+- **Stale Postgres volume auto-recovery.** If `supabase start` fails because an
+  old data volume's Postgres major version no longer matches `config.toml` (e.g.
+  a CLI bump from PG15→17 leaves the db "unhealthy"), the script runs
+  `supabase stop --no-backup` and retries once. Local DB data is discarded, which
+  is fine — `db reset` reloads the seed regardless.
+
 ## What gets captured
 
 `capture.spec.ts` walks three contexts, each at desktop + mobile:
