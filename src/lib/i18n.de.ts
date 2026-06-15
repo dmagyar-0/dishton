@@ -3,6 +3,9 @@ export default {
     name: 'Dishton',
     tagline: 'Die Rezeptkammer eures Haushalts.',
   },
+  common: {
+    close: 'Schließen',
+  },
   chat: {
     nav: 'Mit KI entwerfen',
     title: 'Ein Rezept entwerfen',
@@ -124,6 +127,20 @@ export default {
     no_matches_query_tags:
       'Für "{{query}}" wurde mit den gewählten Tags nichts gefunden. Versuch ein anderes Wort oder entferne die Filter.',
     no_matches_tags: 'Keine Rezepte passen zu den gewählten Tags. Entferne ein Tag.',
+    // Mahlzeit-Kategorien (Start-Kacheln + Anpassen-Sheet + Suchfilter)
+    categories_label: 'Kategorien',
+    customize_link: 'Anpassen',
+    customize_title: 'Startseite anpassen',
+    customize_help: 'Wähle bis zu fünf Kategorien für deine Startseite.',
+    customize_done: 'Fertig',
+    tap_to_toggle: 'Zum Hinzufügen oder Entfernen tippen',
+    limit_reached: 'Limit erreicht',
+    filter_action: 'Rezepte filtern',
+    filter_title: 'Rezepte filtern',
+    filter_help: 'Nur Rezepte aus den gewählten Kategorien anzeigen.',
+    clear_filters: 'Filter zurücksetzen',
+    filter_done: 'Fertig',
+    results: 'Ergebnisse',
   },
   household_settings: {
     title: 'Haushaltseinstellungen',
@@ -337,6 +354,7 @@ export default {
   recipe: {
     list_title: 'Rezepte',
     list_title_solo: 'Meine Rezepte',
+    latest_imports: 'Zuletzt importiert',
     empty_title: 'Deine Speisekammer ist leer',
     empty_title_solo: 'Willkommen — füllen wir die Regale',
     empty_body_solo:

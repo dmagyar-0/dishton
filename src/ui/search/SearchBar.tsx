@@ -3,7 +3,7 @@ import { cn } from '@/ui/cn';
 import { IconButton } from '@/ui/primitives/IconButton';
 import { Input } from '@/ui/primitives/Input';
 import { Search as SearchIcon, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export type SearchBarProps = {
@@ -12,6 +12,12 @@ export type SearchBarProps = {
   loading?: boolean;
   className?: string;
   placeholder?: string;
+  /**
+   * Optional control rendered inside the bar, to the right of a hairline
+   * divider (e.g. the Home category filter button). Omitted, the bar is a plain
+   * search field.
+   */
+  trailing?: ReactNode;
 };
 
 export function SearchBar({
@@ -20,6 +26,7 @@ export function SearchBar({
   loading = false,
   className,
   placeholder,
+  trailing,
 }: SearchBarProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLInputElement>(null);
@@ -55,28 +62,28 @@ export function SearchBar({
 
   return (
     <div
-      className={cn('relative flex items-center gap-2', className)}
+      className={cn(
+        'flex items-center gap-2 rounded-[var(--radius-lg)] border border-cream-line bg-paper-2 px-3.5 py-2.5',
+        'focus-within:border-saffron transition-colors duration-[var(--duration-fast)]',
+        className,
+      )}
       role="search"
       aria-label={t('search.role_label')}
     >
-      <SearchIcon
-        size={18}
-        className="absolute left-2 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none"
-        strokeWidth={1.5}
-      />
+      <SearchIcon size={18} strokeWidth={1.5} className="shrink-0 text-ink-muted" aria-hidden />
       <Input
         ref={ref}
         value={local}
         onChange={(e) => setLocal((e.target as HTMLInputElement).value)}
         placeholder={placeholder ?? t('search.placeholder')}
-        className="pl-8 pr-10 w-full"
+        className="min-w-0 flex-1 border-b-0 px-0 py-0"
         aria-label={t('search.query_label')}
         type="search"
       />
       {loading && (
         <span
           aria-hidden
-          className="absolute right-10 top-1/2 -translate-y-1/2 size-4 border-2 border-saffron border-t-transparent rounded-full animate-spin"
+          className="size-4 shrink-0 animate-spin rounded-full border-2 border-saffron border-t-transparent"
         />
       )}
       {local !== '' && (
@@ -87,10 +94,16 @@ export function SearchBar({
             onChange('');
             ref.current?.focus();
           }}
-          className="!absolute right-1 top-1/2 -translate-y-1/2 !size-8"
+          className="!size-8 shrink-0"
         >
           <X size={16} strokeWidth={1.5} />
         </IconButton>
+      )}
+      {trailing && (
+        <>
+          <span aria-hidden className="h-5 w-px shrink-0 bg-cream-line" />
+          {trailing}
+        </>
       )}
     </div>
   );

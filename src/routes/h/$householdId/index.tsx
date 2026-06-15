@@ -1,26 +1,30 @@
 import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
-import { useHousehold } from '@/lib/queries/households';
+import { useHousehold, useUpdateHouseholdPrimaryTags } from '@/lib/queries/households';
 import {
   useLinkedRecipeIds,
   usePantryHouseholdId,
   useRecipeLinks,
 } from '@/lib/queries/recipe-links';
 import { type RecipeListRow, useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
-import { usePopularTags, useRecipeSearch } from '@/lib/queries/search';
+import { useRecipeSearch } from '@/lib/queries/search';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
+import { useToast } from '@/ui/primitives/Toast';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { RecipeCardRemoveLinkButton } from '@/ui/recipe/RecipeCardRemoveLinkButton';
 import { RecipeCardSaveButton } from '@/ui/recipe/RecipeCardSaveButton';
 import { RecipeLinkBadge } from '@/ui/recipe/RecipeLinkBadge';
+import { CategoryFilterSheet } from '@/ui/search/CategoryFilterSheet';
+import { CategoryTiles } from '@/ui/search/CategoryTiles';
+import { CustomizeHomeSheet } from '@/ui/search/CustomizeHomeSheet';
+import { ALL_CATEGORY, categoryLabel } from '@/ui/search/categoryIcons';
 import { SearchBar } from '@/ui/search/SearchBar';
-import { TagStrip } from '@/ui/search/TagStrip';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { ChefHat, Plus } from 'lucide-react';
+import { ChefHat, Plus, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -75,6 +79,11 @@ function RecipeListPage() {
     memberships.filter((m) => m.household_id === householdId).length === 1 &&
     memberships.length === 1;
 
+  const updatePrimary = useUpdateHouseholdPrimaryTags(householdId);
+  const { push } = useToast();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+
   const tagParam = params.tag;
   const selected = useMemo(
     () => (Array.isArray(tagParam) ? tagParam : tagParam ? [tagParam] : []),
@@ -86,7 +95,6 @@ function RecipeListPage() {
   // Scoped to THIS household only — Home stays single-household.
   const search = useRecipeSearch(q, [householdId]);
   const list = useRecipeList(householdId);
-  const tags = usePopularTags([householdId]);
 
   // Browse view = own recipes + saved links, newest first (link rows carry the
   // save time as their created_at). Text search stays own-household-only.
@@ -113,40 +121,58 @@ function RecipeListPage() {
     });
   }, [source, selected]);
 
-  // Two-level tag filter: level 1 = the household's configured main tags (in
-  // their configured order); level 2 = the remaining popular tags. Counts come
-  // from popular_tags; main tags with no current count simply show no number.
-  const primary = household.data?.primary_tags ?? [];
-  const countMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const { tag, n } of tags.data ?? []) m.set(tag, n);
-    return m;
-  }, [tags.data]);
+  // Meal categories ARE tags (see src/domain/default-tags.ts). The household's
+  // primary_tags lead Home as icon tiles after an always-present "All"; the full
+  // allowed_tags library powers the Customize + Filter sheets. Picking a tile
+  // filters the list by that tag, reusing the same `tag` URL param.
+  const homeTags = household.data?.primary_tags ?? [];
+  const library = household.data?.allowed_tags ?? [];
 
-  const level1 = useMemo(
-    () => primary.map((tag) => ({ tag, n: countMap.get(tag) })),
-    [primary, countMap],
+  const categoryItems = useMemo(
+    () => [ALL_CATEGORY, ...homeTags].map((id) => ({ id, label: categoryLabel(id) })),
+    [homeTags],
   );
-  const level2 = useMemo(
-    () => (tags.data ?? []).filter((tg) => !primary.includes(tg.tag)),
-    [tags.data, primary],
-  );
+  // Highlight a tile only for a clean single-category view; multi-tag filters
+  // (set via the filter sheet) leave every tile unhighlighted.
+  const activeCategory =
+    selected.length === 0 ? ALL_CATEGORY : selected.length === 1 ? (selected[0] ?? '') : '';
 
-  const [showMore, setShowMore] = useState(false);
-  // Auto-expand level 2 if a selected tag lives there, so a hidden selected tag
-  // is never invisible.
-  const expanded = showMore || selected.some((tg) => !primary.includes(tg));
-
-  const onToggleTag = (tag: string) =>
+  const setTagParam = (next: string[]) =>
     nav({
-      search: (prev: SearchParams) => {
-        const cur = Array.isArray(prev.tag) ? prev.tag : prev.tag ? [prev.tag] : [];
-        const next = cur.includes(tag) ? cur.filter((tg) => tg !== tag) : [...cur, tag];
-        return { ...prev, tag: next.length === 0 ? undefined : next };
-      },
+      search: (prev: SearchParams) => ({ ...prev, tag: next.length === 0 ? undefined : next }),
     });
 
-  const hasTagUi = level1.length > 0 || level2.length > 0;
+  const onPickCategory = (id: string) => {
+    if (id === ALL_CATEGORY) {
+      setTagParam([]);
+      return;
+    }
+    // Re-tapping the active single category clears back to "All".
+    setTagParam(selected.length === 1 && selected[0] === id ? [] : [id]);
+  };
+
+  const onToggleTag = (tag: string) =>
+    setTagParam(selected.includes(tag) ? selected.filter((x) => x !== tag) : [...selected, tag]);
+
+  const saveHome = async (next: string[]) => {
+    try {
+      await updatePrimary.mutateAsync(next);
+      push({ variant: 'success', title: t('household_settings.tags_saved') });
+      // A category dropped from Home shouldn't keep silently filtering the list.
+      if (selected.length === 1 && selected[0] && !next.includes(selected[0])) setTagParam([]);
+    } catch {
+      push({ variant: 'error', title: t('household_settings.tags_save_failed') });
+    }
+    setCustomizeOpen(false);
+  };
+
+  const sectionLabel =
+    searchActive || selected.length > 1
+      ? t('search.results')
+      : selected.length === 1 && selected[0]
+        ? categoryLabel(selected[0])
+        : t('recipe.latest_imports');
+
   const showNoMatches =
     !sourceLoading && filtered.length === 0 && (searchActive || selected.length > 0);
   const showEmptyPantry =
@@ -165,7 +191,7 @@ function RecipeListPage() {
         </div>
       </header>
 
-      <div className="mb-6 space-y-3">
+      <div className="mb-6 space-y-5">
         <SearchBar
           value={q}
           loading={sourceFetching}
@@ -177,26 +203,39 @@ function RecipeListPage() {
               }),
             })
           }
+          trailing={
+            <button
+              type="button"
+              onClick={() => setFilterOpen(true)}
+              aria-label={t('search.filter_action')}
+              title={t('search.filter_action')}
+              className="relative inline-flex size-8 shrink-0 items-center justify-center rounded-[9px] text-saffron transition-colors duration-[var(--duration-fast)] hover:bg-paper"
+            >
+              <SlidersHorizontal size={17} strokeWidth={1.5} aria-hidden="true" />
+              {selected.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex min-w-4 items-center justify-center rounded-full bg-saffron px-1 font-mono text-[0.6rem] leading-4 text-saffron-ink">
+                  {selected.length}
+                </span>
+              )}
+            </button>
+          }
         />
-        {hasTagUi && (
-          <div className="space-y-2">
-            {level1.length > 0 && (
-              <TagStrip tags={level1} selected={selected} onToggle={onToggleTag} />
-            )}
-            {expanded && level2.length > 0 && (
-              <TagStrip tags={level2} selected={selected} onToggle={onToggleTag} />
-            )}
-            {level2.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowMore((v) => !v)}
-                className="text-sm text-ink-soft hover:text-ink underline underline-offset-2 transition-colors duration-[var(--duration-fast)]"
-              >
-                {expanded ? t('search.fewer_tags') : t('search.more_tags')}
-              </button>
-            )}
+
+        <div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="font-mono text-xs uppercase tracking-[0.18em] text-saffron">
+              {t('search.categories_label')}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCustomizeOpen(true)}
+              className="font-body text-sm font-medium text-saffron hover:underline"
+            >
+              {t('search.customize_link')}
+            </button>
           </div>
-        )}
+          <CategoryTiles items={categoryItems} active={activeCategory} onPick={onPickCategory} />
+        </div>
       </div>
 
       {sourceLoading && (
@@ -236,78 +275,86 @@ function RecipeListPage() {
       )}
 
       {filtered.length > 0 && (
-        <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {filtered.map((r) => (
-            <li key={r.id} className="group/card relative">
-              {/* Linked (followed) recipe in my own pantry: badge + remove. */}
-              {r.is_link && (
-                <>
-                  <RecipeLinkBadge />
-                  <RecipeCardRemoveLinkButton
+        <section>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <span className="font-mono text-xs uppercase tracking-[0.18em] text-saffron">
+              {sectionLabel}
+            </span>
+            <span className="font-mono text-xs tabular-nums text-ink-muted">{filtered.length}</span>
+          </div>
+          <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {filtered.map((r) => (
+              <li key={r.id} className="group/card relative">
+                {/* Linked (followed) recipe in my own pantry: badge + remove. */}
+                {r.is_link && (
+                  <>
+                    <RecipeLinkBadge />
+                    <RecipeCardRemoveLinkButton
+                      recipeId={r.id}
+                      recipeTitle={r.title}
+                      householdId={householdId}
+                    />
+                  </>
+                )}
+                {/* My own recipe: editors get delete. */}
+                {!r.is_link && isMember && isEditor && (
+                  <RecipeCardDeleteButton
                     recipeId={r.id}
                     recipeTitle={r.title}
                     householdId={householdId}
+                    heroImagePath={r.hero_image_path}
                   />
-                </>
-              )}
-              {/* My own recipe: editors get delete. */}
-              {!r.is_link && isMember && isEditor && (
-                <RecipeCardDeleteButton
-                  recipeId={r.id}
-                  recipeTitle={r.title}
-                  householdId={householdId}
-                  heroImagePath={r.hero_image_path}
-                />
-              )}
-              {/* Browsing a followed household: save into my pantry. */}
-              {!r.is_link && browsingFollowed && (
-                <RecipeCardSaveButton
-                  recipeId={r.id}
-                  recipeTitle={r.title}
-                  pantryHouseholdId={pantryId}
-                  saved={linkedIds.data?.has(r.id) ?? false}
-                />
-              )}
-              <Link
-                to="/h/$householdId/r/$recipeId"
-                params={{ householdId: r.household_id, recipeId: r.id }}
-                className="block group/link"
-              >
-                <Card className="p-0 overflow-hidden h-full">
-                  {/* Always render the image box — recipes without a hero get a
-                      branded placeholder so every card is the same height. */}
-                  <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
-                    {r.hero_image_path ? (
-                      <RecipeImage
-                        path={r.hero_image_path}
-                        alt=""
-                        className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-full w-full items-center justify-center bg-paper"
-                        aria-hidden="true"
-                      >
-                        <ChefHat
-                          size={40}
-                          strokeWidth={1.5}
-                          className="text-ink-muted group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                )}
+                {/* Browsing a followed household: save into my pantry. */}
+                {!r.is_link && browsingFollowed && (
+                  <RecipeCardSaveButton
+                    recipeId={r.id}
+                    recipeTitle={r.title}
+                    pantryHouseholdId={pantryId}
+                    saved={linkedIds.data?.has(r.id) ?? false}
+                  />
+                )}
+                <Link
+                  to="/h/$householdId/r/$recipeId"
+                  params={{ householdId: r.household_id, recipeId: r.id }}
+                  className="block group/link"
+                >
+                  <Card className="p-0 overflow-hidden h-full">
+                    {/* Always render the image box — recipes without a hero get a
+                        branded placeholder so every card is the same height. */}
+                    <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                      {r.hero_image_path ? (
+                        <RecipeImage
+                          path={r.hero_image_path}
+                          alt=""
+                          className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
                         />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    {/* min-h reserves two lines so single-line titles don't make a
-                        shorter card than wrapped ones; line-clamp caps the overflow. */}
-                    <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
-                      {r.title}
-                    </h2>
-                  </div>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                      ) : (
+                        <div
+                          className="flex h-full w-full items-center justify-center bg-paper"
+                          aria-hidden="true"
+                        >
+                          <ChefHat
+                            size={40}
+                            strokeWidth={1.5}
+                            className="text-ink-muted group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      {/* min-h reserves two lines so single-line titles don't make a
+                          shorter card than wrapped ones; line-clamp caps the overflow. */}
+                      <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
+                        {r.title}
+                      </h2>
+                    </div>
+                  </Card>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/* Always-visible shortcut to the import flow. `fixed` keeps it pinned to
@@ -321,6 +368,23 @@ function RecipeListPage() {
       >
         <Plus size={28} strokeWidth={2.25} aria-hidden="true" />
       </Link>
+
+      <CustomizeHomeSheet
+        open={customizeOpen}
+        onOpenChange={setCustomizeOpen}
+        library={library}
+        homeTags={homeTags}
+        onSave={saveHome}
+        saving={updatePrimary.isPending}
+      />
+      <CategoryFilterSheet
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        library={library}
+        selected={selected}
+        onToggle={onToggleTag}
+        onClear={() => setTagParam([])}
+      />
     </main>
   );
 }

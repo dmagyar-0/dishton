@@ -3,6 +3,9 @@ export default {
     name: 'Dishton',
     tagline: "Your household's recipe pantry.",
   },
+  common: {
+    close: 'Close',
+  },
   chat: {
     nav: 'Draft with AI',
     title: 'Draft a recipe',
@@ -121,6 +124,20 @@ export default {
     no_matches_query_tags:
       'Nothing matched "{{query}}" with the selected tags. Try a different word or clear the filters.',
     no_matches_tags: 'No recipes match the selected tags. Try removing a tag.',
+    // Meal categories (Home tiles + Customize sheet + in-search filter)
+    categories_label: 'Categories',
+    customize_link: 'Customize',
+    customize_title: 'Customize Home',
+    customize_help: 'Choose up to five categories to lead your Home screen.',
+    customize_done: 'Done',
+    tap_to_toggle: 'Tap to add or remove',
+    limit_reached: 'Limit reached',
+    filter_action: 'Filter recipes',
+    filter_title: 'Filter recipes',
+    filter_help: 'Show only recipes in the categories you pick.',
+    clear_filters: 'Clear filters',
+    filter_done: 'Done',
+    results: 'Results',
   },
   household_settings: {
     title: 'Household settings',
@@ -329,6 +346,7 @@ export default {
   recipe: {
     list_title: 'Recipes',
     list_title_solo: 'My Recipes',
+    latest_imports: 'Latest imports',
     empty_title: 'Your pantry is empty',
     empty_title_solo: 'Welcome — let’s fill the shelves',
     empty_body_solo:
