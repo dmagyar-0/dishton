@@ -278,6 +278,31 @@ echo "  $ARTIFACTS_NATIVE"
 echo "  desktop ($DESKTOP_COUNT): $(native_path "$ARTIFACTS/screenshots/desktop")"
 echo "  mobile  ($MOBILE_COUNT): $(native_path "$ARTIFACTS/screenshots/mobile")"
 
+# --- 8b. Record the last sync on `main` itself, so the default branch shows when
+# design-synch last captured a NEW commit (just timestamp + hashes — the
+# screenshots stay on the design-sync branch). We're on `main` here (step 1
+# checked it out), so this commits the marker to main; only commit when the
+# snapshotted commit actually changed, to avoid timestamp-only churn on reruns. ---
+MARKER="$ROOT/.claude/skills/design-synch/last-sync.json"
+RECORDED_HASH="$(git show "HEAD:.claude/skills/design-synch/last-sync.json" 2>/dev/null \
+  | sed -n 's/.*"main_hash": *"\([0-9a-f]\{7,40\}\)".*/\1/p' | head -1 || true)"
+if [ "$RECORDED_HASH" != "$MAIN_HASH" ]; then
+  log "Recording last-sync marker on main"
+  node - > "$MARKER" <<NODE
+process.stdout.write(JSON.stringify({
+  last_synced_at: new Date().toISOString(),
+  main_hash: "$MAIN_HASH",
+  main_short: "$MAIN_SHORT",
+  previous_main_hash: $PREV_JSON,
+}, null, 2) + '\n');
+NODE
+  git add "$MARKER"
+  git commit -q -m "design-synch: synced main @ $MAIN_SHORT"
+  echo "Recorded last-sync marker on main — push with: git push origin main"
+else
+  echo "Last-sync marker already at $MAIN_SHORT — left unchanged."
+fi
+
 # --- 9. Tear down the stack (spec + .env.local handled by the EXIT trap) ---
 log "Cleaning up stack"
 stop_preview

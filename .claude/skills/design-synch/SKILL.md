@@ -45,11 +45,14 @@ git push -u origin design-sync     # publish so the design app + next run can re
 6. Write the `CHANGELOG.md` (commits + diffstat over UI paths, `prev..main`) and `manifest.json`.
 7. Tear down the stack, commit the artifacts to the `design-sync` branch **via an isolated git worktree**, then **restore your original branch**.
 
-The script never switches your main working tree onto `design-sync` (it uses a
-throwaway worktree), so your branch and tree are left exactly as it found them.
-It also drops a stable copy at `/tmp/design-sync-artifacts` that survives branch
-operations. Pushing is the one manual step (so you stay in control of what
-leaves the box).
+The screenshots are committed to `design-sync` via a throwaway worktree, so your
+main working tree is never switched onto it. The skill makes exactly one change
+to `main`: a tiny `last-sync.json` marker commit (timestamp + synced hash, **no
+screenshots**), and only when it captures a *new* commit — so `main` always
+records when design-synch last ran and against which commit. A stable copy of
+the artifacts is also left at `/tmp/design-sync-artifacts`. Pushing both `main`
+and `design-sync` is the manual step (so you stay in control of what leaves the
+box).
 
 ### Cross-platform & safe on a real dev machine
 
