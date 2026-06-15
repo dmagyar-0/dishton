@@ -7,22 +7,40 @@
 #
 # Environment setup (docker / supabase CLI / playwright) mirrors the
 # validating-features-visually skill — see that SKILL.md for the rationale.
+
+# Re-exec from a /tmp copy so `git checkout main` (which can remove this file
+# when the skill lives on a feature branch) cannot pull the script out from
+# under the running shell.
+if [ "${DS_REEXEC:-}" != "1" ]; then
+  _self_dir="$(cd "$(dirname "$0")" && pwd)"
+  _self_tmp="$(mktemp -d)/run.sh"
+  cp "$_self_dir/run.sh" "$_self_tmp"
+  DS_REEXEC=1 DS_SKILL_DIR="$_self_dir" exec bash "$_self_tmp" "$@"
+fi
+
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
-SKILL_DIR="$ROOT/.claude/skills/capturing-design-snapshot"
-SNAP_DIR="$ROOT/design-sync"
-SHOTS_DIR="$SNAP_DIR/screenshots"
+SKILL_DIR="${DS_SKILL_DIR:?re-exec must set DS_SKILL_DIR}"
 SYNC_BRANCH="design-sync"
 SPEC_DST="$ROOT/e2e/_design-snapshot.spec.ts"
+ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+OUT_DIR="$(mktemp -d)"
+SHOTS_DIR="$OUT_DIR/screenshots"
 
 log() { printf '\n=== %s ===\n' "$1"; }
 
-# Snapshot the capture spec to /tmp NOW, before any `git checkout main`, so this
-# skill can live on a feature branch and still snapshot main's app code.
+# Snapshot the capture spec now, before any `git checkout main`, so the skill
+# can live on a feature branch and still snapshot main's app code.
 SPEC_TMP="$(mktemp -d)/_design-snapshot.spec.ts"
 cp "$SKILL_DIR/capture.spec.ts" "$SPEC_TMP"
+
+stop_preview() {
+  pkill -f 'vite preview' 2>/dev/null || true
+  command -v fuser >/dev/null 2>&1 && fuser -k 4173/tcp 2>/dev/null || true
+  [ -f /tmp/preview.pid ] && kill "$(cat /tmp/preview.pid)" 2>/dev/null || true
+}
 
 # --- 0. Previous synced hash (read from the design-sync branch, if it exists) ---
 log "Reading previous sync state"
@@ -31,7 +49,7 @@ PREV_HASH="$(git show "origin/$SYNC_BRANCH:design-sync/manifest.json" 2>/dev/nul
   | sed -n 's/.*"main_hash": *"\([0-9a-f]\{7,40\}\)".*/\1/p' | head -1 || true)"
 echo "Previous synced main hash: ${PREV_HASH:-<none — first sync>}"
 
-# --- 1. Update to latest main ---
+# --- 1. Update to latest main (in-place; caller's branch restored at step 11) ---
 log "Pulling latest main"
 git checkout main
 git pull origin main
@@ -53,8 +71,9 @@ pnpm install --frozen-lockfile
 pnpm exec playwright install chromium --with-deps >/dev/null
 
 # --- 3. Boot local stack + load deterministic seed (alice + recipes + flags) ---
-log "Starting Supabase (edge-runtime/functions excluded — sandbox rlimit)"
-supabase start -x edge-runtime,functions
+# Only `edge-runtime` is a valid exclude token; functions ride along with it.
+log "Starting Supabase (edge-runtime excluded — sandbox rlimit)"
+supabase start -x edge-runtime
 supabase db reset    # re-applies migrations + supabase/seed.sql
 
 STATUS_JSON="$(supabase status -o json)"
@@ -98,7 +117,7 @@ done
 
 # --- 6. Capture every route + state, desktop AND mobile ---
 log "Capturing screenshots"
-rm -rf "$SHOTS_DIR"; mkdir -p "$SHOTS_DIR/desktop" "$SHOTS_DIR/mobile"
+mkdir -p "$SHOTS_DIR/desktop" "$SHOTS_DIR/mobile"
 cp "$SPEC_TMP" "$SPEC_DST"
 SNAPSHOT_DIR="$SHOTS_DIR" PLAYWRIGHT_BASE_URL=http://127.0.0.1:4173 \
   pnpm exec playwright test e2e/_design-snapshot.spec.ts --reporter=list || true
@@ -134,12 +153,12 @@ UI_PATHS=(src/ui src/routes src/feature-flags src/domain
   else
     echo "- Previous sync: none — this is the first design sync, so everything is new."
   fi
-} > "$SNAP_DIR/CHANGELOG.md"
+} > "$OUT_DIR/CHANGELOG.md"
 
 # --- 8. Manifest the design web app consumes ---
 log "Writing manifest"
 PREV_JSON="null"; [ -n "$PREV_HASH" ] && PREV_JSON="\"$PREV_HASH\""
-node - "$SHOTS_DIR" > "$SNAP_DIR/manifest.json" <<NODE
+node - "$SHOTS_DIR" > "$OUT_DIR/manifest.json" <<NODE
 const fs = require('fs'), path = require('path');
 const shots = process.argv[2];
 const list = (d) => fs.existsSync(d) ? fs.readdirSync(d).filter(f=>f.endsWith('.png')).sort() : [];
@@ -157,34 +176,41 @@ const manifest = {
 process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
 NODE
 
-# --- 9. Tear down the stack + throwaway spec (keep design-sync/ artifacts) ---
+# Keep a stable copy outside the repo so it survives branch operations and can
+# be forwarded by the caller.
+rm -rf /tmp/design-sync-artifacts && cp -r "$OUT_DIR" /tmp/design-sync-artifacts
+
+# --- 9. Tear down the stack + throwaway spec ---
 log "Cleaning up stack"
-kill "$(cat /tmp/preview.pid)" 2>/dev/null || true
+stop_preview
 supabase stop || true
 rm -f "$SPEC_DST" "$ROOT/.env.local" /tmp/preview.pid
 
-# --- 10. Commit artifacts to the dedicated design-sync branch ---
-# Stage the artifacts to a temp dir so switching branches can't disturb them,
-# then restore onto a clean design-sync branch (orphan on first run).
-log "Committing to $SYNC_BRANCH branch"
-TMP_ART="$(mktemp -d)"
-cp -r "$SNAP_DIR/." "$TMP_ART/"
-rm -rf "$SNAP_DIR"
+# --- 10. Commit artifacts to the design-sync branch via an ISOLATED worktree ---
+# The main working tree is never switched onto design-sync, so the caller's
+# branch and tree are never disturbed.
+log "Committing to $SYNC_BRANCH branch (isolated worktree)"
+WT="$(mktemp -d)/sync-wt"
+git worktree prune
 if git show-ref --verify --quiet "refs/remotes/origin/$SYNC_BRANCH"; then
-  git checkout -B "$SYNC_BRANCH" "origin/$SYNC_BRANCH"
+  git worktree add -B "$SYNC_BRANCH" "$WT" "origin/$SYNC_BRANCH"
 else
-  # First sync: orphan branch holding only design-sync/. Unstage main's tree
-  # (working copy is left intact, just not committed onto this branch).
-  git checkout --orphan "$SYNC_BRANCH"
-  git rm -rf --cached . >/dev/null 2>&1 || true
+  # First sync: branch off main, then strip code so the tip holds only design-sync/.
+  git worktree add -B "$SYNC_BRANCH" "$WT" HEAD
+  git -C "$WT" rm -rqf . >/dev/null 2>&1 || true
 fi
-mkdir -p "$SNAP_DIR"
-cp -r "$TMP_ART/." "$SNAP_DIR/"
-rm -rf "$TMP_ART"
-git add -A "$SNAP_DIR"
-git commit -q -m "Design snapshot of main @ $MAIN_SHORT" || echo "Nothing new to commit."
+mkdir -p "$WT/design-sync"
+rm -rf "${WT:?}/design-sync"/*
+cp -r "$OUT_DIR/." "$WT/design-sync/"
+git -C "$WT" add -A
+git -C "$WT" commit -q -m "Design snapshot of main @ $MAIN_SHORT" || echo "Nothing new to commit."
+git worktree remove --force "$WT"
+
+# --- 11. Restore the caller's branch ---
+log "Restoring $ORIG_BRANCH"
+git checkout "$ORIG_BRANCH"
 
 log "Done"
-echo "Artifacts in $SNAP_DIR (branch: $SYNC_BRANCH)."
+echo "Artifacts: /tmp/design-sync-artifacts (also committed on local branch '$SYNC_BRANCH')."
 echo "Push with: git push -u origin $SYNC_BRANCH"
 echo "Synced main hash recorded: $MAIN_HASH"

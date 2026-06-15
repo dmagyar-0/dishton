@@ -39,13 +39,17 @@ git push -u origin design-sync     # publish so the design app + next run can re
 
 1. Read the previously-synced `main` hash from `origin/design-sync`'s manifest.
 2. `git checkout main && git pull` — **the snapshot always reflects latest main.**
-3. Ensure docker / Supabase CLI / Playwright, then `supabase start -x edge-runtime,functions` and `supabase db reset` (loads `supabase/seed.sql`).
+3. Ensure docker / Supabase CLI / Playwright, then `supabase start -x edge-runtime` and `supabase db reset` (loads `supabase/seed.sql`).
 4. Bump the seeded `alice` password via the Auth admin API (login needs ≥10 chars).
 5. `pnpm build` + `pnpm preview`, then run `capture.spec.ts` under both Playwright projects (desktop Chrome + Pixel 5).
-6. Write `design-sync/CHANGELOG.md` (commits + diffstat over UI paths, `prev..main`) and `design-sync/manifest.json`.
-7. Tear down the stack, then commit `design-sync/` to the `design-sync` branch.
+6. Write the `CHANGELOG.md` (commits + diffstat over UI paths, `prev..main`) and `manifest.json`.
+7. Tear down the stack, commit the artifacts to the `design-sync` branch **via an isolated git worktree**, then **restore your original branch**.
 
-Pushing is the one manual step (so you stay in control of what leaves the box).
+The script never switches your main working tree onto `design-sync` (it uses a
+throwaway worktree), so your branch and tree are left exactly as it found them.
+It also drops a stable copy at `/tmp/design-sync-artifacts` that survives branch
+operations. Pushing is the one manual step (so you stay in control of what
+leaves the box).
 
 ## What gets captured
 
