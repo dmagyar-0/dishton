@@ -3,7 +3,7 @@
 # the synced commit, summarise UI/UX-affecting changes since the last sync, and
 # commit everything to the `design-sync` branch.
 #
-# Run from anywhere inside the repo:  bash .claude/skills/capturing-design-snapshot/run.sh
+# Run from anywhere inside the repo:  bash .claude/skills/design-synch/run.sh
 #
 # Environment setup (docker / supabase CLI / playwright) mirrors the
 # validating-features-visually skill — see that SKILL.md for the rationale.

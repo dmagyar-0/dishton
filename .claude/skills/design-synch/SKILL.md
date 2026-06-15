@@ -1,5 +1,5 @@
 ---
-name: capturing-design-snapshot
+name: design-synch
 description: Use when you need a full visual snapshot of the Dishton UI to sync the Claude design web app — capturing screenshots of every route and interactive state at desktop and mobile, recording the synced commit hash, and summarising UI/UX changes since the last sync.
 ---
 
@@ -31,7 +31,7 @@ captures breadth).
 ## How to run
 
 ```bash
-bash .claude/skills/capturing-design-snapshot/run.sh
+bash .claude/skills/design-synch/run.sh
 git push -u origin design-sync     # publish so the design app + next run can read it
 ```
 
