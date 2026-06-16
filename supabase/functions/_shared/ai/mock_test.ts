@@ -5,7 +5,7 @@
 import { assert, assertEquals } from 'jsr:@std/assert';
 import { Recipe } from '../domain/recipe.ts';
 import { aiChat } from './client.ts';
-import { callAndValidate } from './validate.ts';
+import { callAndValidate, callValidateThenTranslate } from './validate.ts';
 import { isMockMode } from './mock.ts';
 import { structuringFromHtml, translatePrompt } from './prompts.ts';
 
@@ -102,6 +102,70 @@ Deno.test('mock mode returns the German fixture for a translate prompt', async (
     const parsed = Recipe.safeParse(result.tool_input);
     assert(parsed.success);
     assertEquals(parsed.data.title, 'Tomaten-Tarte-Tatin');
+    // A translation stores the recipe under the TARGET language, not the source.
+    assertEquals(parsed.data.source_language, 'de');
+  } finally {
+    setMock(false);
+  }
+});
+
+// Regression: the import pipeline translates THROUGH the extract_recipe tool
+// (translateExtractedRecipe), whose system prompt opens "You translate an
+// already-parsed recipe …". The mock's translate detector previously only
+// matched the display-path prompt ("You translate a Dishton recipe …"), so the
+// import-path translation went unrecognised and every cross-language import came
+// back as the untranslated English fixture. Drive the real import path end to
+// end (structuring + translation) in mock mode and assert the recipe lands in
+// the chosen language.
+function htmlStructuring() {
+  return {
+    lane: 'text' as const,
+    estimatedTokens: 100,
+    messages: structuringFromHtml({
+      html: '<html></html>',
+      sourceUrl: 'https://example.test/r',
+      allowedTags: [],
+    }),
+  };
+}
+
+Deno.test('mock mode: cross-language import lands the recipe in the chosen language', async () => {
+  setMock(true);
+  try {
+    const result = await withNoNetwork(() => callValidateThenTranslate(htmlStructuring(), 'hu'));
+    assert(result.ok, JSON.stringify(result));
+    if (result.ok) {
+      // Before the fix this was 'en' (the translation pass was a no-op).
+      assertEquals(result.recipe.source_language, 'hu');
+    }
+  } finally {
+    setMock(false);
+  }
+});
+
+Deno.test('mock mode: German import returns translated German strings', async () => {
+  setMock(true);
+  try {
+    const result = await withNoNetwork(() => callValidateThenTranslate(htmlStructuring(), 'de'));
+    assert(result.ok, JSON.stringify(result));
+    if (result.ok) {
+      assertEquals(result.recipe.title, 'Tomaten-Tarte-Tatin');
+      assertEquals(result.recipe.source_language, 'de');
+    }
+  } finally {
+    setMock(false);
+  }
+});
+
+Deno.test('mock mode: same-language (en) import is not altered by the translate path', async () => {
+  setMock(true);
+  try {
+    const result = await withNoNetwork(() => callValidateThenTranslate(htmlStructuring(), 'en'));
+    assert(result.ok, JSON.stringify(result));
+    if (result.ok) {
+      assertEquals(result.recipe.title, 'Tomato Tarte Tatin');
+      assertEquals(result.recipe.source_language, 'en');
+    }
   } finally {
     setMock(false);
   }
