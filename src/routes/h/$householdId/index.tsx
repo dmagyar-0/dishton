@@ -8,12 +8,14 @@ import {
 } from '@/lib/queries/recipe-links';
 import { type RecipeListRow, useIsRecipeEditor, useRecipeList } from '@/lib/queries/recipes';
 import { useRecipeSearch } from '@/lib/queries/search';
+import { cn } from '@/ui/cn';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { useToast } from '@/ui/primitives/Toast';
+import { HomeBanner } from '@/ui/recipe/HomeBanner';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { RecipeCardRemoveLinkButton } from '@/ui/recipe/RecipeCardRemoveLinkButton';
 import { RecipeCardSaveButton } from '@/ui/recipe/RecipeCardSaveButton';
@@ -21,10 +23,11 @@ import { RecipeLinkBadge } from '@/ui/recipe/RecipeLinkBadge';
 import { CategoryFilterSheet } from '@/ui/search/CategoryFilterSheet';
 import { CategoryTiles } from '@/ui/search/CategoryTiles';
 import { CustomizeHomeSheet } from '@/ui/search/CustomizeHomeSheet';
+import { ProduceGlyph, categoryDisc, hasProduceGlyph } from '@/ui/search/ProduceGlyph';
 import { SearchBar } from '@/ui/search/SearchBar';
 import { ALL_CATEGORY, categoryLabel } from '@/ui/search/categoryIcons';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { ChefHat, Plus, SlidersHorizontal } from 'lucide-react';
+import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -179,17 +182,14 @@ function RecipeListPage() {
     !searchActive && selected.length === 0 && !browseLoading && browseList.length === 0;
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
-        <h1 className="font-display text-display">
-          {isSolo ? t('recipe.list_title_solo') : t('recipe.list_title')}
-        </h1>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/h/$householdId/import" params={{ householdId }}>
-            <Button>{t('nav.import')}</Button>
-          </Link>
-        </div>
-      </header>
+    <main className="max-w-6xl mx-auto px-4 pt-6 pb-8">
+      <HomeBanner
+        householdId={householdId}
+        eyebrow={t('recipe.household_eyebrow')}
+        title={
+          household.data?.name ?? (isSolo ? t('recipe.list_title_solo') : t('recipe.list_title'))
+        }
+      />
 
       <div className="mb-6 space-y-5">
         <SearchBar
@@ -283,76 +283,98 @@ function RecipeListPage() {
             <span className="font-mono text-xs tabular-nums text-ink-muted">{filtered.length}</span>
           </div>
           <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {filtered.map((r) => (
-              <li key={r.id} className="group/card relative">
-                {/* Linked (followed) recipe in my own pantry: badge + remove. */}
-                {r.is_link && (
-                  <>
-                    <RecipeLinkBadge />
-                    <RecipeCardRemoveLinkButton
+            {filtered.map((r) => {
+              // No-photo cards get a produce illustration keyed to the recipe's
+              // first glyph-bearing category (fruit cluster as the fallback).
+              const glyphCat =
+                (r.recipe_tags ?? []).map((x) => x.tag).find(hasProduceGlyph) ?? ALL_CATEGORY;
+              const glyphDisc = categoryDisc(glyphCat);
+              return (
+                <li key={r.id} className="group/card relative">
+                  {/* Linked (followed) recipe in my own pantry: badge + remove. */}
+                  {r.is_link && (
+                    <>
+                      <RecipeLinkBadge />
+                      <RecipeCardRemoveLinkButton
+                        recipeId={r.id}
+                        recipeTitle={r.title}
+                        householdId={householdId}
+                      />
+                    </>
+                  )}
+                  {/* My own recipe: editors get delete. */}
+                  {!r.is_link && isMember && isEditor && (
+                    <RecipeCardDeleteButton
                       recipeId={r.id}
                       recipeTitle={r.title}
                       householdId={householdId}
+                      heroImagePath={r.hero_image_path}
                     />
-                  </>
-                )}
-                {/* My own recipe: editors get delete. */}
-                {!r.is_link && isMember && isEditor && (
-                  <RecipeCardDeleteButton
-                    recipeId={r.id}
-                    recipeTitle={r.title}
-                    householdId={householdId}
-                    heroImagePath={r.hero_image_path}
-                  />
-                )}
-                {/* Browsing a followed household: save into my pantry. */}
-                {!r.is_link && browsingFollowed && (
-                  <RecipeCardSaveButton
-                    recipeId={r.id}
-                    recipeTitle={r.title}
-                    pantryHouseholdId={pantryId}
-                    saved={linkedIds.data?.has(r.id) ?? false}
-                  />
-                )}
-                <Link
-                  to="/h/$householdId/r/$recipeId"
-                  params={{ householdId: r.household_id, recipeId: r.id }}
-                  className="block group/link"
-                >
-                  <Card className="p-0 overflow-hidden h-full">
-                    {/* Always render the image box — recipes without a hero get a
-                        branded placeholder so every card is the same height. */}
-                    <div className="aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
-                      {r.hero_image_path ? (
-                        <RecipeImage
-                          path={r.hero_image_path}
-                          alt=""
-                          className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
-                        />
-                      ) : (
-                        <div
-                          className="flex h-full w-full items-center justify-center bg-paper"
-                          aria-hidden="true"
-                        >
-                          <ChefHat
-                            size={40}
-                            strokeWidth={1.5}
-                            className="text-ink-muted group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                  )}
+                  {/* Browsing a followed household: save into my pantry. */}
+                  {!r.is_link && browsingFollowed && (
+                    <RecipeCardSaveButton
+                      recipeId={r.id}
+                      recipeTitle={r.title}
+                      pantryHouseholdId={pantryId}
+                      saved={linkedIds.data?.has(r.id) ?? false}
+                    />
+                  )}
+                  <Link
+                    to="/h/$householdId/r/$recipeId"
+                    params={{ householdId: r.household_id, recipeId: r.id }}
+                    className="block group/link"
+                  >
+                    <Card className="h-full overflow-hidden bg-paper p-0 transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-0.5 hover:shadow-press-lg">
+                      {/* Always render the image box so every card is the same
+                        height. Recipes with a hero show it; the rest get a
+                        produce illustration keyed to their category. */}
+                      <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                        {r.hero_image_path ? (
+                          <RecipeImage
+                            path={r.hero_image_path}
+                            alt=""
+                            className="h-full w-full object-cover group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
                           />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      {/* min-h reserves two lines so single-line titles don't make a
+                        ) : (
+                          <div
+                            className={cn(
+                              'tex flex h-full w-full items-center justify-center',
+                              glyphDisc.tint,
+                              glyphDisc.tex,
+                            )}
+                            aria-hidden="true"
+                          >
+                            <ProduceGlyph
+                              category={glyphCat}
+                              size={104}
+                              className="group-hover/link:scale-[1.02] transition-transform duration-[var(--duration-base)]"
+                            />
+                          </div>
+                        )}
+                        {r.source_type && (
+                          <span className="absolute bottom-0 left-0 z-[5] rounded-tr-[9px] bg-paper/85 px-2 py-1 font-mono text-[0.52rem] uppercase tracking-[0.14em] text-blueberry">
+                            {t(`recipe.source.${r.source_type}`)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        {/* min-h reserves two lines so single-line titles don't make a
                           shorter card than wrapped ones; line-clamp caps the overflow. */}
-                      <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
-                        {r.title}
-                      </h2>
-                    </div>
-                  </Card>
-                </Link>
-              </li>
-            ))}
+                        <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
+                          {r.title}
+                        </h2>
+                        {r.total_time_min ? (
+                          <div className="mt-1.5 font-mono text-[0.6rem] uppercase tracking-[0.04em] text-ink-muted">
+                            {r.total_time_min} {t('recipe.minutes_short')}
+                          </div>
+                        ) : null}
+                      </div>
+                    </Card>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

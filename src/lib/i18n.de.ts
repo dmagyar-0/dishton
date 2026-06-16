@@ -355,6 +355,15 @@ export default {
     list_title: 'Rezepte',
     list_title_solo: 'Meine Rezepte',
     latest_imports: 'Zuletzt importiert',
+    household_eyebrow: 'Haushalt',
+    import_recipe: 'Rezept importieren',
+    minutes_short: 'Min.',
+    source: {
+      url: 'Web-Import',
+      instagram: 'Instagram',
+      photo: 'Foto',
+      manual: 'Von Hand',
+    },
     empty_title: 'Deine Speisekammer ist leer',
     empty_title_solo: 'Willkommen — füllen wir die Regale',
     empty_body_solo:

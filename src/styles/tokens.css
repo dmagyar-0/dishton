@@ -1,4 +1,4 @@
-/* tokens v1 — Editorial Pantry */
+/* tokens v2 — Soft Contrast (warm printed / risograph) */
 @theme {
   /* Type */
   --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
@@ -19,19 +19,34 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.7;
 
-  /* Light palette */
-  --color-paper: #f5efe3;
-  --color-paper-2: #ece4d2;
-  --color-ink: #2a1a2c;
-  --color-ink-soft: #4b3a4d;
-  --color-ink-muted: #8b8276;
-  --color-saffron: #e08a1a;
-  --color-saffron-ink: #5a3506;
-  --color-sage: #5c7457;
+  /* Light palette — Soft Contrast.
+     Token NAMES are kept stable so existing utilities (bg-saffron, text-ink…)
+     re-theme by value: saffron→caramel, ink→warm brown, aubergine→deep
+     blueberry. New produce + accent tokens are added below. */
+  --color-paper: #faf3e3;
+  --color-paper-2: #efe3cd;
+  --color-ink: #3a2a20;
+  --color-ink-soft: #6b5341;
+  --color-ink-muted: #9a886f;
+  --color-saffron: #e7993f;
+  --color-saffron-ink: #422b21;
+  --color-sage: #7f9e84;
   --color-sage-ink: #1f2a1c;
-  --color-aubergine: #5b2742;
+  --color-aubergine: #2d3e56;
   --color-pomegranate: #b3304a;
-  --color-cream-line: #d8cfb8;
+  --color-cream-line: #e0d2b6;
+
+  /* Soft Contrast additions */
+  --color-blueberry: #2d3e56; /* printed banner, active nav, deep accent */
+  --color-accent-ink: #a85f12; /* links, eyebrows, filter, selected ring */
+  --color-banana: #eedca7;
+  --color-mint: #aac6ad;
+  --color-vanilla: #dfcfba;
+  --color-peach: #e8c49d;
+  --color-terracotta: #c46a2c;
+  --color-soft-green: #7f9e84;
+  --color-latte: #6f5238;
+  --color-choc: #422b21;
 
   /* Spacing & radius */
   --radius-sm: 4px;
@@ -56,16 +71,21 @@
   @theme {
     --color-paper: #1a1614;
     --color-paper-2: #221c1a;
-    --color-ink: #ece3d2;
+    --color-ink: #f0e7d6;
     --color-ink-soft: #c8bfae;
     --color-ink-muted: #8a7f6f;
-    --color-saffron: #f2a23c;
+    --color-saffron: #efab55;
     --color-saffron-ink: #2a1a06;
     --color-sage: #8aa682;
     --color-sage-ink: #0e1410;
-    --color-aubergine: #c08aa0;
+    --color-aubergine: #8fb0d6; /* lightened blueberry for dark surfaces */
     --color-pomegranate: #e8718a;
     --color-cream-line: #3b332e;
+
+    /* Dark overrides: lift the banner + accent ink off the dark ground.
+       The decorative produce tints keep their light values on purpose. */
+    --color-blueberry: #34506f;
+    --color-accent-ink: #e0a766;
     --shadow-press: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 28px -16px rgba(0, 0, 0, 0.6);
   }
 }

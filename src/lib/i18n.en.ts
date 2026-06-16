@@ -347,6 +347,15 @@ export default {
     list_title: 'Recipes',
     list_title_solo: 'My Recipes',
     latest_imports: 'Latest imports',
+    household_eyebrow: 'Household',
+    import_recipe: 'Import recipe',
+    minutes_short: 'min',
+    source: {
+      url: 'Web import',
+      instagram: 'Instagram',
+      photo: 'Photo',
+      manual: 'By hand',
+    },
     empty_title: 'Your pantry is empty',
     empty_title_solo: 'Welcome — let’s fill the shelves',
     empty_body_solo:

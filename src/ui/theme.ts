@@ -20,6 +20,17 @@ export const theme = {
     aubergine: 'var(--color-aubergine)',
     pomegranate: 'var(--color-pomegranate)',
     creamLine: 'var(--color-cream-line)',
+    // Soft Contrast additions (see tokens.css)
+    blueberry: 'var(--color-blueberry)',
+    accentInk: 'var(--color-accent-ink)',
+    banana: 'var(--color-banana)',
+    mint: 'var(--color-mint)',
+    vanilla: 'var(--color-vanilla)',
+    peach: 'var(--color-peach)',
+    terracotta: 'var(--color-terracotta)',
+    softGreen: 'var(--color-soft-green)',
+    latte: 'var(--color-latte)',
+    choc: 'var(--color-choc)',
   },
   radius: {
     sm: 'var(--radius-sm)',

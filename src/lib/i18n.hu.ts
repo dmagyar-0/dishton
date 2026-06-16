@@ -347,6 +347,15 @@ export default {
     list_title: 'Receptek',
     list_title_solo: 'Receptjeim',
     latest_imports: 'Legutóbb importálva',
+    household_eyebrow: 'Háztartás',
+    import_recipe: 'Recept importálása',
+    minutes_short: 'perc',
+    source: {
+      url: 'Webről',
+      instagram: 'Instagram',
+      photo: 'Fotó',
+      manual: 'Kézzel',
+    },
     empty_title: 'A kamrád üres',
     empty_title_solo: 'Üdv — töltsük meg a polcokat',
     empty_body_solo:

@@ -41,3 +41,53 @@ button {
   background: var(--color-saffron);
   color: var(--color-saffron-ink);
 }
+
+/* ---- Soft Contrast print textures ----
+   A subtle grain overlay (.tex) plus repeating-pattern utilities the produce
+   glyphs, banner blobs, category discs and printed buttons layer at low
+   multiply opacity. Optional flourish — safe to drop on any element. */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='220'%20height='220'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='2'%20seed='7'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.16%20%200%200%200%200%200.10%20%200%200%200%200%200.12%20%200%200%200%200.05%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.tex {
+  position: relative;
+}
+.tex::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  background-size: 220px;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  border-radius: inherit;
+}
+.tx-linen {
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 4px);
+}
+.tx-half {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.24) 30%, transparent 31%);
+  background-size: 9px 9px;
+}
+.tx-speck {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.22) 14%, transparent 15%),
+    radial-gradient(rgba(0, 0, 0, 0.15) 12%, transparent 13%);
+  background-size: 13px 13px, 7px 7px;
+  background-position: 0 0, 4px 5px;
+}
+.tx-stripe {
+  background-image: repeating-linear-gradient(91deg, rgba(0, 0, 0, 0.26) 0 2px, transparent 2px 7px);
+}
+
+/* Produce-glyph compositions (cut-paper blobs). Children are absolutely
+   positioned within a 34px box and pushed through the #rough displacement
+   filter to fake a hand-printed edge. See ProduceGlyph.tsx. */
+.produce-gl {
+  position: relative;
+}
+.produce-gl > span {
+  position: absolute;
+  filter: url(#rough);
+}
