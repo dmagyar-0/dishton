@@ -157,6 +157,63 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
   // (a row can transition awaiting_save → done within the same tab; we
   // must not double-save).
   const [saved] = useState<Set<string>>(() => new Set());
+  // Bumped when the app returns to the foreground after a real backgrounding.
+  // Feeding it into the subscribe effect below forces a full channel teardown +
+  // re-subscribe AND a re-run of the backfill query — see the effect comment.
+  const [resumeNonce, setResumeNonce] = useState(0);
+
+  // Recover the import pipeline after a mobile resume. Android Chrome freezes a
+  // long-backgrounded tab: the Realtime WebSocket heartbeat is throttled, the
+  // socket is dropped, and any import that finishes while we're away is never
+  // delivered to the live listener — so the user comes back to an import that
+  // looks stuck and "can't import". On return we bump resumeNonce, which both
+  // re-subscribes the channel on a fresh socket and re-runs the one-time
+  // backfill that re-drives every awaiting_save/done row missed while we were
+  // frozen. This mirrors session-recovery.ts (auth + on-screen queries); the
+  // import channel needs its own resume handling because that module doesn't
+  // touch Realtime.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    // Only recover after a real backgrounding, not a momentary blur, matching
+    // session-recovery.ts so the two stay in lockstep.
+    const MIN_HIDDEN_MS = 10_000;
+    // Collapse the burst of resume events the browser fires together.
+    const DEBOUNCE_MS = 2_000;
+    let hiddenAt: number | null = null;
+    let lastBump = 0;
+    const bump = () => {
+      const now = Date.now();
+      if (now - lastBump < DEBOUNCE_MS) return;
+      lastBump = now;
+      setResumeNonce((n) => n + 1);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        return;
+      }
+      const hiddenFor = hiddenAt === null ? Number.POSITIVE_INFINITY : Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (hiddenFor >= MIN_HIDDEN_MS) bump();
+    };
+    // Page Lifecycle freeze/resume: `resume` is the definitive "we were frozen"
+    // signal, so reconnect unconditionally.
+    const onFreeze = () => {
+      hiddenAt = Date.now();
+    };
+    const onResume = () => bump();
+    const onOnline = () => bump();
+    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener('freeze', onFreeze);
+    document.addEventListener('resume', onResume);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('freeze', onFreeze);
+      document.removeEventListener('resume', onResume);
+      window.removeEventListener('online', onOnline);
+    };
+  }, []);
 
   const upsert = useCallback((row: Row, origin: ActiveImport['origin']) => {
     setItems((prev) => {
@@ -329,6 +386,7 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
 
   // Subscribe once per session per profile. Re-subscribes when the user
   // signs in as a different account.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resumeNonce is a deliberate re-run trigger (reconnect channel + re-backfill on mobile resume), not read in the effect body.
   useEffect(() => {
     if (!profileId) {
       setItems([]);
@@ -425,7 +483,20 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [profileId, originated, saved, upsert, saveFromAwaiting, announceAway, bumpMark, push, t]);
+    // resumeNonce: re-run on mobile resume to reconnect the channel on a fresh
+    // socket and re-backfill rows missed while the tab was frozen.
+  }, [
+    profileId,
+    resumeNonce,
+    originated,
+    saved,
+    upsert,
+    saveFromAwaiting,
+    announceAway,
+    bumpMark,
+    push,
+    t,
+  ]);
 
   // Prune terminal rows after the TTL so the indicator naturally clears.
   useEffect(() => {

@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
 vi.mock('./supabase', () => ({ supabase: { auth: { getSession } } }));
 
+const { captureException } = vi.hoisted(() => ({ captureException: vi.fn() }));
+vi.mock('../observability/sentry', () => ({
+  captureException,
+  logErrorBreadcrumb: vi.fn(),
+}));
+
 import { installSessionRecovery } from './session-recovery';
 
 function setVisibility(state: 'visible' | 'hidden') {
@@ -31,6 +37,7 @@ describe('installSessionRecovery', () => {
     now = 1_000_000;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
     getSession.mockReset().mockResolvedValue({ data: { session: null } });
+    captureException.mockReset();
     invalidateQueries = vi.fn().mockResolvedValue(undefined);
     reload = vi.fn();
     // jsdom's window.location.reload is non-configurable, so stub the whole
@@ -72,6 +79,20 @@ describe('installSessionRecovery', () => {
     expect(getSession).toHaveBeenCalledTimes(1);
   });
 
+  it('recovers on the Page Lifecycle resume event, bypassing the hidden gate', () => {
+    // No preceding `hidden`/`freeze` — `resume` alone is a definitive freeze
+    // signal and must recover regardless of how long we were away.
+    document.dispatchEvent(new Event('resume'));
+    expect(getSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a freeze as the start of a background and recovers on resume', () => {
+    document.dispatchEvent(new Event('freeze'));
+    now += 11_000;
+    document.dispatchEvent(new Event('resume'));
+    expect(getSession).toHaveBeenCalledTimes(1);
+  });
+
   it('debounces a burst of resume events into a single recovery', () => {
     window.dispatchEvent(new Event('online'));
     window.dispatchEvent(new Event('online'));
@@ -91,6 +112,9 @@ describe('installSessionRecovery', () => {
     expect(reload).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(12_000);
     expect(reload).toHaveBeenCalledTimes(1);
+    // The wedge is otherwise silent; we must report it so it's no longer
+    // invisible in production.
+    expect(captureException).toHaveBeenCalledTimes(1);
   });
 
   it('does not reload when validation settles before the watchdog fires', async () => {

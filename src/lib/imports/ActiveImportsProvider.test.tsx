@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mutable mock state, hoisted so the vi.mock factories (themselves hoisted
@@ -8,6 +8,8 @@ const h = vi.hoisted(() => ({
   terminalRows: [] as unknown[],
   pushed: [] as Array<{ title: string }>,
   fromCalls: 0,
+  subscribes: 0,
+  removes: 0,
 }));
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
@@ -53,8 +55,17 @@ vi.mock('@/lib/supabase', () => {
         return make();
       },
       rpc: async () => ({ data: null, error: null }),
-      channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
-      removeChannel: () => {},
+      channel: () => ({
+        on: () => ({
+          subscribe: () => {
+            h.subscribes += 1;
+            return {};
+          },
+        }),
+      }),
+      removeChannel: () => {
+        h.removes += 1;
+      },
     },
   };
 });
@@ -80,6 +91,8 @@ beforeEach(() => {
   h.terminalRows = [];
   h.pushed.length = 0;
   h.fromCalls = 0;
+  h.subscribes = 0;
+  h.removes = 0;
   localStorage.clear();
 });
 afterEach(() => vi.clearAllMocks());
@@ -100,6 +113,33 @@ describe('ActiveImportsProvider reopen pop-up', () => {
     expect(localStorage.getItem('dishton:imports:lastNotified:p1')).toBe(
       '2026-06-02T00:00:00.000Z',
     );
+  });
+
+  it('reconnects the channel and re-runs the backfill on a mobile resume', async () => {
+    // A backgrounded Android tab freezes: the Realtime socket is dropped and any
+    // import that finishes while away is never delivered. On resume the provider
+    // must re-subscribe on a fresh socket AND re-query for missed rows.
+    render(
+      <ActiveImportsProvider>
+        <div />
+      </ActiveImportsProvider>,
+    );
+    // Initial mount: backfill ran (live + terminal = 2 from() calls) and the
+    // channel subscribed once.
+    await waitFor(() => expect(h.fromCalls).toBeGreaterThanOrEqual(2));
+    await waitFor(() => expect(h.subscribes).toBe(1));
+    const callsAfterMount = h.fromCalls;
+
+    // `resume` is the definitive Page Lifecycle "we were frozen" signal and
+    // bypasses the hidden-duration gate.
+    act(() => {
+      document.dispatchEvent(new Event('resume'));
+    });
+
+    // Old channel torn down, fresh one subscribed, backfill re-run.
+    await waitFor(() => expect(h.removes).toBeGreaterThanOrEqual(1));
+    await waitFor(() => expect(h.subscribes).toBe(2));
+    await waitFor(() => expect(h.fromCalls).toBeGreaterThan(callsAfterMount));
   });
 
   it('does not announce when nothing is newer than the mark', async () => {
