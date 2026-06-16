@@ -10,7 +10,8 @@
 //
 // Data comes from supabase/seed.sql (loaded by `supabase db reset`):
 //   - alice@example.test owns "The Pantry" (a NON-solo household: Bob is an
-//     editor) with two recipes, a follow, and a deterministic public share.
+//     editor) with several recipes across meal categories, a follow, and a
+//     deterministic public share.
 //   - A fresh signup gives the SOLO-household states.
 // run.sh bumps alice's seed password to a >=10-char value before this runs.
 
@@ -187,9 +188,21 @@ test('snapshot: household user', async ({ page }, info) => {
   await shot(page, info, '32-search-empty');
   await search.fill('').catch(() => {});
 
-  // Tag filters expanded.
-  await tap(page.getByRole('button', { name: /more tags/i }));
-  await shot(page, info, '33-tags-expanded');
+  // Meal-category tiles — pick a category to filter the list, then reset.
+  if (await tap(page.getByRole('button', { name: 'Dinner' }).first())) {
+    await shot(page, info, '33-home-category-filtered');
+    await tap(page.getByRole('button', { name: 'All' }).first());
+  }
+  // Customize Home sheet — personalize which categories lead Home (5-cap).
+  if (await tap(page.getByRole('button', { name: /customize/i }))) {
+    await shot(page, info, '33b-customize-home-sheet');
+    await page.keyboard.press('Escape').catch(() => {});
+  }
+  // In-search category filter sheet (the sliders button in the search bar).
+  if (await tap(page.getByRole('button', { name: /filter recipes/i }))) {
+    await shot(page, info, '33c-filter-sheet');
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 
   // Recipe-card delete confirmation (open, then cancel — no mutation).
   if (await tap(page.getByRole('button', { name: /delete/i }).first())) {

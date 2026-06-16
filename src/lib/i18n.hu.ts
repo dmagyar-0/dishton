@@ -3,6 +3,9 @@ export default {
     name: 'Dishton',
     tagline: 'A háztartásod receptkamrája.',
   },
+  common: {
+    close: 'Bezárás',
+  },
   chat: {
     nav: 'Tervezés MI-vel',
     title: 'Recept tervezése',
@@ -123,6 +126,20 @@ export default {
       'Semmi sem felelt meg ennek: „{{query}}" a kiválasztott címkékkel. Próbálj másik szót, vagy töröld a szűrőket.',
     no_matches_tags:
       'Egy recept sem felel meg a kiválasztott címkéknek. Próbálj eltávolítani egy címkét.',
+    // Étkezési kategóriák (kezdőlapi csempék + testreszabás + keresőszűrő)
+    categories_label: 'Kategóriák',
+    customize_link: 'Testreszabás',
+    customize_title: 'Kezdőlap testreszabása',
+    customize_help: 'Válassz legfeljebb öt kategóriát a kezdőlapra.',
+    customize_done: 'Kész',
+    tap_to_toggle: 'Koppints a hozzáadáshoz vagy eltávolításhoz',
+    limit_reached: 'Elérted a határt',
+    filter_action: 'Receptek szűrése',
+    filter_title: 'Receptek szűrése',
+    filter_help: 'Csak a kiválasztott kategóriákba tartozó receptek megjelenítése.',
+    clear_filters: 'Szűrők törlése',
+    filter_done: 'Kész',
+    results: 'Találatok',
   },
   household_settings: {
     title: 'Háztartás beállításai',
@@ -329,6 +346,7 @@ export default {
   recipe: {
     list_title: 'Receptek',
     list_title_solo: 'Receptjeim',
+    latest_imports: 'Legutóbb importálva',
     empty_title: 'A kamrád üres',
     empty_title_solo: 'Üdv — töltsük meg a polcokat',
     empty_body_solo:

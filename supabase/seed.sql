@@ -100,7 +100,51 @@ insert into app.recipes (
    '00000000-0000-0000-0000-000000000003',
    'Limoncello',
    'Lemon liqueur, infused for 24 hours.',
-   'manual','it','metric',12,1440)
+   'manual','it','metric',12,1440),
+  -- A spread of meal categories in The Pantry so the Home category tiles
+  -- (All · Breakfast · Lunch · Dinner · Dessert) each filter to real recipes.
+  ('55555555-5555-5555-5555-555555555555',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Cardamom Morning Buns',
+   'Laminated buns rolled with crushed cardamom sugar.',
+   'url','en','metric',12,180),
+  ('66666666-6666-6666-6666-666666666666',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Green Shakshuka',
+   'Eggs poached in a bright tangle of spinach, leek, and herbs.',
+   'manual','en','metric',3,30),
+  ('77777777-7777-7777-7777-777777777777',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Charred Broccoli, Anchovy Crumbs',
+   'Broccoli pushed to the edge of burnt, with garlicky crumbs.',
+   'manual','en','metric',4,25),
+  ('88888888-8888-8888-8888-888888888888',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Slow-Braised Short Rib Ragù',
+   'Beef short rib coaxed into a dark, glossy ragù over three hours.',
+   'url','en','metric',6,210),
+  ('99999999-9999-9999-9999-999999999999',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Brown Butter Chocolate Chunk Cookies',
+   'Nutty brown butter, two chocolates, and a long cold rest.',
+   'manual','en','metric',18,45),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Ribollita',
+   'The thrifty Tuscan bread soup — cavolo nero, beans, and bread.',
+   'url','it','metric',6,80),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+   '11111111-1111-1111-1111-111111111111',
+   '00000000-0000-0000-0000-000000000001',
+   'Pistachio & Rose Semolina Cake',
+   'A syrup-soaked semolina cake, scented with rose water.',
+   'url','en','metric',10,60)
 on conflict (id) do nothing;
 
 -- quantity is jsonb (the domain `number | {numerator,denominator}` union), so
@@ -123,13 +167,24 @@ insert into app.recipe_steps (recipe_id, position, body, duration_min) values
   ('44444444-4444-4444-4444-444444444444',2,'Add sugar syrup and bottle.',30)
 on conflict do nothing;
 
+-- Tags use the meal-category vocabulary (see src/domain/default-tags.ts) so
+-- they line up with the household's allowed_tags and the Home category tiles.
 insert into app.recipe_tags (recipe_id, tag) values
-  ('33333333-3333-3333-3333-333333333333','tomato'),
-  ('33333333-3333-3333-3333-333333333333','pastry'),
+  ('33333333-3333-3333-3333-333333333333','dinner'),
   ('33333333-3333-3333-3333-333333333333','vegetarian'),
-  ('44444444-4444-4444-4444-444444444444','lemon'),
-  ('44444444-4444-4444-4444-444444444444','liqueur'),
-  ('44444444-4444-4444-4444-444444444444','italian')
+  ('44444444-4444-4444-4444-444444444444','drinks'),
+  ('55555555-5555-5555-5555-555555555555','breakfast'),
+  ('66666666-6666-6666-6666-666666666666','breakfast'),
+  ('66666666-6666-6666-6666-666666666666','vegetarian'),
+  ('77777777-7777-7777-7777-777777777777','lunch'),
+  ('77777777-7777-7777-7777-777777777777','quick'),
+  ('88888888-8888-8888-8888-888888888888','dinner'),
+  ('88888888-8888-8888-8888-888888888888','meat'),
+  ('99999999-9999-9999-9999-999999999999','dessert'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','lunch'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','soup'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','vegetarian'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','dessert')
 on conflict do nothing;
 
 -- Deterministic public share for the Tomato Tarte Tatin so local visual
