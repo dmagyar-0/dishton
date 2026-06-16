@@ -353,7 +353,7 @@ function RecipeListPage() {
                           </div>
                         )}
                         {r.source_type && (
-                          <span className="absolute bottom-0 left-0 z-[5] rounded-tr-[9px] bg-paper/85 px-2 py-1 font-mono text-[0.52rem] uppercase tracking-[0.14em] text-blueberry">
+                          <span className="absolute bottom-0 left-0 z-[5] rounded-tr-[9px] bg-[#faf3e3]/85 px-2 py-1 font-mono text-[0.52rem] uppercase tracking-[0.14em] text-[#2d3e56]">
                             {t(`recipe.source.${r.source_type}`)}
                           </span>
                         )}
