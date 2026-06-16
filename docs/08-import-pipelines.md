@@ -22,7 +22,7 @@ what AI produced before it hits the canonical store.
 | Function | Path | Purpose |
 |---|---|---|
 | `import-url` | `/functions/v1/import-url` | Blog / article URL import |
-| `import-instagram` | `/functions/v1/import-instagram` | Instagram URL import (oEmbed) |
+| `import-instagram` | `/functions/v1/import-instagram` | Instagram URL import (direct caption fetch) |
 | `import-photo` | `/functions/v1/import-photo` | Photo upload OCR + structuring |
 | `translate-recipe` | `/functions/v1/translate-recipe` | View-time translation cache miss |
 
@@ -127,39 +127,29 @@ Browser                   Edge:import-url             Anthropic
 
 ## Flow 2 — Instagram import
 
-The current Instagram oEmbed surface lives at the Facebook Graph endpoint
-`https://graph.facebook.com/v18.0/instagram_oembed?url=<post>&access_token=
-<IG_OEMBED_TOKEN>`. The token must be an app-scoped access token with the
-`oembed_read` permission. We document that token requirement in
-[01-architecture.md](./01-architecture.md) and source it from
-`IG_OEMBED_TOKEN` (Supabase Functions secret).
+The caption comes from a single **direct fetch** of the public post URL
+([`fallback.ts`](../supabase/functions/import-instagram/fallback.ts)). The fetch
+uses a realistic browser UA + `Accept-Language` and an 8s timeout, then reads the
+caption out of the page's `og:title` / `og:description` tags (`og:image` is the
+thumbnail). HTML entities in those values (`&amp;`, `&quot;`, `&#x1f34b;`) are
+decoded so the model gets clean text and the thumbnail URL resolves.
 
-If `IG_OEMBED_TOKEN` is unset (e.g. prod without an FB app, or local dev), the
-function falls back through a chain of caption-bearing endpoints
-([`fallback.ts`](../supabase/functions/import-instagram/fallback.ts)). Each
-tier uses a realistic browser UA + `Accept-Language` and an 8s timeout:
-
-  1. `https://www.instagram.com/{reel|p|tv}/{id}/embed/captioned/` — IG's own
-     server-rendered embed page; permissive for public posts and inlines
-     `og:title` / `og:description` / `og:image`.
-  2. The original post URL — handles cases where the embed path doesn't apply.
-  3. `https://www.ddinstagram.com{path}` — public mirror used by Discord/Twitter
-     for IG unfurls; a last-resort safety net for when Instagram blocks our
-     datacenter IPs entirely. Third-party, no SLA.
+No API keys are used. Historically this was a multi-tier chain — Instagram oEmbed
+via `IG_OEMBED_TOKEN` (Facebook Graph), the `/embed/captioned/` page, the direct
+fetch, a `ddinstagram.com` mirror, and ScraperAPI. As of 2026-06 the keyless
+tiers stopped working (the captioned-embed page no longer emits `og:*` tags and
+the `ddinstagram.com` domain stopped resolving) and the keyed tiers need secrets
+we don't have, so the pipeline was reduced to the direct fetch — the only path
+that still returns the caption.
 
 ```
 [Browser] POST /functions/v1/import-instagram { url, household_id }
 [Edge]    auth + member check + import_jobs(running, kind=instagram)
-[Edge]    if IG_OEMBED_TOKEN:
-            GET graph.facebook.com/v18.0/instagram_oembed?url=...&access_token=...
-            on 200 → caption = response.title + response.html (stripped),
-                     thumbnail = response.thumbnail_url
-            on 4xx → fallback chain
-          else fallback chain:
-            (a) GET .../embed/captioned/  (browser UA, 8s)
-            (b) GET <post URL>            (browser UA, 8s)
-            (c) GET ddinstagram.com<path> (browser UA, 8s)
-            parse <meta og:*>; first tier with og:title or og:description wins
+[Edge]    GET <post URL>  (browser UA + Accept-Language, redirect: follow, 8s)
+            on non-2xx / network error / no og tags (login wall) → instagram_unavailable
+            on 200 with og tags → parse <meta og:title|og:description|og:image>,
+                                   decode HTML entities
+            caption = og:title + "\n\n" + og:description; thumbnail = og:image
 [Edge]    estimatedTokens = 1200
           callAndValidate(structuringFromCaption({ caption, sourceUrl: url }))
 [Edge]    download thumbnail to imports/<uid>/<job_id>-hero.jpg if present
@@ -167,11 +157,18 @@ tier uses a realistic browser UA + `Accept-Language` and an 8s timeout:
 [Browser] Edit Draft → Save
 ```
 
+> **Datacenter-IP risk.** Instagram increasingly serves a login/consent wall
+> (no `og:*` tags) to fetches from datacenter IPs. When that happens the direct
+> fetch yields nothing and the job fails with `instagram_unavailable`. Without a
+> residential-IP path (the removed ScraperAPI tier) there is no keyless fallback,
+> so some posts will fail depending on how Instagram treats the function's egress
+> IP at the time.
+
 Caveats documented in user-facing copy:
 
-- Private posts return `4xx` from the oEmbed endpoint; the user sees:
-  "This Instagram post is private. Try a public post or use the photo tab."
-- Reels and carousels: oEmbed returns the cover only; the function asks the
+- Private posts / login walls yield no `og:*` tags → `instagram_unavailable`; the
+  user sees a "couldn't reach this Instagram post" message and can try the photo tab.
+- Reels and carousels: the caption is the cover + text only; the function asks the
   user to confirm which slide via a follow-up prompt only if the caption
   contains `#step` markers and the parser detects mismatched ingredients.
   v1 keeps this simple: caption-only, ignore carousel mechanics.
@@ -354,7 +351,7 @@ All errors include `request_id` so users can quote it when filing a bug.
       `Recipe.parse` without modification.
 - [ ] `import-url` against the BBC Good Food fixture in `e2e/fixtures/`
       returns a draft with ≥ 3 ingredients and ≥ 3 steps in the smoke test.
-- [ ] `import-instagram` against the canned oEmbed fixture returns a draft
+- [ ] `import-instagram` against a canned og-tag HTML fixture returns a draft
       with the caption-derived ingredients.
 - [ ] `import-photo` against the recipe-photo fixture returns either a draft
       or `needs_review`; never crashes.

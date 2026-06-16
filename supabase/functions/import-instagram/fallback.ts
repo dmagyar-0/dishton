@@ -1,16 +1,14 @@
-// No-key Instagram fallback. When IG_OEMBED_TOKEN is not set (or oEmbed fails),
-// we try a chain of caption-bearing endpoints in order:
-//   1. Instagram's own /embed/captioned/ page — server-rendered for embedders,
-//      historically permissive for public posts and includes og:* tags inline.
-//   2. The post URL itself with a realistic browser UA — handles edge cases
-//      where the embed path doesn't apply (e.g. user already pasted /share/).
-//   3. A public mirror (ddinstagram.com) that proxies Instagram and rebuilds
-//      OG tags for Discord/Twitter unfurls — works when Instagram blocks our
-//      datacenter IPs entirely.
-//   4. ScraperAPI (only if SCRAPER_API_KEY is set) — rotates residential IPs
-//      to fetch the captioned-embed page. Last-resort for when even the mirror
-//      fails. Free tier ~1000 req/mo, suitable for hobby projects.
-// Each tier uses a short timeout so the chain stays inside the function budget.
+// Direct, no-key Instagram caption fetch. Fetches the public post URL with a
+// realistic browser UA and reads the caption out of the page's og:title /
+// og:description meta tags. No API keys required.
+//
+// History: this was once a multi-tier chain (Instagram oEmbed via token, the
+// /embed/captioned/ page, this direct fetch, a ddinstagram.com mirror, and
+// ScraperAPI). As of 2026-06 the other keyless tiers stopped working — the
+// captioned-embed page no longer emits og tags and the ddinstagram.com mirror's
+// domain stopped resolving — and the keyed tiers need secrets we don't have. The
+// direct fetch still returns the full caption in the og:* tags, so it is the
+// only path we keep.
 
 export type OEmbed = {
   title?: string;
@@ -19,31 +17,26 @@ export type OEmbed = {
   author_name?: string;
 };
 
-export type FallbackTier = 'captioned_embed' | 'direct' | 'mirror' | 'scraper';
-
-export type FallbackEvent = {
-  tier: FallbackTier;
+export type FetchEvent = {
   url: string;
   ok: boolean;
   status?: number;
   ms: number;
-  reason?: 'fetch_error' | 'non_ok' | 'no_og';
+  reason?: "fetch_error" | "non_ok" | "no_og";
 };
 
-export type FallbackLogger = (event: FallbackEvent) => void;
-
-export type FallbackResult = { oembed: OEmbed; source: FallbackTier };
+export type FetchLogger = (event: FetchEvent) => void;
 
 const PER_FETCH_TIMEOUT_MS = 8_000;
 
 const BROWSER_UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 
 function browserHeaders(): HeadersInit {
   return {
-    'user-agent': BROWSER_UA,
-    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'accept-language': 'en-US,en;q=0.9',
+    "user-agent": BROWSER_UA,
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "accept-language": "en-US,en;q=0.9",
   };
 }
 
@@ -53,180 +46,105 @@ function mergeSignal(parent: AbortSignal | undefined, ms: number): AbortSignal {
     : AbortSignal.timeout(ms);
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+// Decode the HTML entities Instagram emits inside og:* attribute values:
+// named (&amp; &quot; &#39;), decimal (&#8226;) and hex (&#x1f34b;). The
+// caption arrives encoded, and og:image URLs carry &amp; that must become &
+// for the link to resolve.
+export function decodeEntities(input: string): string {
+  return input.replace(
+    /&(#x?[0-9a-f]+|[a-z][a-z0-9]*);/gi,
+    (match, body: string) => {
+      if (body[0] === "#") {
+        const hex = body[1] === "x" || body[1] === "X";
+        const code = hex
+          ? Number.parseInt(body.slice(2), 16)
+          : Number.parseInt(body.slice(1), 10);
+        if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return match;
+        try {
+          return String.fromCodePoint(code);
+        } catch {
+          return match;
+        }
+      }
+      const named = NAMED_ENTITIES[body.toLowerCase()];
+      return named ?? match;
+    },
+  );
+}
+
 // Extract a single og:<key> meta tag's content. Tolerant of attribute order
-// (property/content can appear in either order) and quote style.
+// (property/content can appear in either order) and quote style. The content
+// value may span newlines (multi-line captions), which the negated character
+// class handles.
 function og(html: string, key: string): string | undefined {
   const propFirst = new RegExp(
     `<meta[^>]+property=["']og:${key}["'][^>]+content=["']([^"']+)`,
-    'i',
+    "i",
   );
   const contentFirst = new RegExp(
     `<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${key}["']`,
-    'i',
+    "i",
   );
   return propFirst.exec(html)?.[1] ?? contentFirst.exec(html)?.[1];
 }
 
 export function parseInstagramHtml(html: string): OEmbed | null {
-  const title = og(html, 'title');
-  const description = og(html, 'description');
-  const image = og(html, 'image');
+  const title = og(html, "title");
+  const description = og(html, "description");
+  const image = og(html, "image");
   if (!title && !description) return null;
   return {
-    title: title ?? '',
-    html: description ?? '',
-    thumbnail_url: image,
+    title: title ? decodeEntities(title) : "",
+    html: description ? decodeEntities(description) : "",
+    thumbnail_url: image ? decodeEntities(image) : undefined,
   };
 }
 
-// /reel/ID/, /p/ID/, /tv/ID/, /reels/ID/ → captioned-embed URL on instagram.com.
-// Returns null for anything we don't recognise so callers can fall through.
-export function captionedEmbedUrl(postUrl: string): string | null {
-  let u: URL;
-  try {
-    u = new URL(postUrl);
-  } catch {
-    return null;
-  }
-  if (!u.hostname.endsWith('instagram.com')) return null;
-  const m = u.pathname.match(/^\/(reel|reels|p|tv)\/([^/]+)\/?/i);
-  if (!m) return null;
-  const kind = m[1].toLowerCase() === 'reels' ? 'reel' : m[1].toLowerCase();
-  return `https://www.instagram.com/${kind}/${m[2]}/embed/captioned/`;
-}
-
-// Public mirror that rebuilds og:* tags from Instagram. Used by Discord/Twitter
-// embedders. Last-resort: bypasses datacenter-IP blocks but is third-party.
-export function mirrorUrl(postUrl: string): string | null {
-  let u: URL;
-  try {
-    u = new URL(postUrl);
-  } catch {
-    return null;
-  }
-  if (!u.hostname.endsWith('instagram.com')) return null;
-  return `https://www.ddinstagram.com${u.pathname}`;
-}
-
-// ScraperAPI proxy URL. Wraps the captioned-embed URL because that's the
-// caption-richest variant — fetching it through residential IPs sidesteps the
-// datacenter blocks that affect all three other tiers. Returns null when no
-// API key is configured or the URL isn't an Instagram post we can rewrite.
-export function scraperUrl(postUrl: string, apiKey: string | undefined): string | null {
-  if (!apiKey) return null;
-  const target = captionedEmbedUrl(postUrl);
-  if (!target) return null;
-  return `https://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(target)}`;
-}
-
-async function fetchAsHtml(
+// Fetch the post URL directly and parse the caption out of its og:* tags.
+// Returns null (and logs a reason) when the fetch errors, returns non-2xx, or
+// returns a page without og tags (e.g. a login/consent wall).
+export async function fetchDirectCaption(
   url: string,
-  tier: FallbackTier,
   parent?: AbortSignal,
-  logger?: FallbackLogger,
+  logger?: FetchLogger,
 ): Promise<OEmbed | null> {
   const t0 = performance.now();
   let res: Response;
   try {
     res = await fetch(url, {
       headers: browserHeaders(),
-      redirect: 'follow',
+      redirect: "follow",
       signal: mergeSignal(parent, PER_FETCH_TIMEOUT_MS),
     });
   } catch {
     logger?.({
-      tier,
       url,
       ok: false,
       ms: Math.round(performance.now() - t0),
-      reason: 'fetch_error',
+      reason: "fetch_error",
     });
     return null;
   }
   const ms = Math.round(performance.now() - t0);
   if (!res.ok) {
-    logger?.({ tier, url, ok: false, status: res.status, ms, reason: 'non_ok' });
+    logger?.({ url, ok: false, status: res.status, ms, reason: "non_ok" });
     return null;
   }
   const html = await res.text();
   const parsed = parseInstagramHtml(html);
   if (!parsed) {
-    logger?.({ tier, url, ok: false, status: res.status, ms, reason: 'no_og' });
+    logger?.({ url, ok: false, status: res.status, ms, reason: "no_og" });
     return null;
   }
-  logger?.({ tier, url, ok: true, status: res.status, ms });
+  logger?.({ url, ok: true, status: res.status, ms });
   return parsed;
-}
-
-// 2 s grace window: if the preferred captioned_embed tier resolves OK within
-// this window, we return it without ever firing the other tiers. Saves
-// bandwidth on the common-case happy path while still giving the slow path
-// the full parallel speedup.
-const PREFERRED_GRACE_MS = 2_000;
-
-export async function fetchOgFallback(
-  url: string,
-  parent?: AbortSignal,
-  logger?: FallbackLogger,
-  scraperApiKey?: string,
-): Promise<FallbackResult | null> {
-  const embed = captionedEmbedUrl(url);
-  const mirror = mirrorUrl(url);
-  const scraper = scraperUrl(url, scraperApiKey);
-
-  // Start the preferred tier first. If it wins inside the grace window we
-  // never fire the others; this preserves the existing single-fetch happy
-  // path so we don't burn bandwidth (and don't spam Instagram's blocks) on
-  // common-case imports.
-  const embedPromise = embed
-    ? fetchAsHtml(embed, 'captioned_embed', parent, logger)
-    : null;
-
-  if (embedPromise) {
-    let graceTimer: ReturnType<typeof setTimeout> | null = null;
-    const winner = await Promise.race<
-      | { kind: 'embed'; value: OEmbed | null }
-      | { kind: 'timer' }
-    >([
-      embedPromise.then((value) => ({ kind: 'embed' as const, value })),
-      new Promise((resolve) => {
-        graceTimer = setTimeout(
-          () => resolve({ kind: 'timer' as const }),
-          PREFERRED_GRACE_MS,
-        );
-      }),
-    ]);
-    if (winner.kind === 'embed' && winner.value) {
-      // Embed wins inside the grace; cancel the pending grace timer so
-      // Deno's test runner doesn't flag it as a leaked timer.
-      if (graceTimer !== null) clearTimeout(graceTimer);
-      return { oembed: winner.value, source: 'captioned_embed' };
-    }
-    // Grace expired or embed resolved null — the timer either fired (in
-    // which case the handle is harmless) or we fall through to parallel
-    // and let the timer settle on its own.
-    if (graceTimer !== null && winner.kind === 'embed') {
-      clearTimeout(graceTimer);
-    }
-  }
-
-  // Grace expired (or no preferred tier applied). Fire every remaining tier
-  // in parallel — each has its own per-fetch 8 s timeout — and pick the
-  // first OK result by preference order once everything settles.
-  const directPromise = fetchAsHtml(url, 'direct', parent, logger);
-  const mirrorPromise = mirror ? fetchAsHtml(mirror, 'mirror', parent, logger) : null;
-  const scraperPromise = scraper ? fetchAsHtml(scraper, 'scraper', parent, logger) : null;
-
-  const [embedRes, directRes, mirrorRes, scraperRes] = await Promise.all([
-    embedPromise ?? Promise.resolve<OEmbed | null>(null),
-    directPromise,
-    mirrorPromise ?? Promise.resolve<OEmbed | null>(null),
-    scraperPromise ?? Promise.resolve<OEmbed | null>(null),
-  ]);
-
-  if (embedRes) return { oembed: embedRes, source: 'captioned_embed' };
-  if (directRes) return { oembed: directRes, source: 'direct' };
-  if (mirrorRes) return { oembed: mirrorRes, source: 'mirror' };
-  if (scraperRes) return { oembed: scraperRes, source: 'scraper' };
-  return null;
 }
