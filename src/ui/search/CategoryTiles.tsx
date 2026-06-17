@@ -1,5 +1,5 @@
 import { cn } from '@/ui/cn';
-import { categoryIcon } from './categoryIcons';
+import { ProduceGlyph, categoryDisc } from './ProduceGlyph';
 
 export type CategoryTileItem = { id: string; label: string };
 
@@ -13,9 +13,10 @@ export type CategoryTilesProps = {
 };
 
 /**
- * Horizontal, scrollable row of meal-category icon tiles for the Home screen.
- * The active tile fills saffron; the rest are paper-coloured. A re-skin of the
- * old tag-pill filter — selecting a tile filters the list by that tag.
+ * Horizontal, scrollable row of meal-category tiles for the Home screen — the
+ * Lane 3 (Soft Contrast) look: a tinted, print-textured disc holding an artsy
+ * produce glyph, label beneath. The active tile gets an accent ring (not a
+ * fill) and a bold label. Selecting a tile filters the list by that tag.
  */
 export function CategoryTiles({ items, active, onPick, className }: CategoryTilesProps) {
   return (
@@ -29,8 +30,8 @@ export function CategoryTiles({ items, active, onPick, className }: CategoryTile
       )}
     >
       {items.map(({ id, label }) => {
-        const Icon = categoryIcon(id);
         const on = active === id;
+        const disc = categoryDisc(id);
         return (
           <button
             key={id}
@@ -41,16 +42,16 @@ export function CategoryTiles({ items, active, onPick, className }: CategoryTile
           >
             <span
               className={cn(
-                'flex size-15 items-center justify-center rounded-[18px] border',
-                'transition-[transform,background-color,color,border-color,box-shadow]',
-                'duration-[var(--duration-fast)] ease-[var(--ease-paper)]',
+                'tex flex size-15 items-center justify-center overflow-hidden rounded-[18px]',
+                'border border-black/8 text-ink-soft shadow-press',
+                'transition-[transform,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-paper)]',
                 'group-hover/ctile:-translate-y-0.5',
-                on
-                  ? 'border-saffron bg-saffron text-saffron-ink shadow-press'
-                  : 'border-cream-line bg-paper-2 text-ink-soft',
+                disc.tint,
+                disc.tex,
+                on && 'ring-2 ring-accent-ink',
               )}
             >
-              <Icon size={22} strokeWidth={1.5} aria-hidden="true" />
+              <ProduceGlyph category={id} size={34} />
             </span>
             <span
               className={cn(
