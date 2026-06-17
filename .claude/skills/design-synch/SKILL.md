@@ -50,7 +50,12 @@ main working tree is never switched onto it. The skill makes exactly one change
 to `main`: a tiny `last-sync.json` marker commit (timestamp + synced hash, **no
 screenshots**), and only when it captures a *new* commit — so `main` always
 records when design-synch last ran and against which commit. A stable copy of
-the artifacts is also left at `/tmp/design-sync-artifacts`. Pushing both `main`
+the artifacts is also left just outside the repo, in the parent directory at
+`../design-sync-artifacts` (e.g. `…\Documents\dishton\design-sync-artifacts`) — a
+single **flat** folder holding `CHANGELOG.md` plus every screenshot named
+`desktop-*`/`mobile-*`, so it's easy to browse and is never git-tracked. (The
+`design-sync` branch keeps the nested `screenshots/{desktop,mobile}/` layout that
+`manifest.json` indexes.) Pushing both `main`
 and `design-sync` is the manual step (so you stay in control of what leaves the
 box).
 

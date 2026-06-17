@@ -266,17 +266,28 @@ const manifest = {
 process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
 NODE
 
-# Keep a stable copy outside the repo so it survives branch operations and can
-# be forwarded by the caller.
-ARTIFACTS="/tmp/design-sync-artifacts"
-rm -rf "$ARTIFACTS" && cp -r "$OUT_DIR" "$ARTIFACTS"
+# Keep a stable copy in the repo's PARENT dir — just outside the repo, so it
+# survives branch operations, is easy to open, and is never git-tracked. Derived
+# from the repo root to stay portable across machines (Linux sandbox included);
+# on a Windows checkout this lands at <...>\Documents\dishton\design-sync-artifacts.
+ARTIFACTS="$(dirname "$ROOT")/design-sync-artifacts"
+# Flatten into ONE folder for easy browsing: CHANGELOG.md + every screenshot,
+# each named <viewport>-<shot>.png (desktop-/mobile-) so the two viewports —
+# which share identical base names — don't collide. (The design-sync branch
+# keeps the nested screenshots/{desktop,mobile}/ layout its manifest.json indexes.)
+rm -rf "$ARTIFACTS" && mkdir -p "$ARTIFACTS"
+cp "$OUT_DIR/CHANGELOG.md" "$ARTIFACTS/" 2>/dev/null || true
+for _vp in desktop mobile; do
+  for _png in "$OUT_DIR/screenshots/$_vp"/*.png; do
+    [ -e "$_png" ] && cp "$_png" "$ARTIFACTS/$_vp-$(basename "$_png")"
+  done
+done
 # Emit the OS-native absolute path as soon as the screenshots land, so they're
 # easy to open without hunting through the MSYS /tmp mount.
 ARTIFACTS_NATIVE="$(native_path "$ARTIFACTS")"
-log "Screenshots saved"
+log "Screenshots saved (flat: CHANGELOG.md + all screenshots in one folder)"
 echo "  $ARTIFACTS_NATIVE"
-echo "  desktop ($DESKTOP_COUNT): $(native_path "$ARTIFACTS/screenshots/desktop")"
-echo "  mobile  ($MOBILE_COUNT): $(native_path "$ARTIFACTS/screenshots/mobile")"
+echo "  $DESKTOP_COUNT desktop + $MOBILE_COUNT mobile PNGs (desktop-*/mobile-* prefixed)"
 
 # --- 8b. Record the last sync on `main` itself, so the default branch shows when
 # design-synch last captured a NEW commit (just timestamp + hashes — the
@@ -335,7 +346,7 @@ git checkout "$ORIG_BRANCH"
 
 log "Done"
 echo "Screenshots: $ARTIFACTS_NATIVE"
-echo "  $DESKTOP_COUNT desktop + $MOBILE_COUNT mobile PNGs under screenshots/{desktop,mobile}/"
+echo "  $DESKTOP_COUNT desktop + $MOBILE_COUNT mobile PNGs (desktop-*/mobile-* prefixed), flat in one folder"
 echo "Also committed on local branch '$SYNC_BRANCH' (design-sync/screenshots/)."
 echo "Push with: git push -u origin $SYNC_BRANCH"
 echo "Synced main hash recorded: $MAIN_HASH"
