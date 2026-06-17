@@ -4,6 +4,8 @@
 html,
 body {
   height: 100%;
+  /* Light-only design — keep native UI (controls, scrollbars) light too. */
+  color-scheme: light;
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);

@@ -92,9 +92,7 @@ export function HomeBanner({ householdId, eyebrow, title }: HomeBannerProps) {
       <p className="relative z-[2] font-mono text-[0.64rem] uppercase tracking-[0.2em] text-saffron">
         {eyebrow}
       </p>
-      {/* Pinned light cream (not `text-paper`, which flips to dark in dark mode):
-          the banner is always a navy surface, so its title must always be light. */}
-      <h1 className="relative z-[2] mt-2 max-w-[14ch] font-display text-3xl leading-[1.04] text-[#faf3e3] sm:text-4xl">
+      <h1 className="relative z-[2] mt-2 max-w-[14ch] font-display text-3xl leading-[1.04] text-paper sm:text-4xl">
         {title}
       </h1>
       <div className="relative z-[2] mt-4">

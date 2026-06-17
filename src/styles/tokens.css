@@ -67,28 +67,9 @@
   --duration-slow: 420ms;
 }
 
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-paper: #1a1614;
-    --color-paper-2: #221c1a;
-    --color-ink: #f0e7d6;
-    --color-ink-soft: #c8bfae;
-    --color-ink-muted: #8a7f6f;
-    --color-saffron: #efab55;
-    --color-saffron-ink: #2a1a06;
-    --color-sage: #8aa682;
-    --color-sage-ink: #0e1410;
-    --color-aubergine: #8fb0d6; /* lightened blueberry for dark surfaces */
-    --color-pomegranate: #e8718a;
-    --color-cream-line: #3b332e;
-
-    /* Dark overrides: lift the banner + accent ink off the dark ground.
-       The decorative produce tints keep their light values on purpose. */
-    --color-blueberry: #34506f;
-    --color-accent-ink: #e0a766;
-    --shadow-press: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 28px -16px rgba(0, 0, 0, 0.6);
-  }
-}
+/* Soft Contrast (Lane 3) is a light-only design — there is no dark palette.
+   `color-scheme: light` (global.css) stops the OS dark preference from
+   auto-inverting native controls and scrollbars. */
 
 @media (prefers-reduced-motion: reduce) {
   @theme {

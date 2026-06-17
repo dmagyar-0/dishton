@@ -83,7 +83,7 @@ export function AppShell() {
         <nav className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <BrandMark />
-            <span className="font-display text-xl md:text-2xl text-aubergine">{t('app.name')}</span>
+            <span className="font-display text-xl md:text-2xl text-blueberry">{t('app.name')}</span>
           </Link>
           <ul className="flex items-center gap-0 md:gap-1">
             {householdId && (

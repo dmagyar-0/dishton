@@ -4,8 +4,8 @@
   "description": "Your household's recipe pantry.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5efe3",
-  "theme_color": "#2a1a2c",
+  "background_color": "#faf3e3",
+  "theme_color": "#faf3e3",
   "lang": "en",
   "scope": "/",
   "icons": [
