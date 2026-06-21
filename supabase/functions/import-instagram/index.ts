@@ -1,10 +1,11 @@
-// import-instagram: direct caption fetch → caption + thumbnail → Anthropic →
+// import-instagram: keyless caption fetch → caption + thumbnail → Anthropic →
 // draft Recipe + import_jobs row.
 //
-// The caption comes from a single direct fetch of the public post URL, reading
-// the og:title / og:description tags (see fallback.ts). No API keys are used:
-// the former oEmbed-token, captioned-embed, mirror, and ScraperAPI tiers were
-// removed once they stopped working without paid keys (2026-06).
+// The caption comes from the post's public /embed/captioned/ page, parsed out
+// of the rendered Caption div (see fallback.ts). No API keys are used. The
+// embed page is used because Instagram now walls the post page itself from
+// datacenter IPs (the Edge Function's egress), while the embed surface — built
+// for third-party server-side rendering — still returns the caption.
 //
 // See import-url for the sync-vs-background lifecycle. The Realtime listener
 // only acts on `awaiting_save`, so a sync import never races with the
@@ -27,7 +28,7 @@ import { rehostRemoteHeroImage } from "../_shared/scrape/rehost-image.ts";
 import { structuringFromCaption } from "../_shared/ai/prompts.ts";
 import { runDetached } from "../_shared/import-runner.ts";
 import { log, logAiCall } from "../_shared/log.ts";
-import { fetchDirectCaption, type FetchEvent } from "./fallback.ts";
+import { fetchInstagramCaption, type FetchEvent } from "./fallback.ts";
 
 const Body = z.object({
   url: z.string().url(),
@@ -37,7 +38,7 @@ const Body = z.object({
 const CONCURRENCY_CAP = 5;
 const RAW_PREVIEW_LIMIT = 240;
 
-type CaptionSource = "direct";
+type CaptionSource = "embed";
 
 type AiUsage = {
   input: number;
@@ -169,8 +170,7 @@ serve(async (req: Request) => {
         );
       };
 
-      const oe = await fetchDirectCaption(body.url, undefined, fetchLogger);
-      const captionSource: CaptionSource | null = oe ? "direct" : null;
+      const oe = await fetchInstagramCaption(body.url, undefined, fetchLogger);
 
       const latencyMs = Math.round(performance.now() - t0);
 
@@ -197,15 +197,16 @@ serve(async (req: Request) => {
         };
       }
 
-      const caption = `${oe.title ?? ""}\n\n${
-        (oe.html ?? "").replace(/<[^>]+>/g, "")
-      }`;
+      // Past the guard the caption came from the embed page.
+      const captionSource: CaptionSource = "embed";
+
+      const caption = oe.author ? `@${oe.author}\n\n${oe.caption}` : oe.caption;
       const captionLength = caption.length;
-      const hasThumbnail = Boolean(oe.thumbnail_url);
+      const hasThumbnail = Boolean(oe.thumbnailUrl);
       emit("caption.ready", {
         source: captionSource,
         caption_length: captionLength,
-        has_title: Boolean(oe.title),
+        has_author: Boolean(oe.author),
         has_thumbnail: hasThumbnail,
       });
 
@@ -319,7 +320,7 @@ serve(async (req: Request) => {
           source_type: "instagram" as const,
           source_url: body.url,
         },
-        thumbnailUrl: oe.thumbnail_url ?? null,
+        thumbnailUrl: oe.thumbnailUrl ?? null,
         usage: result.usage,
         model: result.model,
         captionSource,

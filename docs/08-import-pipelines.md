@@ -127,29 +127,40 @@ Browser                   Edge:import-url             Anthropic
 
 ## Flow 2 — Instagram import
 
-The caption comes from a single **direct fetch** of the public post URL
-([`fallback.ts`](../supabase/functions/import-instagram/fallback.ts)). The fetch
-uses a realistic browser UA + `Accept-Language` and an 8s timeout, then reads the
-caption out of the page's `og:title` / `og:description` tags (`og:image` is the
-thumbnail). HTML entities in those values (`&amp;`, `&quot;`, `&#x1f34b;`) are
-decoded so the model gets clean text and the thumbnail URL resolves.
+The caption comes from the post's public **`/embed/captioned/` page**
+([`fallback.ts`](../supabase/functions/import-instagram/fallback.ts)). The
+function extracts the shortcode from the post / reel / tv URL, normalises to
+`https://www.instagram.com/p/<shortcode>/embed/captioned/`, and fetches it with
+a realistic browser UA + `Accept-Language` and an 8s timeout. It then reads the
+caption out of the rendered `<div class="Caption">` block (dropping the leading
+`CaptionUsername` anchor, which it keeps as the author, and converting `<br>` to
+newlines) and the cover image out of `<img class="EmbeddedMediaImage">`. HTML
+entities (`&amp;`, `&quot;`, `&#x1f34b;`) are decoded so the model gets clean
+text and the thumbnail URL resolves.
 
 No API keys are used. Historically this was a multi-tier chain — Instagram oEmbed
-via `IG_OEMBED_TOKEN` (Facebook Graph), the `/embed/captioned/` page, the direct
-fetch, a `ddinstagram.com` mirror, and ScraperAPI. As of 2026-06 the keyless
-tiers stopped working (the captioned-embed page no longer emits `og:*` tags and
-the `ddinstagram.com` domain stopped resolving) and the keyed tiers need secrets
-we don't have, so the pipeline was reduced to the direct fetch — the only path
-that still returns the caption.
+via `IG_OEMBED_TOKEN` (Facebook Graph), the `/embed/captioned/` page, a direct
+og-tag fetch of the post URL, a `ddinstagram.com` mirror, and ScraperAPI. #143
+reduced it to the direct og-tag fetch, but as of 2026-06 Instagram serves a
+logged-out wall (no `og:*` tags) to fetches of the **post page** from datacenter
+IPs — the Edge Function's egress — so that path fails with `instagram_unavailable`
+for every post (confirmed in prod `import_jobs` from ~2026-06-16). The
+`/embed/captioned/` surface is built for third-party server-side rendering and
+still returns the caption to datacenter IPs, so the pipeline fetches that instead.
+It does not emit `og:*` tags (which is why #143 dropped it), but the caption is
+rendered in the `Caption` div.
 
 ```
 [Browser] POST /functions/v1/import-instagram { url, household_id }
 [Edge]    auth + member check + import_jobs(running, kind=instagram)
-[Edge]    GET <post URL>  (browser UA + Accept-Language, redirect: follow, 8s)
-            on non-2xx / network error / no og tags (login wall) → instagram_unavailable
-            on 200 with og tags → parse <meta og:title|og:description|og:image>,
-                                   decode HTML entities
-            caption = og:title + "\n\n" + og:description; thumbnail = og:image
+[Edge]    extract shortcode → GET /p/<shortcode>/embed/captioned/
+            (browser UA + Accept-Language, redirect: follow, 8s)
+            on no shortcode / non-2xx / network error / no Caption block (login
+              wall) → instagram_unavailable
+            on 200 with a Caption block → parse <div class="Caption"> (author +
+              text) and <img class="EmbeddedMediaImage"> (thumbnail), decode
+              HTML entities
+            caption = "@author" + "\n\n" + caption text; thumbnail = cover image
 [Edge]    estimatedTokens = 1200
           callAndValidate(structuringFromCaption({ caption, sourceUrl: url }))
 [Edge]    download thumbnail to imports/<uid>/<job_id>-hero.jpg if present
@@ -157,17 +168,17 @@ that still returns the caption.
 [Browser] Edit Draft → Save
 ```
 
-> **Datacenter-IP risk.** Instagram increasingly serves a login/consent wall
-> (no `og:*` tags) to fetches from datacenter IPs. When that happens the direct
-> fetch yields nothing and the job fails with `instagram_unavailable`. Without a
-> residential-IP path (the removed ScraperAPI tier) there is no keyless fallback,
-> so some posts will fail depending on how Instagram treats the function's egress
-> IP at the time.
+> **Datacenter-IP risk.** The embed surface is currently the most reliable
+> keyless path from a datacenter IP — but it is still Instagram, and they could
+> wall embeds too. When a fetch yields no `Caption` block the job fails with
+> `instagram_unavailable`. The only durable hedge is a residential-IP path (the
+> removed ScraperAPI tier), which needs a paid key we don't have, so some posts
+> may still fail depending on how Instagram treats the function's egress IP.
 
 Caveats documented in user-facing copy:
 
-- Private posts / login walls yield no `og:*` tags → `instagram_unavailable`; the
-  user sees a "couldn't reach this Instagram post" message and can try the photo tab.
+- Private posts / login walls yield no `Caption` block → `instagram_unavailable`;
+  the user sees a "couldn't reach this Instagram post" message and can try the photo tab.
 - Reels and carousels: the caption is the cover + text only; the function asks the
   user to confirm which slide via a follow-up prompt only if the caption
   contains `#step` markers and the parser detects mismatched ingredients.

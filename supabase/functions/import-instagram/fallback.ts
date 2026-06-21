@@ -1,20 +1,30 @@
-// Direct, no-key Instagram caption fetch. Fetches the public post URL with a
-// realistic browser UA and reads the caption out of the page's og:title /
-// og:description meta tags. No API keys required.
+// Keyless Instagram caption fetch via the public /embed/captioned/ page.
 //
-// History: this was once a multi-tier chain (Instagram oEmbed via token, the
-// /embed/captioned/ page, this direct fetch, a ddinstagram.com mirror, and
-// ScraperAPI). As of 2026-06 the other keyless tiers stopped working — the
-// captioned-embed page no longer emits og tags and the ddinstagram.com mirror's
-// domain stopped resolving — and the keyed tiers need secrets we don't have. The
-// direct fetch still returns the full caption in the og:* tags, so it is the
-// only path we keep.
+// Why the embed page and not the post page: as of 2026-06 Instagram serves a
+// logged-out wall (no og:* tags) to fetches of the post URL itself from
+// datacenter IPs — which is where our Edge Function egresses — so the previous
+// direct og-tag scrape fails with `no_og` for every post (prod import_jobs
+// show `instagram_unavailable` for every Instagram import since ~2026-06-16,
+// failing fast at the scrape phase). The /embed/captioned/ surface is built to
+// be server-rendered by third-party sites, so Instagram still returns it
+// (caption included) to datacenter IPs where the post page is walled. We fetch
+//   https://www.instagram.com/p/<shortcode>/embed/captioned/
+// and read the caption out of the rendered `<div class="Caption">` block and
+// the cover image out of `<img class="EmbeddedMediaImage">`. No API keys, no
+// cookies.
+//
+// History: the pipeline was once a multi-tier chain — Instagram oEmbed via
+// IG_OEMBED_TOKEN, the captioned-embed page, a direct og-tag fetch, a
+// ddinstagram.com mirror, and ScraperAPI. #143 reduced it to the direct og-tag
+// fetch and dropped the embed tier on the belief that "the captioned-embed page
+// no longer emits og tags" — that is true, but the caption is still rendered in
+// the Caption div, so the embed tier keeps working where the og-tag fetch now
+// fails from a datacenter IP. This restores it as the single keyless path.
 
-export type OEmbed = {
-  title?: string;
-  html?: string;
-  thumbnail_url?: string;
-  author_name?: string;
+export type EmbedResult = {
+  caption: string;
+  author?: string;
+  thumbnailUrl?: string;
 };
 
 export type FetchEvent = {
@@ -22,7 +32,7 @@ export type FetchEvent = {
   ok: boolean;
   status?: number;
   ms: number;
-  reason?: "fetch_error" | "non_ok" | "no_og";
+  reason?: "no_shortcode" | "fetch_error" | "non_ok" | "no_caption";
 };
 
 export type FetchLogger = (event: FetchEvent) => void;
@@ -55,10 +65,10 @@ const NAMED_ENTITIES: Record<string, string> = {
   nbsp: " ",
 };
 
-// Decode the HTML entities Instagram emits inside og:* attribute values:
-// named (&amp; &quot; &#39;), decimal (&#8226;) and hex (&#x1f34b;). The
-// caption arrives encoded, and og:image URLs carry &amp; that must become &
-// for the link to resolve.
+// Decode the HTML entities Instagram emits inside the embed markup: named
+// (&amp; &quot; &#39;), decimal (&#8226;) and hex (&#x1f34b;). The caption
+// arrives encoded, and the cover-image URL carries &amp; that must become & for
+// the link to resolve.
 export function decodeEntities(input: string): string {
   return input.replace(
     /&(#x?[0-9a-f]+|[a-z][a-z0-9]*);/gi,
@@ -81,53 +91,104 @@ export function decodeEntities(input: string): string {
   );
 }
 
-// Extract a single og:<key> meta tag's content. Tolerant of attribute order
-// (property/content can appear in either order) and quote style. The content
-// value may span newlines (multi-line captions), which the negated character
-// class handles.
-function og(html: string, key: string): string | undefined {
-  const propFirst = new RegExp(
-    `<meta[^>]+property=["']og:${key}["'][^>]+content=["']([^"']+)`,
-    "i",
-  );
-  const contentFirst = new RegExp(
-    `<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${key}["']`,
-    "i",
-  );
-  return propFirst.exec(html)?.[1] ?? contentFirst.exec(html)?.[1];
+// Pull the shortcode out of a post / reel / tv / reels URL, tolerating an
+// optional leading /<username>/ segment and any trailing query string.
+export function extractShortcode(url: string): string | null {
+  const m =
+    /instagram\.com\/(?:[A-Za-z0-9_.]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i
+      .exec(url);
+  return m?.[1] ?? null;
 }
 
-export function parseInstagramHtml(html: string): OEmbed | null {
-  const title = og(html, "title");
-  const description = og(html, "description");
-  const image = og(html, "image");
-  if (!title && !description) return null;
+// The /p/ embed form works for every post type (posts, reels, tv), so we
+// normalise to it rather than carrying the original path segment through.
+export function buildEmbedUrl(shortcode: string): string {
+  return `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
+}
+
+// Convert an HTML caption fragment to plain text: <br> becomes a newline,
+// remaining tags are dropped, entities decoded, and runs of blank lines
+// collapsed.
+function htmlToText(fragment: string): string {
+  const withNewlines = fragment
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+  return decodeEntities(withNewlines)
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractThumbnail(html: string): string | undefined {
+  const imgTag = /<img[^>]*EmbeddedMediaImage[^>]*>/i.exec(html)?.[0];
+  if (!imgTag) return undefined;
+  const src = /\ssrc=["']([^"']+)["']/i.exec(imgTag)?.[1];
+  return src ? decodeEntities(src) : undefined;
+}
+
+// Parse the rendered caption out of a /embed/captioned/ page. The Caption div
+// holds: <a class="CaptionUsername">handle</a> then the caption text, then a
+// nested <div class="CaptionComments"> we stop at. Returns null when there is
+// no Caption block (a login wall) or the caption is empty.
+export function parseCaptionedEmbed(html: string): EmbedResult | null {
+  const capStart = html.indexOf('class="Caption"');
+  if (capStart < 0) return null;
+  const contentStart = html.indexOf(">", capStart);
+  if (contentStart < 0) return null;
+
+  let block = html.slice(contentStart + 1);
+  const commentsAt = block.indexOf('<div class="CaptionComments"');
+  if (commentsAt >= 0) {
+    block = block.slice(0, commentsAt);
+  } else {
+    const closeAt = block.indexOf("</div>");
+    if (closeAt >= 0) block = block.slice(0, closeAt);
+  }
+
+  // The block opens with the author's handle anchor — capture it, then drop it
+  // so it does not lead the caption text.
+  const userMatch =
+    /<a[^>]*class=["']CaptionUsername["'][^>]*>([^<]*)<\/a>/i.exec(block);
+  const author = userMatch ? decodeEntities(userMatch[1]).trim() : undefined;
+  const withoutUser = userMatch ? block.replace(userMatch[0], "") : block;
+
+  const caption = htmlToText(withoutUser);
+  if (!caption) return null;
+
   return {
-    title: title ? decodeEntities(title) : "",
-    html: description ? decodeEntities(description) : "",
-    thumbnail_url: image ? decodeEntities(image) : undefined,
+    caption,
+    author: author || undefined,
+    thumbnailUrl: extractThumbnail(html),
   };
 }
 
-// Fetch the post URL directly and parse the caption out of its og:* tags.
-// Returns null (and logs a reason) when the fetch errors, returns non-2xx, or
-// returns a page without og tags (e.g. a login/consent wall).
-export async function fetchDirectCaption(
+// Fetch the /embed/captioned/ page for a post URL and parse its caption.
+// Returns null (and logs a reason) when the URL has no shortcode, the fetch
+// errors, returns non-2xx, or returns a page without a Caption block.
+export async function fetchInstagramCaption(
   url: string,
   parent?: AbortSignal,
   logger?: FetchLogger,
-): Promise<OEmbed | null> {
+): Promise<EmbedResult | null> {
+  const shortcode = extractShortcode(url);
+  if (!shortcode) {
+    logger?.({ url, ok: false, ms: 0, reason: "no_shortcode" });
+    return null;
+  }
+  const embedUrl = buildEmbedUrl(shortcode);
+
   const t0 = performance.now();
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(embedUrl, {
       headers: browserHeaders(),
       redirect: "follow",
       signal: mergeSignal(parent, PER_FETCH_TIMEOUT_MS),
     });
   } catch {
     logger?.({
-      url,
+      url: embedUrl,
       ok: false,
       ms: Math.round(performance.now() - t0),
       reason: "fetch_error",
@@ -136,15 +197,15 @@ export async function fetchDirectCaption(
   }
   const ms = Math.round(performance.now() - t0);
   if (!res.ok) {
-    logger?.({ url, ok: false, status: res.status, ms, reason: "non_ok" });
+    logger?.({ url: embedUrl, ok: false, status: res.status, ms, reason: "non_ok" });
     return null;
   }
   const html = await res.text();
-  const parsed = parseInstagramHtml(html);
+  const parsed = parseCaptionedEmbed(html);
   if (!parsed) {
-    logger?.({ url, ok: false, status: res.status, ms, reason: "no_og" });
+    logger?.({ url: embedUrl, ok: false, status: res.status, ms, reason: "no_caption" });
     return null;
   }
-  logger?.({ url, ok: true, status: res.status, ms });
+  logger?.({ url: embedUrl, ok: true, status: res.status, ms });
   return parsed;
 }
