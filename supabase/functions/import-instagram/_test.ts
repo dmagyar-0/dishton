@@ -1,36 +1,37 @@
-// Tests for the direct, no-key Instagram caption fetch. The fetch is exercised
-// via installMockFetch so we can assert which endpoint is hit and how failures
-// (non-2xx, login walls, network errors) are surfaced.
+// Tests for the keyless Instagram caption fetch via /embed/captioned/. The
+// fetch is exercised via installMockFetch so we can assert which endpoint is
+// hit and how failures (non-2xx, login walls, network errors) are surfaced.
 
 import { assert, assertEquals } from "jsr:@std/assert";
 import { installMockFetch } from "../_shared/mock_fetch.ts";
 import {
+  buildEmbedUrl,
   decodeEntities,
-  fetchDirectCaption,
+  extractShortcode,
   type FetchEvent,
-  parseInstagramHtml,
+  fetchInstagramCaption,
+  parseCaptionedEmbed,
 } from "./fallback.ts";
 
 const REEL_URL = "https://www.instagram.com/reel/DX6MMYWOn3Z/?igsh=abcd";
+const EMBED_URL =
+  "https://www.instagram.com/p/DX6MMYWOn3Z/embed/captioned/";
 
-function htmlWithOg(
-  parts: { title?: string; description?: string; image?: string },
+// Mirrors the shape of Instagram's /embed/captioned/ markup: an
+// EmbeddedMediaImage cover, then a Caption div with a CaptionUsername anchor,
+// the caption text (with <br /> line breaks), then a nested CaptionComments div.
+function embedHtml(
+  opts: { username?: string; caption?: string; image?: string },
 ): string {
-  const tags: string[] = [];
-  if (parts.title) {
-    tags.push(`<meta property="og:title" content="${parts.title}" />`);
-  }
-  if (parts.description) {
-    tags.push(
-      `<meta property="og:description" content="${parts.description}" />`,
-    );
-  }
-  if (parts.image) {
-    tags.push(`<meta property="og:image" content="${parts.image}" />`);
-  }
-  return `<!doctype html><html><head>${
-    tags.join("")
-  }</head><body></body></html>`;
+  const userAnchor = opts.username
+    ? `<a class="CaptionUsername" href="https://www.instagram.com/${opts.username}/?utm_source=ig_embed" target="_blank">${opts.username}</a><br /><br />`
+    : "";
+  const img = opts.image
+    ? `<img class="EmbeddedMediaImage" alt="cover" src="${opts.image}" />`
+    : "";
+  return `<!doctype html><html><body>${img}<div class="Caption">${userAnchor}${
+    opts.caption ?? ""
+  }<div class="CaptionComments"><a class="CaptionComments">12 comments</a></div></div></body></html>`;
 }
 
 function htmlResponse(html: string, init: ResponseInit = {}): Response {
@@ -53,74 +54,114 @@ Deno.test("decodeEntities: leaves unknown / malformed entities untouched", () =>
   assertEquals(decodeEntities("5 &lt; 10 in math"), "5 < 10 in math");
 });
 
-Deno.test("parseInstagramHtml: extracts and decodes og:title, og:description, og:image", () => {
-  const oe = parseInstagramHtml(
-    htmlWithOg({
-      title: "Jena on Instagram: &quot;ZINGY LIME&quot;",
-      description: "&#8226; 1 egg &amp; honey",
-      image: "https://example.test/cover.jpg?a=1&amp;b=2",
+Deno.test("extractShortcode: handles reel, p, reels, tv and username prefixes", () => {
+  assertEquals(
+    extractShortcode("https://www.instagram.com/reel/DX6MMYWOn3Z/?igsh=ab"),
+    "DX6MMYWOn3Z",
+  );
+  assertEquals(
+    extractShortcode("https://www.instagram.com/p/AbC-1_2/"),
+    "AbC-1_2",
+  );
+  assertEquals(
+    extractShortcode("https://instagram.com/reels/XyZ123/"),
+    "XyZ123",
+  );
+  assertEquals(
+    extractShortcode("https://www.instagram.com/thechef/reel/DYh1L_XMEBa/"),
+    "DYh1L_XMEBa",
+  );
+  assertEquals(extractShortcode("https://www.instagram.com/thechef/"), null);
+});
+
+Deno.test("buildEmbedUrl: normalises to the /p/ captioned embed", () => {
+  assertEquals(
+    buildEmbedUrl("DX6MMYWOn3Z"),
+    "https://www.instagram.com/p/DX6MMYWOn3Z/embed/captioned/",
+  );
+});
+
+Deno.test("parseCaptionedEmbed: extracts caption, author and thumbnail", () => {
+  const oe = parseCaptionedEmbed(
+    embedHtml({
+      username: "thechef",
+      caption:
+        "ZINGY LIME CURD<br />&#8226; 1 egg &amp; honey<br /><br />Bake at 190C",
+      image: "https://cdn.test/cover.jpg?a=1&amp;b=2",
     }),
   );
   assert(oe);
-  assertEquals(oe.title, 'Jena on Instagram: "ZINGY LIME"');
-  assertEquals(oe.html, "• 1 egg & honey");
-  assertEquals(oe.thumbnail_url, "https://example.test/cover.jpg?a=1&b=2");
+  assertEquals(oe.author, "thechef");
+  assertEquals(oe.caption, "ZINGY LIME CURD\n• 1 egg & honey\n\nBake at 190C");
+  assertEquals(oe.thumbnailUrl, "https://cdn.test/cover.jpg?a=1&b=2");
 });
 
-Deno.test("parseInstagramHtml: returns null when both title and description are missing", () => {
-  const oe = parseInstagramHtml("<html><head></head><body>no og</body></html>");
-  assertEquals(oe, null);
-});
-
-Deno.test("parseInstagramHtml: tolerates content-before-property attribute order", () => {
-  const html =
-    '<meta content="A caption" property="og:description"><meta content="A title" property="og:title">';
-  const oe = parseInstagramHtml(html);
-  assert(oe);
-  assertEquals(oe.title, "A title");
-  assertEquals(oe.html, "A caption");
-});
-
-Deno.test("parseInstagramHtml: captures multi-line caption content", () => {
-  const caption = "ZINGY LIME\nLime Curd\n• 1 egg\n• honey";
-  const oe = parseInstagramHtml(
-    `<meta property="og:description" content="${caption}" />`,
+Deno.test("parseCaptionedEmbed: works without a username anchor", () => {
+  const oe = parseCaptionedEmbed(
+    embedHtml({ caption: "Just a caption<br />line two" }),
   );
   assert(oe);
-  assertEquals(oe.html, caption);
+  assertEquals(oe.author, undefined);
+  assertEquals(oe.caption, "Just a caption\nline two");
 });
 
-Deno.test("fetchDirectCaption: returns the caption on a 200 with og tags", async () => {
+Deno.test("parseCaptionedEmbed: returns null when there is no Caption block", () => {
+  assertEquals(
+    parseCaptionedEmbed("<html><body>login required</body></html>"),
+    null,
+  );
+});
+
+Deno.test("parseCaptionedEmbed: returns null on an empty caption", () => {
+  assertEquals(parseCaptionedEmbed(embedHtml({ username: "thechef" })), null);
+});
+
+Deno.test("fetchInstagramCaption: fetches the captioned embed and returns the caption", async () => {
   using mock = installMockFetch([
     {
-      match: (req) =>
-        req.url.startsWith("https://www.instagram.com/reel/DX6MMYWOn3Z/"),
+      match: (req) => req.url === EMBED_URL,
       response: htmlResponse(
-        htmlWithOg({
-          title: "@chef on Instagram",
-          description: "Tomato tarte recipe",
-          image: "https://example.test/cover.jpg",
+        embedHtml({
+          username: "thechef",
+          caption: "Tomato tarte recipe<br />2 tomatoes",
+          image: "https://cdn.test/cover.jpg",
         }),
       ),
     },
   ]);
-  const oe = await fetchDirectCaption(REEL_URL);
+  const oe = await fetchInstagramCaption(REEL_URL);
   assert(oe);
-  assertEquals(oe.html, "Tomato tarte recipe");
+  assertEquals(oe.caption, "Tomato tarte recipe\n2 tomatoes");
+  assertEquals(oe.author, "thechef");
   assertEquals(mock.calls.length, 1);
-  assertEquals(mock.calls[0].url, REEL_URL);
+  // The fetch must hit the /p/ captioned embed, not the (walled) post page.
+  assertEquals(mock.calls[0].url, EMBED_URL);
   // Sanity: the fetch must use a realistic browser UA, not DishtonBot. Instagram
   // returns 401/403 to non-browser UAs from datacenter IPs in production.
   const ua = mock.calls[0].headers.get("user-agent") ?? "";
   assert(/Mozilla/.test(ua), `expected browser UA, got: ${ua}`);
 });
 
-Deno.test("fetchDirectCaption: returns null and logs non_ok on a 4xx", async () => {
+Deno.test("fetchInstagramCaption: returns null and logs no_shortcode for a non-post URL", async () => {
+  using mock = installMockFetch([{ match: () => true, response: htmlResponse("") }]);
+  const events: FetchEvent[] = [];
+  const oe = await fetchInstagramCaption(
+    "https://www.instagram.com/thechef/",
+    undefined,
+    (e) => events.push(e),
+  );
+  assertEquals(oe, null);
+  assertEquals(mock.calls.length, 0);
+  assertEquals(events.length, 1);
+  assertEquals(events[0].reason, "no_shortcode");
+});
+
+Deno.test("fetchInstagramCaption: returns null and logs non_ok on a 4xx", async () => {
   using _mock = installMockFetch([
     { match: () => true, response: new Response("forbidden", { status: 403 }) },
   ]);
   const events: FetchEvent[] = [];
-  const oe = await fetchDirectCaption(
+  const oe = await fetchInstagramCaption(
     REEL_URL,
     undefined,
     (e) => events.push(e),
@@ -132,7 +173,7 @@ Deno.test("fetchDirectCaption: returns null and logs non_ok on a 4xx", async () 
   assertEquals(events[0].reason, "non_ok");
 });
 
-Deno.test("fetchDirectCaption: returns null and logs no_og on a login wall (200, no og tags)", async () => {
+Deno.test("fetchInstagramCaption: returns null and logs no_caption on a login wall (200, no Caption block)", async () => {
   using _mock = installMockFetch([
     {
       match: () => true,
@@ -140,7 +181,7 @@ Deno.test("fetchDirectCaption: returns null and logs no_og on a login wall (200,
     },
   ]);
   const events: FetchEvent[] = [];
-  const oe = await fetchDirectCaption(
+  const oe = await fetchInstagramCaption(
     REEL_URL,
     undefined,
     (e) => events.push(e),
@@ -149,10 +190,10 @@ Deno.test("fetchDirectCaption: returns null and logs no_og on a login wall (200,
   assertEquals(events.length, 1);
   assertEquals(events[0].ok, false);
   assertEquals(events[0].status, 200);
-  assertEquals(events[0].reason, "no_og");
+  assertEquals(events[0].reason, "no_caption");
 });
 
-Deno.test("fetchDirectCaption: returns null and logs fetch_error when the request throws", async () => {
+Deno.test("fetchInstagramCaption: returns null and logs fetch_error when the request throws", async () => {
   using _mock = installMockFetch([
     {
       match: () => true,
@@ -162,7 +203,7 @@ Deno.test("fetchDirectCaption: returns null and logs fetch_error when the reques
     },
   ]);
   const events: FetchEvent[] = [];
-  const oe = await fetchDirectCaption(
+  const oe = await fetchInstagramCaption(
     REEL_URL,
     undefined,
     (e) => events.push(e),
