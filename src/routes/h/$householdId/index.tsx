@@ -15,7 +15,7 @@ import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { useToast } from '@/ui/primitives/Toast';
-import { HomeBanner } from '@/ui/recipe/HomeBanner';
+import { HomeGreeting } from '@/ui/recipe/HomeGreeting';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { RecipeCardRemoveLinkButton } from '@/ui/recipe/RecipeCardRemoveLinkButton';
 import { RecipeCardSaveButton } from '@/ui/recipe/RecipeCardSaveButton';
@@ -183,13 +183,7 @@ function RecipeListPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 pt-6 pb-8">
-      <HomeBanner
-        householdId={householdId}
-        eyebrow={t('recipe.household_eyebrow')}
-        title={
-          household.data?.name ?? (isSolo ? t('recipe.list_title_solo') : t('recipe.list_title'))
-        }
-      />
+      <HomeGreeting />
 
       <div className="mb-6 space-y-5">
         <SearchBar
@@ -328,8 +322,9 @@ function RecipeListPage() {
                     <Card className="h-full overflow-hidden bg-paper p-0 transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-0.5 hover:shadow-press-lg">
                       {/* Always render the image box so every card is the same
                         height. Recipes with a hero show it; the rest get a
-                        produce illustration keyed to their category. */}
-                      <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-cream-line">
+                        produce illustration keyed to their category. The title
+                        sits in an overlay caption over a paper fade. */}
+                      <div className="relative aspect-[4/3] w-full overflow-hidden">
                         {r.hero_image_path ? (
                           <RecipeImage
                             path={r.hero_image_path}
@@ -352,23 +347,24 @@ function RecipeListPage() {
                             />
                           </div>
                         )}
-                        {r.source_type && (
-                          <span className="absolute bottom-0 left-0 z-[5] rounded-tr-[9px] bg-paper/85 px-2 py-1 font-mono text-[0.52rem] uppercase tracking-[0.14em] text-blueberry">
-                            {t(`recipe.source.${r.source_type}`)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        {/* min-h reserves two lines so single-line titles don't make a
-                          shorter card than wrapped ones; line-clamp caps the overflow. */}
-                        <h2 className="font-display text-base sm:text-lg leading-snug line-clamp-2 min-h-[2lh]">
-                          {r.title}
-                        </h2>
-                        {r.total_time_min ? (
-                          <div className="mt-1.5 font-mono text-[0.6rem] uppercase tracking-[0.04em] text-ink-muted">
-                            {r.total_time_min} {t('recipe.minutes_short')}
-                          </div>
-                        ) : null}
+                        {/* Paper fade rising from the bottom so the title reads
+                          cleanly over any photo. */}
+                        <div
+                          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[66%]"
+                          style={{
+                            background:
+                              'linear-gradient(to top, color-mix(in srgb, var(--color-paper) 94%, transparent) 0%, color-mix(in srgb, var(--color-paper) 72%, transparent) 40%, color-mix(in srgb, var(--color-paper) 20%, transparent) 76%, transparent 100%)',
+                          }}
+                          aria-hidden="true"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 z-[6] px-3 pt-[11px] pb-[13px]">
+                          <h2
+                            className="font-display text-[1.02rem] leading-snug line-clamp-2 text-ink"
+                            style={{ textShadow: '0 1px 6px rgba(250,243,227,0.7)' }}
+                          >
+                            {r.title}
+                          </h2>
+                        </div>
                       </div>
                     </Card>
                   </Link>
@@ -386,9 +382,9 @@ function RecipeListPage() {
         params={{ householdId }}
         aria-label={t('nav.import_action')}
         title={t('nav.import_action')}
-        className="fixed bottom-6 left-1/2 z-40 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-saffron text-saffron-ink shadow-press-lg transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-px active:translate-y-0"
+        className="fixed bottom-6 left-1/2 z-40 flex h-[58px] w-[58px] -translate-x-1/2 items-center justify-center rounded-full bg-saffron text-saffron-ink shadow-press-lg transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-px active:translate-y-0"
       >
-        <Plus size={28} strokeWidth={2.25} aria-hidden="true" />
+        <Plus size={28} strokeWidth={2} aria-hidden="true" />
       </Link>
 
       <CustomizeHomeSheet

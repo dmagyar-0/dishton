@@ -3,6 +3,15 @@ export default {
     name: 'Dishton',
     tagline: "Your household's recipe pantry.",
   },
+  home: {
+    greeting: 'Good {{period}}, {{name}}',
+    greeting_noname: 'Good {{period}}',
+    period_morning: 'morning',
+    period_afternoon: 'afternoon',
+    period_evening: 'evening',
+    // <1> marks the highlighted cooking word, rendered in the saffron accent.
+    question: 'What would you like to <1>cook</1> today?',
+  },
   common: {
     close: 'Close',
   },
@@ -39,7 +48,7 @@ export default {
   nav: {
     home: 'Home',
     my_recipes: 'My Recipes',
-    following: 'Following',
+    households: 'Households',
     import: 'Import',
     import_action: 'Import a recipe',
     profile: 'Profile',
@@ -87,6 +96,10 @@ export default {
     merge_notice_title: "You'll combine kitchens",
     merge_notice:
       "Your recipes and custom tags will move into theirs — no duplicates removed. Your personal space will close once you're sharing.",
+  },
+  households: {
+    title: 'Households',
+    subtitle: 'Share your kitchen with other households and follow theirs.',
   },
   following: {
     title: 'Following',

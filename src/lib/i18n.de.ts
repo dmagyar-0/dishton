@@ -3,6 +3,15 @@ export default {
     name: 'Dishton',
     tagline: 'Die Rezeptkammer eures Haushalts.',
   },
+  home: {
+    greeting: 'Guten {{period}}, {{name}}',
+    greeting_noname: 'Guten {{period}}',
+    period_morning: 'Morgen',
+    period_afternoon: 'Tag',
+    period_evening: 'Abend',
+    // <1> marks the highlighted cooking word, rendered in the saffron accent.
+    question: 'Was möchtest du heute <1>kochen</1>?',
+  },
   common: {
     close: 'Schließen',
   },
@@ -40,7 +49,7 @@ export default {
   nav: {
     home: 'Start',
     my_recipes: 'Meine Rezepte',
-    following: 'Folge ich',
+    households: 'Haushalte',
     import: 'Import',
     import_action: 'Rezept importieren',
     profile: 'Profil',
@@ -89,6 +98,10 @@ export default {
     merge_notice_title: 'Ihr legt eure Küchen zusammen',
     merge_notice:
       'Deine Rezepte und Tags wandern zu ihren — Duplikate bleiben erhalten. Dein persönlicher Bereich schließt, sobald du teilst.',
+  },
+  households: {
+    title: 'Haushalte',
+    subtitle: 'Teile deine Küche mit anderen Haushalten und folge ihren.',
   },
   following: {
     title: 'Folge ich',

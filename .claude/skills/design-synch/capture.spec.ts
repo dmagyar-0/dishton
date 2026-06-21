@@ -145,7 +145,6 @@ test('snapshot: solo user', async ({ page }, info) => {
   await shot(page, info, '17-settings-general-solo');
   for (const [i, name] of [
     [18, /invite|member/i],
-    [19, /sharing|share|follow/i],
     [20, /tags?/i],
   ] as const) {
     if (await tap(page.getByRole('tab', { name }))) {
@@ -159,9 +158,10 @@ test('snapshot: solo user', async ({ page }, info) => {
     await page.keyboard.press('Escape').catch(() => {});
   }
 
-  // Following (follows_enabled is on in seed) — empty state for a fresh user.
-  await page.goto('/following');
-  await shot(page, info, '22-following-empty');
+  // Households — the follow/sharing surface (moved off the Settings tab),
+  // empty state for a fresh user.
+  await page.goto('/households');
+  await shot(page, info, '22-households-empty');
 });
 
 // ---------------------------------------------------------------------------
@@ -246,7 +246,6 @@ test('snapshot: household user', async ({ page }, info) => {
   await shot(page, info, '42-settings-general');
   for (const [i, name] of [
     [43, /member/i],
-    [44, /sharing|share|follow/i],
     [45, /tags?/i],
   ] as const) {
     if (await tap(page.getByRole('tab', { name }))) {
@@ -254,7 +253,7 @@ test('snapshot: household user', async ({ page }, info) => {
     }
   }
 
-  // Following — populated (The Pantry follows Carol's Kitchen in the seed).
-  await page.goto('/following');
-  await shot(page, info, '46-following-populated');
+  // Households — populated (The Pantry follows Carol's Kitchen in the seed).
+  await page.goto('/households');
+  await shot(page, info, '46-households-populated');
 });

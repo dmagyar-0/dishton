@@ -3,6 +3,15 @@ export default {
     name: 'Dishton',
     tagline: 'A háztartásod receptkamrája.',
   },
+  home: {
+    greeting: 'Jó {{period}}, {{name}}',
+    greeting_noname: 'Jó {{period}}',
+    period_morning: 'reggelt',
+    period_afternoon: 'napot',
+    period_evening: 'estét',
+    // <1> marks the highlighted cooking word, rendered in the saffron accent.
+    question: 'Mit szeretnél ma <1>főzni</1>?',
+  },
   common: {
     close: 'Bezárás',
   },
@@ -39,7 +48,7 @@ export default {
   nav: {
     home: 'Kezdőlap',
     my_recipes: 'Receptjeim',
-    following: 'Követett',
+    households: 'Háztartások',
     import: 'Importálás',
     import_action: 'Recept importálása',
     profile: 'Profil',
@@ -88,6 +97,10 @@ export default {
     merge_notice_title: 'Összevonjátok a konyháitokat',
     merge_notice:
       'A receptjeid és egyéni címkéid átkerülnek az övéikbe — másolatok nem törlődnek. A személyes tered bezárul, amint megosztasz.',
+  },
+  households: {
+    title: 'Háztartások',
+    subtitle: 'Oszd meg a konyhádat más háztartásokkal, és kövesd az övéiket.',
   },
   following: {
     title: 'Követett',
