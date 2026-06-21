@@ -1,19 +1,29 @@
-import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/ui/cn';
 import { RoughFilterDefs } from '@/ui/search/ProduceGlyph';
 import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
 import { Link, Outlet, useMatchRoute } from '@tanstack/react-router';
-import { Home, Settings, Upload, User, Users } from 'lucide-react';
+import { Home, Settings, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const NAV_BASE = cn(
-  'inline-flex items-center gap-1.5 px-2 md:px-3 py-2 rounded-[var(--radius-pill)]',
+  'relative inline-flex items-center gap-1.5 px-2 md:px-3 py-2 rounded-[var(--radius-pill)]',
   'text-sm transition-colors duration-[var(--duration-fast)]',
 );
-// Active route gets the Lane 3 treatment: blueberry chip with a banana glyph.
+// Soft Contrast nav: the active route is marked by a small saffron dot under
+// the item and saffron-tinted label, rather than a filled chip.
 const navClass = (active: boolean) =>
-  cn(NAV_BASE, active ? 'bg-blueberry text-banana' : 'text-ink hover:bg-paper-2');
+  cn(NAV_BASE, active ? 'text-saffron' : 'text-ink hover:text-saffron');
+
+/** The active-route marker: a small saffron dot centered under the nav item. */
+function ActiveDot() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-saffron"
+    />
+  );
+}
 
 /** Small cut-paper produce mark beside the wordmark (decorative). */
 function BrandMark() {
@@ -59,20 +69,14 @@ export function AppShell() {
   const personalMembership = memberships.find((m) => m.is_personal);
   const householdId = (personalMembership ?? memberships[0])?.household_id;
   const isSolo = memberships.length === 1 && memberships[0]?.is_personal === true;
-  // FLAG: follows_enabled — only surface the Following nav entry when following
-  // is turned on (off by default in MVP production per docs/15).
-  const followsEnabled = useFeatureFlag('follows_enabled');
 
   const homeActive = householdId
     ? Boolean(matchRoute({ to: '/h/$householdId', params: { householdId } }))
     : false;
-  const importActive = householdId
-    ? Boolean(matchRoute({ to: '/h/$householdId/import', params: { householdId } }))
-    : false;
   const settingsActive = householdId
     ? Boolean(matchRoute({ to: '/h/$householdId/settings', params: { householdId } }))
     : false;
-  const followingActive = Boolean(matchRoute({ to: '/following' }));
+  const householdsActive = Boolean(matchRoute({ to: '/households' }));
   const profileActive = Boolean(matchRoute({ to: '/profile' }));
 
   return (
@@ -98,34 +102,21 @@ export function AppShell() {
                   <span className="hidden md:inline">
                     {isSolo ? t('nav.my_recipes') : t('nav.home')}
                   </span>
+                  {homeActive && <ActiveDot />}
                 </Link>
               </li>
             )}
-            {householdId && (
-              <li>
-                <Link
-                  to="/h/$householdId/import"
-                  params={{ householdId }}
-                  className={navClass(importActive)}
-                  aria-label={t('nav.import')}
-                >
-                  <Upload size={16} strokeWidth={1.5} />
-                  <span className="hidden md:inline">{t('nav.import')}</span>
-                </Link>
-              </li>
-            )}
-            {followsEnabled && (
-              <li>
-                <Link
-                  to="/following"
-                  className={navClass(followingActive)}
-                  aria-label={t('nav.following')}
-                >
-                  <Users size={16} strokeWidth={1.5} />
-                  <span className="hidden md:inline">{t('nav.following')}</span>
-                </Link>
-              </li>
-            )}
+            <li>
+              <Link
+                to="/households"
+                className={navClass(householdsActive)}
+                aria-label={t('nav.households')}
+              >
+                <Users size={16} strokeWidth={1.5} />
+                <span className="hidden md:inline">{t('nav.households')}</span>
+                {householdsActive && <ActiveDot />}
+              </Link>
+            </li>
             {householdId && (
               <li>
                 <Link
@@ -137,6 +128,7 @@ export function AppShell() {
                 >
                   <Settings size={16} strokeWidth={1.5} />
                   <span className="hidden md:inline">{t('nav.household_settings')}</span>
+                  {settingsActive && <ActiveDot />}
                 </Link>
               </li>
             )}
@@ -144,6 +136,7 @@ export function AppShell() {
               <Link to="/profile" className={navClass(profileActive)} aria-label={t('nav.profile')}>
                 <User size={16} strokeWidth={1.5} />
                 <span className="hidden md:inline">{t('nav.profile')}</span>
+                {profileActive && <ActiveDot />}
               </Link>
             </li>
             <li className="ml-1">

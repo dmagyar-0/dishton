@@ -34,11 +34,12 @@ test.describe('dishton smoke', () => {
     // their personal household.
     await expect(page).toHaveURL(/\/h\//);
 
-    // The recipe-list body also carries "Import" links (in a content <header>),
-    // so target the nav link by its aria-label — only the nav link sets one, so
-    // getByLabel is unambiguous on every viewport (it stays labelled even when
-    // it renders icon-only on mobile).
-    await page.getByLabel('Import', { exact: true }).click();
+    // The top nav no longer carries an Import item (import now lives in the
+    // floating "+" action on Home). On a fresh signup the pantry is empty, so
+    // reach the import flow via the empty-state call-to-action. It renders as a
+    // <button>, which disambiguates it from the floating "+" link that shares
+    // the same accessible name ("Import a recipe").
+    await page.getByRole('button', { name: 'Import a recipe' }).click();
 
     await page
       .getByPlaceholder(/example\.com\/recipe/i)

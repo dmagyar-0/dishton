@@ -3,7 +3,6 @@ import { useHousehold, useHouseholdMembers } from '@/lib/queries/households';
 import { setHouseholdContext } from '@/observability/sentry';
 import { GeneralSection } from '@/ui/household/GeneralSection';
 import { MembersSection } from '@/ui/household/MembersSection';
-import { SharingSection } from '@/ui/household/SharingSection';
 import { TagsSection } from '@/ui/household/TagsSection';
 import { Button, Card, Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/primitives';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -11,9 +10,9 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requireAuth } from '../../_guards';
 
-type SettingsTab = 'general' | 'members' | 'sharing' | 'tags';
+type SettingsTab = 'general' | 'members' | 'tags';
 
-const TAB_VALUES: ReadonlyArray<SettingsTab> = ['general', 'members', 'sharing', 'tags'];
+const TAB_VALUES: ReadonlyArray<SettingsTab> = ['general', 'members', 'tags'];
 
 export const Route = createFileRoute('/h/$householdId/settings')({
   beforeLoad: requireAuth,
@@ -112,7 +111,6 @@ function SettingsPage() {
           <TabsTrigger value="members">
             {isSolo ? t('household_settings.tabs.invite') : t('household_settings.tabs.members')}
           </TabsTrigger>
-          <TabsTrigger value="sharing">{t('household_settings.tabs.sharing')}</TabsTrigger>
           <TabsTrigger value="tags">{t('household_settings.tabs.tags')}</TabsTrigger>
         </TabsList>
 
@@ -138,10 +136,6 @@ function SettingsPage() {
               }}
             />
           )}
-        </TabsContent>
-
-        <TabsContent value="sharing">
-          <SharingSection householdId={householdId} isOwner={isOwner} />
         </TabsContent>
 
         <TabsContent value="tags">

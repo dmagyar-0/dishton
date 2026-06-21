@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding/index'
-import { Route as FollowingIndexRouteImport } from './routes/following/index'
+import { Route as HouseholdsIndexRouteImport } from './routes/households/index'
 import { Route as RTokenRouteImport } from './routes/r/$token'
 import { Route as AuthUpdatePasswordRouteImport } from './routes/auth/update-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
@@ -40,9 +40,9 @@ const OnboardingIndexRoute = OnboardingIndexRouteImport.update({
   path: '/onboarding/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FollowingIndexRoute = FollowingIndexRouteImport.update({
-  id: '/following/',
-  path: '/following/',
+const HouseholdsIndexRoute = HouseholdsIndexRouteImport.update({
+  id: '/households/',
+  path: '/households/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RTokenRoute = RTokenRouteImport.update({
@@ -112,7 +112,7 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/auth/update-password': typeof AuthUpdatePasswordRoute
   '/r/$token': typeof RTokenRoute
-  '/following/': typeof FollowingIndexRoute
+  '/households/': typeof HouseholdsIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
@@ -129,7 +129,7 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/auth/update-password': typeof AuthUpdatePasswordRoute
   '/r/$token': typeof RTokenRoute
-  '/following': typeof FollowingIndexRoute
+  '/households': typeof HouseholdsIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
@@ -147,7 +147,7 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/auth/update-password': typeof AuthUpdatePasswordRoute
   '/r/$token': typeof RTokenRoute
-  '/following/': typeof FollowingIndexRoute
+  '/households/': typeof HouseholdsIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/h/$householdId/import': typeof HHouseholdIdImportRoute
   '/h/$householdId/settings': typeof HHouseholdIdSettingsRoute
@@ -166,7 +166,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/auth/update-password'
     | '/r/$token'
-    | '/following/'
+    | '/households/'
     | '/onboarding/'
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
@@ -183,7 +183,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/auth/update-password'
     | '/r/$token'
-    | '/following'
+    | '/households'
     | '/onboarding'
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
@@ -200,7 +200,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/auth/update-password'
     | '/r/$token'
-    | '/following/'
+    | '/households/'
     | '/onboarding/'
     | '/h/$householdId/import'
     | '/h/$householdId/settings'
@@ -218,7 +218,7 @@ export interface RootRouteChildren {
   AuthSignupRoute: typeof AuthSignupRoute
   AuthUpdatePasswordRoute: typeof AuthUpdatePasswordRoute
   RTokenRoute: typeof RTokenRoute
-  FollowingIndexRoute: typeof FollowingIndexRoute
+  HouseholdsIndexRoute: typeof HouseholdsIndexRoute
   OnboardingIndexRoute: typeof OnboardingIndexRoute
   HHouseholdIdImportRoute: typeof HHouseholdIdImportRoute
   HHouseholdIdSettingsRoute: typeof HHouseholdIdSettingsRoute
@@ -250,11 +250,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/following/': {
-      id: '/following/'
-      path: '/following'
-      fullPath: '/following/'
-      preLoaderRoute: typeof FollowingIndexRouteImport
+    '/households/': {
+      id: '/households/'
+      path: '/households'
+      fullPath: '/households/'
+      preLoaderRoute: typeof HouseholdsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/r/$token': {
@@ -346,7 +346,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthSignupRoute: AuthSignupRoute,
   AuthUpdatePasswordRoute: AuthUpdatePasswordRoute,
   RTokenRoute: RTokenRoute,
-  FollowingIndexRoute: FollowingIndexRoute,
+  HouseholdsIndexRoute: HouseholdsIndexRoute,
   OnboardingIndexRoute: OnboardingIndexRoute,
   HHouseholdIdImportRoute: HHouseholdIdImportRoute,
   HHouseholdIdSettingsRoute: HHouseholdIdSettingsRoute,
