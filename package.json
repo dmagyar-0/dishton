@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3",
-    "@noble/hashes": "^1.5.0",
+    "@noble/hashes": "^2.2.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-slider": "^1.2.1",
     "@radix-ui/react-tabs": "^1.1.1",
