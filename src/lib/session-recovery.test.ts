@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
-vi.mock('./supabase', () => ({ supabase: { auth: { getSession } } }));
+const { getSession, isConnected, connect } = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  isConnected: vi.fn(),
+  connect: vi.fn(),
+}));
+vi.mock('./supabase', () => ({
+  supabase: { auth: { getSession }, realtime: { isConnected, connect } },
+}));
 
 const { captureException } = vi.hoisted(() => ({ captureException: vi.fn() }));
 vi.mock('../observability/sentry', () => ({
@@ -37,6 +43,8 @@ describe('installSessionRecovery', () => {
     now = 1_000_000;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
     getSession.mockReset().mockResolvedValue({ data: { session: null } });
+    isConnected.mockReset().mockReturnValue(true);
+    connect.mockReset();
     captureException.mockReset();
     invalidateQueries = vi.fn().mockResolvedValue(undefined);
     reload = vi.fn();
@@ -84,6 +92,20 @@ describe('installSessionRecovery', () => {
     // signal and must recover regardless of how long we were away.
     document.dispatchEvent(new Event('resume'));
     expect(getSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconnects a dropped Realtime socket on resume so channels rejoin', () => {
+    // The socket's heartbeat is throttled while the tab is backgrounded and the
+    // server drops it silently; on resume it reports disconnected.
+    isConnected.mockReturnValue(false);
+    document.dispatchEvent(new Event('resume'));
+    expect(connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reconnect Realtime when the socket is still connected', () => {
+    isConnected.mockReturnValue(true);
+    document.dispatchEvent(new Event('resume'));
+    expect(connect).not.toHaveBeenCalled();
   });
 
   it('treats a freeze as the start of a background and recovers on resume', () => {

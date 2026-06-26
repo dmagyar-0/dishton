@@ -45,6 +45,30 @@ export const supabase = createClient(url ?? 'http://localhost:54321', anon ?? 'a
     lock: processLock,
   },
   db: { schema: 'app' },
+  realtime: {
+    // Keep the Realtime socket alive across mobile backgrounding. A
+    // backgrounded tab's main-thread timers are throttled (to once a minute
+    // after ~5 min hidden), so the client misses its heartbeat window, the
+    // server assumes it is gone, and the WebSocket is dropped *silently* — no
+    // error fires, events just stop. Running the heartbeat in a Web Worker
+    // keeps it ticking off the throttled main thread. Gated on Worker support
+    // so jsdom (component/unit tests) and SSR — where `window.Worker` is
+    // undefined and realtime-js would throw "Web Worker is not supported" at
+    // client construction — fall back to a main-thread heartbeat. With no
+    // `workerUrl`, realtime-js builds the worker from an inline same-origin
+    // blob (needs `worker-src blob:` in the CSP; see vercel.json).
+    // See Supabase's "silent disconnections in backgrounded applications" guide.
+    worker: typeof Worker !== 'undefined',
+    // Belt and suspenders: if the socket still drops (iOS suspends background
+    // JS entirely, so even a worker stops), reconnect the moment a heartbeat
+    // reports the gap, rather than leaving the app on a dead socket until the
+    // user manually reloads. session-recovery.ts also forces this on resume.
+    heartbeatCallback: (status) => {
+      if (status === 'disconnected' || status === 'timeout') {
+        supabase.realtime.connect();
+      }
+    },
+  },
   // Bound every Supabase HTTP request with a timeout. Without it, a request
   // fired on a dead socket — classically a token refresh the moment a mobile
   // browser resumes the PWA after backgrounding — hangs until the OS TCP

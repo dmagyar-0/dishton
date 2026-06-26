@@ -71,6 +71,16 @@ export function installSessionRecovery(queryClient: QueryClient): () => void {
     if (now - lastRecoverAt < DEBOUNCE_MS) return;
     lastRecoverAt = now;
     logErrorBreadcrumb('session-recovery: recover', { trigger });
+    // Reconnect the Realtime socket if it died while backgrounded. A throttled
+    // heartbeat makes the server silently drop the socket; the worker +
+    // heartbeatCallback in supabase.ts reconnect on the next heartbeat, but
+    // force it now so every channel (import jobs, recipe chat) rejoins
+    // immediately instead of waiting up to a heartbeat interval — and so the
+    // channels other than import jobs, which have no resume handling of their
+    // own, recover at all.
+    if (!supabase.realtime.isConnected()) {
+      supabase.realtime.connect();
+    }
     // Nudge Supabase to validate/refresh the token (bounded by the fetch timeout
     // in timeout-fetch.ts), then refetch only the queries currently on screen.
     // The in-memory auth lock (supabase.ts) should keep this from ever wedging,
