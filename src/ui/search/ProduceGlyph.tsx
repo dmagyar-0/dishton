@@ -105,42 +105,56 @@ const GLYPHS: Record<string, ReactNode> = {
       })}
     </>
   ),
-  // bowl + chopsticks
+  // stacked sandwich: bun, lettuce, filling, bun — reads clearly as "lunch"
   lunch: (
     <>
       {blob({
-        width: 30,
-        height: 15,
-        left: 2,
-        top: 14,
-        borderRadius: '0 0 60% 60%',
+        width: 24,
+        height: 12,
+        left: 5,
+        top: 5,
+        borderRadius: '50% 50% 22% 22%',
         background: 'var(--color-saffron)',
       })}
       {blob({
-        width: 28,
-        height: 6,
-        left: 3,
-        top: 12,
+        width: 3,
+        height: 2,
+        left: 11,
+        top: 9,
         borderRadius: '50%',
         background: 'var(--color-banana)',
       })}
       {blob({
         width: 3,
-        height: 7,
-        left: 9,
-        top: 5,
-        borderRadius: 2,
-        background: 'var(--color-terracotta)',
-        transform: 'rotate(-18deg)',
+        height: 2,
+        left: 19,
+        top: 8,
+        borderRadius: '50%',
+        background: 'var(--color-banana)',
       })}
       {blob({
-        width: 3,
-        height: 7,
-        left: 22,
-        top: 5,
-        borderRadius: 2,
+        width: 28,
+        height: 6,
+        left: 3,
+        top: 15,
+        borderRadius: '50%',
+        background: 'var(--color-soft-green)',
+      })}
+      {blob({
+        width: 26,
+        height: 6,
+        left: 4,
+        top: 18,
+        borderRadius: '30%',
         background: 'var(--color-terracotta)',
-        transform: 'rotate(18deg)',
+      })}
+      {blob({
+        width: 24,
+        height: 9,
+        left: 5,
+        top: 22,
+        borderRadius: '20% 20% 50% 50%',
+        background: 'var(--color-peach)',
       })}
     </>
   ),
@@ -495,35 +509,56 @@ const GLYPHS: Record<string, ReactNode> = {
       })}
     </>
   ),
-  // lightning bolt — quick
+  // stopwatch — quick / ready-in-minutes
   quick: (
     <>
       {blob({
-        width: 8,
-        height: 17,
-        left: 18,
+        width: 6,
+        height: 4,
+        left: 14,
         top: 3,
-        borderRadius: 3,
-        background: 'var(--color-saffron)',
-        transform: 'rotate(30deg)',
+        borderRadius: '40% 40% 0 0',
+        background: 'var(--color-blueberry)',
       })}
       {blob({
-        width: 13,
-        height: 7,
-        left: 11,
-        top: 14,
-        borderRadius: 3,
-        background: 'var(--color-saffron)',
-        transform: 'rotate(8deg)',
+        width: 24,
+        height: 24,
+        left: 5,
+        top: 7,
+        borderRadius: '50%',
+        background: 'var(--color-blueberry)',
       })}
       {blob({
-        width: 8,
+        width: 17,
         height: 17,
-        left: 9,
-        top: 14,
-        borderRadius: 3,
+        left: 8.5,
+        top: 10.5,
+        borderRadius: '50%',
+        background: '#fbf3e2',
+      })}
+      {blob({
+        width: 2.5,
+        height: 8,
+        left: 16,
+        top: 11,
+        borderRadius: 2,
+        background: 'var(--color-terracotta)',
+      })}
+      {blob({
+        width: 7,
+        height: 2.5,
+        left: 17,
+        top: 18,
+        borderRadius: 2,
+        background: 'var(--color-terracotta)',
+      })}
+      {blob({
+        width: 3,
+        height: 3,
+        left: 16,
+        top: 18,
+        borderRadius: '50%',
         background: 'var(--color-saffron)',
-        transform: 'rotate(30deg)',
       })}
     </>
   ),
