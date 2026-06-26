@@ -11,7 +11,8 @@ import {
 import { Check, Lock, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ALL_CATEGORY, categoryIcon, categoryLabel } from './categoryIcons';
+import { ProduceGlyph, categoryDisc } from './ProduceGlyph';
+import { ALL_CATEGORY, categoryLabel } from './categoryIcons';
 
 export type CustomizeHomeSheetProps = {
   open: boolean;
@@ -35,10 +36,10 @@ function LibraryTile({
   state: TileState;
   onToggle?: () => void;
 }) {
-  const Icon = categoryIcon(id);
   const BadgeIcon = state === 'locked' ? Lock : state === 'on' ? Check : Plus;
   const selected = state === 'locked' || state === 'on';
   const disabled = state === 'locked' || state === 'blocked';
+  const disc = categoryDisc(id);
   return (
     <button
       type="button"
@@ -51,18 +52,20 @@ function LibraryTile({
         state === 'locked' && 'cursor-default',
       )}
     >
-      <span
-        className={cn(
-          'relative flex size-14 items-center justify-center rounded-[17px] border',
-          'transition-[transform,background-color,border-color] duration-[var(--duration-fast)]',
-          'ease-[var(--ease-paper)]',
-          state !== 'blocked' && state !== 'locked' && 'group-hover/lib:-translate-y-0.5',
-          selected
-            ? 'border-saffron bg-[color-mix(in_srgb,var(--color-saffron)_15%,var(--color-paper))] text-saffron-ink'
-            : 'border-cream-line bg-paper-2 text-ink-soft',
-        )}
-      >
-        <Icon size={22} strokeWidth={1.5} aria-hidden="true" />
+      <span className="relative">
+        <span
+          className={cn(
+            'tex flex size-14 items-center justify-center overflow-hidden rounded-[17px] border',
+            'text-ink-soft shadow-press transition-transform duration-[var(--duration-fast)]',
+            'ease-[var(--ease-paper)]',
+            state !== 'blocked' && state !== 'locked' && 'group-hover/lib:-translate-y-0.5',
+            disc.tint,
+            disc.tex,
+            selected ? 'border-transparent ring-2 ring-saffron' : 'border-black/8',
+          )}
+        >
+          <ProduceGlyph category={id} size={30} />
+        </span>
         <span
           className={cn(
             'absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border',
