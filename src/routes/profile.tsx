@@ -220,9 +220,9 @@ function ProfilePage() {
 
       <ChangePasswordCard />
 
-      <Card className="p-6 mt-4 space-y-3">
+      <Card className="p-6 mt-4 space-y-4">
         <Button
-          variant="ghost"
+          variant="secondary"
           onClick={async () => {
             await auth.signOut();
             await nav({ to: '/auth/login' });
@@ -232,7 +232,7 @@ function ProfilePage() {
         </Button>
         <div>
           <Button
-            variant="ghost"
+            variant="destructive"
             onClick={() => void signOutEverywhere()}
             disabled={signingOutAll}
             loading={signingOutAll}
