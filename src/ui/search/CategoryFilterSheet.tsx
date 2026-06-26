@@ -8,7 +8,8 @@ import {
   DrawerTitle,
 } from '@/ui/primitives';
 import { useTranslation } from 'react-i18next';
-import { categoryIcon, categoryLabel } from './categoryIcons';
+import { ProduceGlyph } from './ProduceGlyph';
+import { categoryLabel } from './categoryIcons';
 
 export type CategoryFilterSheetProps = {
   open: boolean;
@@ -50,7 +51,6 @@ export function CategoryFilterSheet({
 
         <div className="flex flex-1 flex-wrap gap-2 overflow-y-auto py-1" role="group">
           {library.map((tag) => {
-            const Icon = categoryIcon(tag);
             const active = selected.includes(tag);
             return (
               <button
@@ -66,7 +66,7 @@ export function CategoryFilterSheet({
                     : 'border-cream-line bg-paper-2 text-ink hover:bg-paper',
                 )}
               >
-                <Icon size={15} strokeWidth={1.5} aria-hidden="true" />
+                <ProduceGlyph category={tag} size={18} />
                 {categoryLabel(tag)}
               </button>
             );
