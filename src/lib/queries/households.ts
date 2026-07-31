@@ -219,13 +219,24 @@ export function useFollowedHouseholds(householdId: string) {
         (data as unknown as Array<{
           followed_household_id: string;
           created_at: string;
-          households: { id: string; name: string };
+          households: { id: string; name: string } | null;
         }>) ?? [];
-      return rows.map((r) => ({
-        followed_household_id: r.followed_household_id,
-        created_at: r.created_at,
-        household: r.households,
-      }));
+      // A non-`!inner` embed that RLS filters out arrives as `households: null`
+      // rather than dropping the row. Following grants read access to the
+      // followed household, so this should not happen — but a row we cannot
+      // name is a row we cannot usefully render, and letting the null through
+      // would throw during render and take the whole page down.
+      return rows.flatMap((r) =>
+        r.households
+          ? [
+              {
+                followed_household_id: r.followed_household_id,
+                created_at: r.created_at,
+                household: r.households,
+              },
+            ]
+          : [],
+      );
     },
   });
 }
@@ -234,24 +245,25 @@ export function useFollowersOfHousehold(householdId: string) {
   return useQuery({
     queryKey: ['household', householdId, 'followers'],
     queryFn: async (): Promise<FollowerHousehold[]> => {
-      const { data, error } = await supabase
-        .from('follows')
-        .select(
-          'follower_household_id, created_at, households!follows_follower_household_id_fkey(id, name)',
-        )
-        .eq('followed_household_id', householdId)
-        .order('created_at', { ascending: false });
+      // Deliberately an RPC, not a `follows` + households embed. RLS lets a
+      // household read the households it follows, but not the ones following
+      // it, so the embed returned `households: null` for every follower and
+      // rendering its name white-screened the page. The definer-side function
+      // joins the follower household and hands back just its id and name.
+      const { data, error } = await supabase.rpc('list_household_followers', {
+        p_household: householdId,
+      });
       if (error) throw error;
       const rows =
         (data as unknown as Array<{
           follower_household_id: string;
+          name: string;
           created_at: string;
-          households: { id: string; name: string };
         }>) ?? [];
       return rows.map((r) => ({
         follower_household_id: r.follower_household_id,
         created_at: r.created_at,
-        household: r.households,
+        household: { id: r.follower_household_id, name: r.name },
       }));
     },
   });

@@ -241,6 +241,10 @@ with assertions(label, ok) as (
    exists(select 1 from pg_proc p
           join pg_namespace n on n.oid = p.pronamespace
           where n.nspname='app' and p.proname='create_follow_code')),
+  ('function app.list_household_followers exists',
+   exists(select 1 from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname='app' and p.proname='list_household_followers')),
   ('function app.save_recipe exists',
    exists(select 1 from pg_proc p
           join pg_namespace n on n.oid = p.pronamespace

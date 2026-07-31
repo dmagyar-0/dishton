@@ -170,9 +170,79 @@ begin
 end;
 $$;
 
+-- Names of the households following p_household, as seen by p_persona. The
+-- /households screen renders exactly this list, so a null name here is the
+-- white-screen the RPC exists to prevent.
+create or replace function pg_temp.q_as_follower_names(
+  p_persona uuid, p_household uuid
+) returns text language plpgsql as $$
+declare s text;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_persona::text, 'role', 'authenticated')::text,
+    true);
+  select coalesce(string_agg(f.name, ',' order by f.name), '')
+    into s
+    from app.list_household_followers(p_household) f;
+  perform set_config('role', 'postgres', true);
+  return s;
+end;
+$$;
+
+create or replace function pg_temp.q_as_households_count(
+  p_persona uuid, p_household uuid
+) returns bigint language plpgsql as $$
+declare n bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_persona::text, 'role', 'authenticated')::text,
+    true);
+  select count(*) into n from app.households where id = p_household;
+  perform set_config('role', 'postgres', true);
+  return n;
+end;
+$$;
+
 ------------------------------------------------------------------------------
 -- Assertions
 ------------------------------------------------------------------------------
+
+-- H1 follows H2, so C (member of H2) must be able to name its follower even
+-- though the follow is one-way and H1's row stays unreadable to C.
+select pg_temp.check_as(
+  'C can name H1 as a follower of H2',
+  '00000000-0000-0000-0000-00000000000c'::uuid,
+  pg_temp.q_as_follower_names(
+    '00000000-0000-0000-0000-00000000000c'::uuid,
+    'aaaaaaaa-0000-0000-0000-000000000002'::uuid
+  ) = 'RLS H1');
+
+select pg_temp.check_as(
+  'C still cannot SELECT the H1 household row',
+  '00000000-0000-0000-0000-00000000000c'::uuid,
+  pg_temp.q_as_households_count(
+    '00000000-0000-0000-0000-00000000000c'::uuid,
+    'aaaaaaaa-0000-0000-0000-000000000001'::uuid
+  ) = 0);
+
+select pg_temp.check_as(
+  'D cannot list followers of a household it is not in',
+  '00000000-0000-0000-0000-00000000000d'::uuid,
+  pg_temp.q_as_follower_names(
+    '00000000-0000-0000-0000-00000000000d'::uuid,
+    'aaaaaaaa-0000-0000-0000-000000000002'::uuid
+  ) = '');
+
+-- The follow is one-way: H2 does not follow H1, so H1's members see nobody.
+select pg_temp.check_as(
+  'A sees no followers of H1',
+  '00000000-0000-0000-0000-00000000000a'::uuid,
+  pg_temp.q_as_follower_names(
+    '00000000-0000-0000-0000-00000000000a'::uuid,
+    'aaaaaaaa-0000-0000-0000-000000000001'::uuid
+  ) = '');
 
 select pg_temp.check_as(
   'A sees H1 recipe',

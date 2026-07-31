@@ -293,7 +293,7 @@ inline in the migrations):
 | profiles | self read | `id = auth.uid()` |
 | profiles | self update | same |
 | households | member read | `app.is_household_member(id)` |
-| households | follower read | `app.is_household_follower(id)` |
+| households | follower read | `app.is_household_follower(id)` — the households you follow. Note the reverse does **not** hold: a household cannot SELECT the rows of households that follow *it*. Read those through `app.list_household_followers` instead |
 | households | owner update | `id in (select household_id from app.household_members where profile_id = auth.uid() and role = 'owner')` |
 | household_members | self read | `profile_id = auth.uid()` |
 | household_members | member read | `app.is_household_member(household_id)` |

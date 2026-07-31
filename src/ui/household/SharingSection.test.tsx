@@ -23,7 +23,16 @@ const followedQuery = {
   isLoading: false,
   refetch: vi.fn().mockResolvedValue({ data: [] }),
 };
-const followersQuery = { data: [], isLoading: false };
+const followersQuery = {
+  data: [
+    {
+      follower_household_id: 'h_follower',
+      household: { id: 'h_follower', name: 'Nagyi konyhája' },
+      created_at: new Date().toISOString(),
+    },
+  ],
+  isLoading: false,
+};
 
 const addFollow = vi.fn().mockResolvedValue('h_followed');
 
@@ -74,5 +83,17 @@ describe('SharingSection follow code copy', () => {
   it('hides the redeem form from non-owners', () => {
     render(<SharingSection householdId="h_1" isOwner={false} />);
     expect(screen.queryByLabelText('following.add_title')).toBeNull();
+  });
+
+  // Rendering a follower must not depend on the follower household's row being
+  // readable: it isn't, under the households RLS policy. The section names the
+  // follower, and — critically — still renders the share controls around it.
+  it('names a follower household without losing the share controls', () => {
+    render(<SharingSection householdId="h_1" isOwner={true} />);
+
+    expect(screen.getByText('Nagyi konyhája')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'household_settings.sharing.generate_follow_code' }),
+    ).toBeTruthy();
   });
 });

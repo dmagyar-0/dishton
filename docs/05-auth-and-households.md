@@ -258,6 +258,12 @@ the URL parameter.
   invites but consumed via `app.add_follow(code)` which inserts a row into
   `app.follows`. Add this RPC alongside `redeem_invite` in the
   `*_invites.sql` migration.
+- Section "Followers" — the households that follow you. Read via
+  `app.list_household_followers(p_household)`, **not** a `follows` + households
+  embed: the households RLS policy covers members and the households you
+  follow, so a follower's household row is unreadable and the embed comes back
+  null. The RPC is `security definer` and returns only the follower's id, name,
+  and follow date.
 - Followed households' recipes appear in `/following`, never in
   `/h/:householdId`.
 
