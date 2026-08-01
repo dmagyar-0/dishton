@@ -28,6 +28,7 @@ import { rehostRemoteHeroImage } from "../_shared/scrape/rehost-image.ts";
 import { structuringFromCaption } from "../_shared/ai/prompts.ts";
 import { runDetached } from "../_shared/import-runner.ts";
 import { log, logAiCall } from "../_shared/log.ts";
+import { aiUsageAdminClient, recordAiUsage } from "../_shared/ai-usage.ts";
 import { fetchInstagramCaption, type FetchEvent } from "./fallback.ts";
 
 const Body = z.object({
@@ -272,6 +273,22 @@ serve(async (req: Request) => {
           },
           "warn",
         );
+        void recordAiUsage(aiUsageAdminClient(), {
+          function: "import-instagram",
+          lane: "text",
+          model: "(unknown)",
+          profile_id: callerProfileId,
+          household_id: householdId,
+          request_id: requestId,
+          import_job_id: jobId,
+          tokens_in: 0,
+          tokens_out: 0,
+          cache_read: 0,
+          cache_write: 0,
+          latency_ms: ms,
+          ok: false,
+          reason: result.reason,
+        });
         return {
           ok: false,
           reason: result.reason,
@@ -293,6 +310,22 @@ serve(async (req: Request) => {
         cache_read: result.usage.cache_read,
         cache_write: result.usage.cache_write,
         ok: true,
+      });
+      void recordAiUsage(aiUsageAdminClient(), {
+        function: "import-instagram",
+        lane: "text",
+        model: result.model,
+        profile_id: callerProfileId,
+        household_id: householdId,
+        request_id: requestId,
+        import_job_id: jobId,
+        tokens_in: result.usage.input,
+        tokens_out: result.usage.output,
+        cache_read: result.usage.cache_read ?? 0,
+        cache_write: result.usage.cache_write ?? 0,
+        latency_ms: ms,
+        ok: true,
+        reason: null,
       });
       emit("request.success", {
         ms,
@@ -383,8 +416,11 @@ serve(async (req: Request) => {
             url: body.url,
             draft: value.draft,
             thumbnail_url: value.thumbnailUrl,
+            model: value.model,
             tokens_in: value.usage.input,
             tokens_out: value.usage.output,
+            cache_read: value.usage.cache_read ?? 0,
+            cache_write: value.usage.cache_write ?? 0,
             latency_ms: value.latencyMs,
           },
         })
