@@ -15,7 +15,12 @@ const MAX_AGENT_CYCLES = 24;
 
 function admin() {
   return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
+    // autoRefreshToken defaults to true, which starts a background
+    // setInterval to refresh the session token. A service-role key is not a
+    // user session and never needs refreshing, so that timer is pure waste
+    // inside a short-lived Edge Function isolate (and it leaks past test
+    // completion under Deno's leak detector). Keep this false.
+    auth: { persistSession: false, autoRefreshToken: false },
     db: { schema: 'app' },
   });
 }
