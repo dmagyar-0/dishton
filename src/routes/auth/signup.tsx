@@ -1,6 +1,7 @@
 import { authErrorCopy } from '@/lib/auth-errors';
 import { type SignupInput, SignupSchema } from '@/lib/forms/auth';
 import { supabase } from '@/lib/supabase';
+import { track } from '@/observability/analytics';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
@@ -44,6 +45,7 @@ function SignupPage() {
               setServerError(authErrorCopy(error.message));
               return;
             }
+            track('signup_completed', { method: 'email' });
             await nav({ to: '/' });
           })}
         >

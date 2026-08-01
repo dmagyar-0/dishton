@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 import { bootstrapAuth, registerQueryClient, useAuth } from './lib/auth';
 import { installSessionRecovery } from './lib/session-recovery';
+import { track } from './observability/analytics';
 import { initSentry } from './observability/sentry';
 import { routeTree } from './routeTree.gen';
 import './styles/global.css';
@@ -56,6 +57,9 @@ void bootstrapAuth()
     useAuth.getState().setMemberships([]);
   })
   .finally(() => {
+    // Once per session, after the auth store has hydrated (so signed-out
+    // visitors are a no-op — see track()'s own signed-out guard).
+    track('app_open');
     createRoot(rootEl).render(
       <StrictMode>
         <QueryClientProvider client={queryClient}>

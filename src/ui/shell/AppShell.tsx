@@ -1,9 +1,10 @@
 import { useAuth } from '@/lib/auth';
+import { useIsAppAdmin } from '@/lib/queries/metrics';
 import { cn } from '@/ui/cn';
 import { RoughFilterDefs } from '@/ui/search/ProduceGlyph';
 import { ActiveImportsIndicator } from '@/ui/shell/ActiveImportsIndicator';
 import { Link, Outlet, useMatchRoute } from '@tanstack/react-router';
-import { Home, Settings, User, Users } from 'lucide-react';
+import { BarChart3, Home, Settings, User, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const NAV_BASE = cn(
@@ -78,6 +79,12 @@ export function AppShell() {
     : false;
   const householdsActive = Boolean(matchRoute({ to: '/households' }));
   const profileActive = Boolean(matchRoute({ to: '/profile' }));
+  const metricsActive = Boolean(matchRoute({ to: '/admin/metrics' }));
+  // Admin status lives server-side (app.app_admins), not in the auth store --
+  // this query no-ops entirely when signed out (see useIsAppAdmin). Showing
+  // the nav entry only for real admins matches the route's own guard
+  // (requireAppAdmin): a non-admin never even sees the link exists.
+  const { data: isAppAdmin } = useIsAppAdmin();
 
   return (
     <div className="min-h-dvh">
@@ -139,6 +146,19 @@ export function AppShell() {
                 {profileActive && <ActiveDot />}
               </Link>
             </li>
+            {isAppAdmin === true && (
+              <li>
+                <Link
+                  to="/admin/metrics"
+                  className={navClass(metricsActive)}
+                  aria-label={t('nav.admin_metrics')}
+                >
+                  <BarChart3 size={16} strokeWidth={1.5} />
+                  <span className="hidden md:inline">{t('nav.admin_metrics')}</span>
+                  {metricsActive && <ActiveDot />}
+                </Link>
+              </li>
+            )}
             <li className="ml-1">
               <ActiveImportsIndicator />
             </li>

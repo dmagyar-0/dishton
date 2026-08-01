@@ -1,3 +1,4 @@
+import { invokeFunction } from '@/lib/invoke-function';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
@@ -5,9 +6,10 @@ export function useTranslateRecipe(recipeId: string, language: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('translate-recipe', {
-        body: { recipe_id: recipeId, language },
-      });
+      const { data, error } = await invokeFunction<{ payload: unknown; cached: boolean }>(
+        'translate-recipe',
+        { body: { recipe_id: recipeId, language } },
+      );
       if (error) throw error;
       return data as { payload: unknown; cached: boolean };
     },

@@ -11,12 +11,17 @@
 // resort, automating the manual refresh a user would otherwise reach for.
 
 import type { QueryClient } from '@tanstack/react-query';
+import { track } from '../observability/analytics';
 import { captureException, logErrorBreadcrumb } from '../observability/sentry';
 import { supabase } from './supabase';
 
 // Only recover after a real backgrounding, not a momentary tab blur, so we don't
 // trigger a refetch on every quick focus change.
 const MIN_HIDDEN_MS = 10_000;
+// app_resume is a product-analytics signal for "came back after being away a
+// while", not every brief blur that MIN_HIDDEN_MS already tolerates — only
+// fire it for a real background stint.
+const APP_RESUME_MIN_MS = 30 * 60 * 1000;
 // Collapse the burst of resume events the browser can fire together (pageshow +
 // visibilitychange) into a single recovery.
 const DEBOUNCE_MS = 1_000;
@@ -103,6 +108,7 @@ export function installSessionRecovery(queryClient: QueryClient): () => void {
     }
     const hiddenFor = hiddenAt === null ? Number.POSITIVE_INFINITY : Date.now() - hiddenAt;
     hiddenAt = null;
+    if (hiddenFor > APP_RESUME_MIN_MS) track('app_resume');
     if (hiddenFor >= MIN_HIDDEN_MS) recover('visibilitychange');
   };
 

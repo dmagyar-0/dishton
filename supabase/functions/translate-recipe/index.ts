@@ -12,6 +12,7 @@ import { callAndValidate } from '../_shared/ai/validate.ts';
 import { refundBudgets, withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { translatePrompt } from '../_shared/ai/prompts.ts';
 import { log, logAiCall } from '../_shared/log.ts';
+import { aiUsageAdminClient, recordAiUsage } from '../_shared/ai-usage.ts';
 
 const Body = z.object({
   recipe_id: z.string().uuid(),
@@ -146,6 +147,22 @@ serve(async (req: Request) => {
       if (result.reason === 'upstream') {
         await refundBudgets(caller.profileId, 2500);
       }
+      void recordAiUsage(aiUsageAdminClient(), {
+        function: 'translate-recipe',
+        lane: 'text',
+        model: '(unknown)',
+        profile_id: caller.profileId,
+        household_id: null,
+        request_id: requestId,
+        import_job_id: null,
+        tokens_in: 0,
+        tokens_out: 0,
+        cache_read: 0,
+        cache_write: 0,
+        latency_ms: ms,
+        ok: false,
+        reason: result.reason,
+      });
       return jsonResponse(
         { error: 'translation_failed', reason: result.reason, request_id: requestId },
         502,
@@ -195,6 +212,22 @@ serve(async (req: Request) => {
       cache_read: result.usage.cache_read,
       cache_write: result.usage.cache_write,
       ok: true,
+    });
+    void recordAiUsage(aiUsageAdminClient(), {
+      function: 'translate-recipe',
+      lane: 'text',
+      model: result.model,
+      profile_id: caller.profileId,
+      household_id: null,
+      request_id: requestId,
+      import_job_id: null,
+      tokens_in: result.usage.input,
+      tokens_out: result.usage.output,
+      cache_read: result.usage.cache_read ?? 0,
+      cache_write: result.usage.cache_write ?? 0,
+      latency_ms: ms,
+      ok: true,
+      reason: null,
     });
 
     return jsonResponse(

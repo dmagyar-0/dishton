@@ -24,6 +24,7 @@ import { structuringFromImage } from '../_shared/ai/prompts.ts';
 import { runDetached } from '../_shared/import-runner.ts';
 import { isOwnedStoragePath } from '../_shared/storage-path.ts';
 import { log, logAiCall } from '../_shared/log.ts';
+import { aiUsageAdminClient, recordAiUsage } from '../_shared/ai-usage.ts';
 
 const CONCURRENCY_CAP = 5;
 const MAX_PHOTOS = 6;
@@ -210,6 +211,22 @@ serve(async (req: Request) => {
         if (result.reason === 'upstream') {
           await refundBudgets(callerProfileId, estimatedTokens);
         }
+        void recordAiUsage(aiUsageAdminClient(), {
+          function: 'import-photo',
+          lane: 'vision',
+          model: '(unknown)',
+          profile_id: callerProfileId,
+          household_id: body.household_id,
+          request_id: requestId,
+          import_job_id: jobId,
+          tokens_in: 0,
+          tokens_out: 0,
+          cache_read: 0,
+          cache_write: 0,
+          latency_ms: latencyMs,
+          ok: false,
+          reason: result.reason,
+        });
         return { ok: false, reason: result.reason, raw: result.raw, latencyMs };
       }
 
@@ -224,6 +241,22 @@ serve(async (req: Request) => {
         cache_read: result.usage.cache_read,
         cache_write: result.usage.cache_write,
         ok: true,
+      });
+      void recordAiUsage(aiUsageAdminClient(), {
+        function: 'import-photo',
+        lane: 'vision',
+        model: result.model,
+        profile_id: callerProfileId,
+        household_id: body.household_id,
+        request_id: requestId,
+        import_job_id: jobId,
+        tokens_in: result.usage.input,
+        tokens_out: result.usage.output,
+        cache_read: result.usage.cache_read ?? 0,
+        cache_write: result.usage.cache_write ?? 0,
+        latency_ms: latencyMs,
+        ok: true,
+        reason: null,
       });
 
       return {
@@ -284,8 +317,11 @@ serve(async (req: Request) => {
             paths: body.paths,
             ...(trimmedComment ? { comment: trimmedComment } : {}),
             draft: value.draft,
+            model: value.model,
             tokens_in: value.usage.input,
             tokens_out: value.usage.output,
+            cache_read: value.usage.cache_read ?? 0,
+            cache_write: value.usage.cache_write ?? 0,
             latency_ms: value.latencyMs,
           },
         })
