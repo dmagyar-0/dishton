@@ -11,6 +11,7 @@ import { useLinkedRecipeIds, usePantryHouseholdId } from '@/lib/queries/recipe-l
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { useCachedTranslations, useTranslateRecipe } from '@/lib/queries/translations';
 import { resolveDisplay, toDomainRecipe } from '@/lib/recipe-display';
+import { track } from '@/observability/analytics';
 import { Badge } from '@/ui/primitives/Badge';
 import { Card } from '@/ui/primitives/Card';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
@@ -111,6 +112,17 @@ function RecipeDetailPage() {
   ]);
 
   const isSourceLanguage = displayLanguage === sourceLanguage;
+
+  // Fire recipe_viewed once per successful load of this recipeId -- not on
+  // every refetch (a stale-time refresh re-delivers the same q.data query,
+  // it shouldn't re-count as a new view).
+  const trackedRecipeIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!q.data) return;
+    if (trackedRecipeIdRef.current === recipeId) return;
+    trackedRecipeIdRef.current = recipeId;
+    track('recipe_viewed');
+  }, [recipeId, q.data]);
 
   // Fetch the cached translation payload for the resolved non-source language.
   const translateMutation = useTranslateRecipe(recipeId, displayLanguage);

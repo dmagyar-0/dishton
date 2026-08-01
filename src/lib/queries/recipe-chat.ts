@@ -1,4 +1,5 @@
 import type { Recipe } from '@/domain';
+import { invokeFunction } from '@/lib/invoke-function';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '../supabase';
@@ -122,13 +123,16 @@ export function useSendChatMessage(householdId: string) {
       chatSessionId: string | null;
       message: string;
     }): Promise<string> => {
-      const { data, error } = await supabase.functions.invoke('recipe-chat-send', {
-        body: {
-          chat_session_id: args.chatSessionId ?? undefined,
-          message: args.message,
-          household_id: householdId,
+      const { data, error } = await invokeFunction<{ chat_session_id: string }>(
+        'recipe-chat-send',
+        {
+          body: {
+            chat_session_id: args.chatSessionId ?? undefined,
+            message: args.message,
+            household_id: householdId,
+          },
         },
-      });
+      );
       if (error) throw error;
       return (data as { chat_session_id: string }).chat_session_id;
     },
@@ -139,7 +143,7 @@ export function useSaveDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (chatSessionId: string): Promise<string> => {
-      const { data, error } = await supabase.functions.invoke('recipe-chat-save', {
+      const { data, error } = await invokeFunction<{ recipe_id: string }>('recipe-chat-save', {
         body: { chat_session_id: chatSessionId },
       });
       if (error) throw error;

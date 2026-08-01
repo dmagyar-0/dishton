@@ -152,6 +152,7 @@ the codebase ships with at MVP.
 |---|---|---|---|---|---|---|---|
 | `VITE_FEATURE_GOOGLE_AUTH` | build-time | `false` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Google login is GA in production for 30 days with no rollback |
 | `VITE_FEATURE_TRANSLATION_CACHE` | build-time | `true` | `true` | `false` | `true` | [06](./06-recipe-domain.md) + [07](./07-ai-integration.md) | Translation toggle is on in production for 30 days |
+| `VITE_FEATURE_ANALYTICS` | build-time | `false` | `true` | `true` | `true` | [14](./14-observability.md) | Never — product metrics are a permanent capability, not a rollout |
 | `feature_flags.follows_enabled` | runtime | `true` | `true` | `false` | `true` | [05](./05-auth-and-households.md) | Following has been on in production for 30 days |
 | `feature_flags.public_household_pages` | runtime | `false` | `false` | `false` | `false` | [15](./15-roadmap-and-flags.md) (this doc) | v2 ships |
 | `feature_flags.public_recipe_shares` | runtime | `true` | `true` | `true` | `true` | [15](./15-roadmap-and-flags.md) (this doc) | Share links GA for 30 days with no kill-switch use |
@@ -249,7 +250,7 @@ grep -q "## Verification"           docs/15-roadmap-and-flags.md
 ! grep -P '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' docs/15-roadmap-and-flags.md
 # every flag is named
 for f in VITE_FEATURE_GOOGLE_AUTH VITE_FEATURE_TRANSLATION_CACHE \
-         follows_enabled public_household_pages; do
+         VITE_FEATURE_ANALYTICS follows_enabled public_household_pages; do
   grep -q "$f" docs/15-roadmap-and-flags.md || echo "missing flag: $f"
 done
 # phases named

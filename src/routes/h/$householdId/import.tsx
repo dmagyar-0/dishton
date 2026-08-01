@@ -8,9 +8,11 @@ import {
 } from '@/lib/forms/import';
 import { blankManualRecipe } from '@/lib/forms/manual-recipe';
 import { type ActiveImport, useActiveImports } from '@/lib/imports/ActiveImportsProvider';
+import { invokeFunction } from '@/lib/invoke-function';
 import { resizeForUpload } from '@/lib/photo-resize';
 import { useHouseholdAllowedTags } from '@/lib/queries/households';
 import { supabase } from '@/lib/supabase';
+import { track } from '@/observability/analytics';
 import {
   bcImportInputValidated,
   bcImportRequestSent,
@@ -177,29 +179,20 @@ function UrlTab({ householdId }: { householdId: string }) {
           const kind: ImportKindLocal = source === 'instagram' ? 'instagram' : 'url';
           bcImportStart(source);
           bcImportInputValidated({ url_length: values.url.length, source });
+          track('import_started', { kind });
           const t0 = performance.now();
           bcImportRequestSent(fnName, '');
           // Only the kickoff is awaited; the worker finishes in the background
           // and the Realtime listener saves the draft.
-          const ac = new AbortController();
-          const timer = setTimeout(() => ac.abort(), IMPORT_KICKOFF_TIMEOUT_MS);
-          let invokeError: unknown = null;
-          let data: unknown = null;
-          try {
-            const result = await supabase.functions.invoke(fnName, {
-              body: { url: values.url, household_id: householdId },
-              signal: ac.signal,
-            });
-            invokeError = result.error;
-            data = result.data;
-          } catch (e) {
-            invokeError = e;
-          } finally {
-            clearTimeout(timer);
-          }
-          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 202);
+          const { data, error: invokeError } = await invokeFunction<DraftResponse>(fnName, {
+            body: { url: values.url, household_id: householdId },
+            timeoutMs: IMPORT_KICKOFF_TIMEOUT_MS,
+          });
+          const latencyMs = Math.round(performance.now() - t0);
+          bcImportResponseReceived(latencyMs, invokeError ? 500 : 202);
           if (invokeError) {
             const code = await readErrorCode(invokeError);
+            track('import_failed', { kind, latency_ms: latencyMs, error_code: code });
             push({
               variant: 'error',
               title: t('import.error_title'),
@@ -207,10 +200,11 @@ function UrlTab({ householdId }: { householdId: string }) {
             });
             return;
           }
-          const payload = data as DraftResponse | null;
+          const payload = data;
           if (payload?.job_id) {
             registerImport({ jobId: payload.job_id, householdId, kind, sourceUrl: values.url });
           }
+          track('import_succeeded', { kind, latency_ms: latencyMs });
           push({
             variant: 'info',
             title: t('import.started_toast_title'),
@@ -306,6 +300,7 @@ function PhotoTab({ householdId }: { householdId: string }) {
             return;
           }
           bcImportStart('photo');
+          track('import_started', { kind: 'photo' });
           const trimmedComment = values.comment?.trim() ?? '';
           bcImportInputValidated({
             file_count: files.length,
@@ -349,29 +344,19 @@ function PhotoTab({ householdId }: { householdId: string }) {
 
           const t0 = performance.now();
           bcImportRequestSent('import-photo', '');
-          const ac = new AbortController();
-          const timer = setTimeout(() => ac.abort(), IMPORT_KICKOFF_TIMEOUT_MS);
-          let invokeError: unknown = null;
-          let data: unknown = null;
-          try {
-            const result = await supabase.functions.invoke('import-photo', {
-              body: {
-                household_id: householdId,
-                paths,
-                ...(trimmedComment ? { comment: trimmedComment } : {}),
-              },
-              signal: ac.signal,
-            });
-            invokeError = result.error;
-            data = result.data;
-          } catch (e) {
-            invokeError = e;
-          } finally {
-            clearTimeout(timer);
-          }
-          bcImportResponseReceived(Math.round(performance.now() - t0), invokeError ? 500 : 202);
+          const { data, error: invokeError } = await invokeFunction<DraftResponse>('import-photo', {
+            body: {
+              household_id: householdId,
+              paths,
+              ...(trimmedComment ? { comment: trimmedComment } : {}),
+            },
+            timeoutMs: IMPORT_KICKOFF_TIMEOUT_MS,
+          });
+          const latencyMs = Math.round(performance.now() - t0);
+          bcImportResponseReceived(latencyMs, invokeError ? 500 : 202);
           if (invokeError) {
             const code = await readErrorCode(invokeError);
+            track('import_failed', { kind: 'photo', latency_ms: latencyMs, error_code: code });
             push({
               variant: 'error',
               title: t('import.error_title'),
@@ -379,10 +364,11 @@ function PhotoTab({ householdId }: { householdId: string }) {
             });
             return;
           }
-          const payload = data as DraftResponse | null;
+          const payload = data;
           if (payload?.job_id) {
             registerImport({ jobId: payload.job_id, householdId, kind: 'photo' });
           }
+          track('import_succeeded', { kind: 'photo', latency_ms: latencyMs });
           push({
             variant: 'info',
             title: t('import.started_toast_title'),

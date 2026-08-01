@@ -1,3 +1,4 @@
+import { track } from '@/observability/analytics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import type { RecipeListRow } from './recipes';
@@ -13,6 +14,9 @@ export function useRecipeSearch(q: string, householdIds: string[]) {
       });
       if (error) throw error;
       const rows = (data ?? []) as unknown as RecipeListRow[];
+      // Never the query text itself -- just that a search ran and how many
+      // results it found.
+      track('search_performed', { result_count: rows.length });
       if (rows.length === 0) return rows;
       const ids = rows.map((r) => r.id);
       const { data: tagRows, error: tagErr } = await supabase

@@ -47,4 +47,12 @@ export const FLAGS: FlagDefinition[] = [
       'Kill switch for public recipe share links: gates the Share button and all anon reads via get_public_recipe.',
     ownerDoc: 'docs/15-roadmap-and-flags.md',
   },
+  {
+    key: 'analytics',
+    transport: 'build-time',
+    envVar: 'VITE_FEATURE_ANALYTICS',
+    description:
+      'Enable first-party product analytics (app.analytics_events writes) from src/observability/analytics.ts.',
+    ownerDoc: 'docs/14-observability.md',
+  },
 ];
