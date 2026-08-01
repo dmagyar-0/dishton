@@ -256,4 +256,17 @@ test('snapshot: household user', async ({ page }, info) => {
   // Households — populated (The Pantry follows Carol's Kitchen in the seed).
   await page.goto('/households');
   await shot(page, info, '46-households-populated');
+
+  // Admin metrics — alice is the seeded app_admin (see supabase/seed.sql).
+  // 30d is the default range; the RPCs return a zero-filled row per day even
+  // with no analytics_events, so this captures the real empty-data default
+  // state most fresh projects will actually see.
+  await page.goto('/admin/metrics');
+  await shot(page, info, '47-admin-metrics');
+  if (await tap(page.getByRole('button', { name: '7d' }))) {
+    await shot(page, info, '48-admin-metrics-7d');
+  }
+  if (await tap(page.getByText(/view as table/i).first())) {
+    await shot(page, info, '49-admin-metrics-table-view');
+  }
 });

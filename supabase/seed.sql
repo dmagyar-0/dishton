@@ -208,3 +208,15 @@ on conflict (key) do update set
   enabled         = excluded.enabled,
   rollout_percent = excluded.rollout_percent,
   updated_at      = now();
+
+------------------------------------------------------------------------------
+-- app_admins: alice is the local-dev app admin, so /admin/metrics is
+-- reachable without a by-hand insert during local development, testing and
+-- the design-synch capture spec (.claude/skills/design-synch/capture.spec.ts).
+-- See supabase/migrations/20260801120000_product_metrics.sql for the real
+-- (never-hardcoded) seeding instructions for an actual project.
+------------------------------------------------------------------------------
+
+insert into app.app_admins (profile_id) values
+  ('00000000-0000-0000-0000-000000000001')
+on conflict (profile_id) do nothing;

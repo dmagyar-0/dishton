@@ -16,7 +16,7 @@
     "format": "biome format --write .",
     "test": "pnpm test:unit && pnpm test:components",
     "test:unit": "vitest run src/domain",
-    "test:components": "vitest run src/ui src/lib",
+    "test:components": "vitest run src/ui src/lib src/routes src/observability",
     "test:coverage": "vitest run --coverage",
     "test:edge": "deno test -A --config supabase/functions/deno.json supabase/functions",
     "test:db": "deno run -A supabase/tests/run.ts",
