@@ -672,6 +672,13 @@ export default {
         status: 'Status',
         started_at: 'Gestartet',
         age_minutes: 'Alter (Min.)',
+        outcomes: {
+          ok: 'Ok',
+          http_error: 'HTTP-Fehler',
+          no_response: 'Keine Antwort',
+          timeout: 'Zeitüberschreitung',
+          network: 'Netzwerk',
+        },
       },
     },
   },

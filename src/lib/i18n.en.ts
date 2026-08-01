@@ -654,6 +654,13 @@ export default {
         status: 'Status',
         started_at: 'Started',
         age_minutes: 'Age (min)',
+        outcomes: {
+          ok: 'Ok',
+          http_error: 'HTTP error',
+          no_response: 'No response',
+          timeout: 'Timeout',
+          network: 'Network',
+        },
       },
     },
   },

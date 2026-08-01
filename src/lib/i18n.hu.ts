@@ -655,6 +655,13 @@ export default {
         status: 'Állapot',
         started_at: 'Indítva',
         age_minutes: 'Kor (perc)',
+        outcomes: {
+          ok: 'Ok',
+          http_error: 'HTTP-hiba',
+          no_response: 'Nincs válasz',
+          timeout: 'Időtúllépés',
+          network: 'Hálózati hiba',
+        },
       },
     },
   },

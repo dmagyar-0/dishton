@@ -1,11 +1,29 @@
 import type { DateRange, EdgeFailuresRow } from '@/lib/queries/metrics';
 import { useMetricsEdgeFailures, useMetricsStuckImports } from '@/lib/queries/metrics';
 import { Badge, Card, Skeleton } from '@/ui/primitives';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { DataTable } from './charts/DataTable';
 import { StackedBarChart } from './charts/StackedBarChart';
 import { CHART_COLORS } from './charts/colors';
 import { formatMs } from './charts/format';
+
+// The real taxonomy emitted by src/lib/invoke-function.ts -- `outcome` on
+// `EdgeFailuresRow` is read straight out of `props->>'outcome'` in Postgres,
+// so at runtime it's an arbitrary string, not just these five. Anything not
+// in this map falls back to the raw string rather than rendering blank.
+const KNOWN_OUTCOME_KEYS: Record<string, string> = {
+  ok: 'admin.metrics.edge_reliability.outcomes.ok',
+  http_error: 'admin.metrics.edge_reliability.outcomes.http_error',
+  no_response: 'admin.metrics.edge_reliability.outcomes.no_response',
+  timeout: 'admin.metrics.edge_reliability.outcomes.timeout',
+  network: 'admin.metrics.edge_reliability.outcomes.network',
+};
+
+function outcomeLabel(outcome: string, t: TFunction) {
+  const key = KNOWN_OUTCOME_KEYS[outcome];
+  return key ? t(key) : outcome;
+}
 
 type FnOutcomeTotals = {
   fn: string;
@@ -121,10 +139,10 @@ export function EdgeReliabilitySection({ range }: { range: DateRange }) {
               fn: r.fn,
               outcome:
                 r.outcome === 'ok' ? (
-                  <Badge variant="secondary">{t('admin.metrics.edge_reliability.ok')}</Badge>
+                  <Badge variant="secondary">{outcomeLabel(r.outcome, t)}</Badge>
                 ) : (
                   <Badge variant="outline" className="border-pomegranate/40 text-pomegranate">
-                    {r.outcome}
+                    {outcomeLabel(r.outcome, t)}
                   </Badge>
                 ),
               calls: r.calls,

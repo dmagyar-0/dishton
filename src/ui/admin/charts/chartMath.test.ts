@@ -17,12 +17,55 @@ describe('niceMax', () => {
 });
 
 describe('yTicks', () => {
-  it('produces deduped, ascending ticks from 0 to the nice max', () => {
-    expect(yTicks(9)).toEqual([0, 3, 5, 8, 10]);
+  // Every case is checked against the same contract: strictly ascending,
+  // evenly spaced (constant step between consecutive ticks), starts at 0,
+  // and reaches at least `max` -- so a chart's topmost gridline is never
+  // short of the tallest bar/point it needs to cover.
+  function expectWellFormedTicks(max: number, ticks: number[]) {
+    expect(ticks.length).toBeGreaterThanOrEqual(2);
+    expect(ticks[0]).toBe(0);
+    const last = ticks[ticks.length - 1] as number;
+    expect(last).toBeGreaterThanOrEqual(max);
+
+    const step = (ticks[1] as number) - (ticks[0] as number);
+    expect(step).toBeGreaterThan(0);
+    for (let i = 1; i < ticks.length; i++) {
+      const prev = ticks[i - 1] as number;
+      const cur = ticks[i] as number;
+      expect(cur).toBeGreaterThan(prev);
+      expect(cur - prev).toBeCloseTo(step, 9);
+    }
+  }
+
+  it.each([0, 1, 2, 3, 7, 10, 3500, 0.42])(
+    'produces evenly spaced, evenly valued ticks from 0 for max=%s',
+    (max) => {
+      expectWellFormedTicks(max, yTicks(max));
+    },
+  );
+
+  it('fixes the historical bug: yTicks(3) no longer skips a value between unevenly spaced ticks', () => {
+    // Previously: [0, 1, 3, 4, 5] -- gridlines at 0/20/60/80/100% of the axis
+    // height labelled 0,1,3,4,5, i.e. evenly SPACED but not evenly VALUED.
+    expect(yTicks(3)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  it('dedupes when the range is too small to fill every step', () => {
+  it('never exceeds ~5 ticks for small integer maxima', () => {
+    for (const max of [1, 2, 3, 7]) {
+      expect(yTicks(max).length).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it('keeps the top tick equal to niceMax(max), matching the scale chart components derive independently', () => {
+    for (const max of [0, 1, 3, 7, 3500, 0.42]) {
+      const ticks = yTicks(max);
+      expect(ticks[ticks.length - 1]).toBe(niceMax(max));
+    }
+  });
+
+  it('never divides by zero for a brand-new install with zero events', () => {
     const ticks = yTicks(0);
+    expect(ticks.every((t) => Number.isFinite(t))).toBe(true);
     expect(ticks).toEqual([...ticks].sort((a, b) => a - b));
     expect(new Set(ticks).size).toBe(ticks.length);
   });
