@@ -1,4 +1,5 @@
 import { useAuth } from '@/lib/auth';
+import { pickCanonicalHousehold } from '@/lib/canonical-household';
 import { SharingSection } from '@/ui/household/SharingSection';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
@@ -20,10 +21,7 @@ function HouseholdsPage() {
   // Canonical household for relationships: prefer the personal household so the
   // followed list, add_follow target, and share codes all agree on a single
   // household — matching how AppShell picks the household for header links.
-  const membership = useMemo(
-    () => memberships.find((m) => m.is_personal) ?? memberships[0],
-    [memberships],
-  );
+  const membership = useMemo(() => pickCanonicalHousehold(memberships), [memberships]);
   const householdId = membership?.household_id ?? '';
   const isOwner = membership?.role === 'owner';
 

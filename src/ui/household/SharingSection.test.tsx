@@ -1,3 +1,4 @@
+import { buildFollowLink } from '@/lib/follow-link';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -57,14 +58,22 @@ vi.mock('./dialogs/ConfirmDialog', () => ({ ConfirmDialog: () => null }));
 import { SharingSection } from './SharingSection';
 
 describe('SharingSection follow code copy', () => {
-  it('copies the code when the "tap to copy" hint is tapped', async () => {
+  it('copies the code when "Copy code" is tapped', async () => {
     const user = userEvent.setup();
     render(<SharingSection householdId="h_1" isOwner={true} />);
 
-    // The visible "Tap to copy" affordance must itself trigger the copy.
-    await user.click(screen.getByText('household_settings.sharing.tap_to_copy'));
+    await user.click(screen.getByRole('button', { name: 'household_settings.sharing.copy_code' }));
 
     await expect(navigator.clipboard.readText()).resolves.toBe(code.code);
+  });
+
+  it('copies the /f/<code> link when "Copy link" is tapped, as the primary action', async () => {
+    const user = userEvent.setup();
+    render(<SharingSection householdId="h_1" isOwner={true} />);
+
+    await user.click(screen.getByRole('button', { name: 'household_settings.sharing.copy_link' }));
+
+    await expect(navigator.clipboard.readText()).resolves.toBe(buildFollowLink(code.code));
   });
 
   it('lets an owner redeem a follow code to follow another household', async () => {

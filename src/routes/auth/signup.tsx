@@ -1,23 +1,30 @@
 import { authErrorCopy } from '@/lib/auth-errors';
 import { type SignupInput, SignupSchema } from '@/lib/forms/auth';
+import { sanitizeNextPath } from '@/lib/safe-redirect';
 import { supabase } from '@/lib/supabase';
 import { track } from '@/observability/analytics';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
+
+// See src/routes/auth/login.tsx for the `next` sanitization contract.
+const Search = z.object({ next: z.string().optional() });
 
 export const Route = createFileRoute('/auth/signup')({
+  validateSearch: Search,
   component: SignupPage,
 });
 
 function SignupPage() {
   const { t } = useTranslation();
-  const nav = useNavigate();
+  const { next } = Route.useSearch();
+  const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -33,12 +40,17 @@ function SignupPage() {
           className="space-y-4"
           onSubmit={handleSubmit(async (values) => {
             setServerError(null);
+            const sanitizedNext = sanitizeNextPath(next);
             const { error } = await supabase.auth.signUp({
               email: values.email,
               password: values.password,
               options: {
                 data: { display_name: values.display_name },
-                emailRedirectTo: `${location.origin}/auth/callback`,
+                // Confirmation-required deployments land the clicked email
+                // link on /auth/callback in a fresh tab/browser with no
+                // access to this closure's `next` — thread it through the
+                // URL instead so the callback can honour it.
+                emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(sanitizedNext)}`,
               },
             });
             if (error) {
@@ -46,7 +58,9 @@ function SignupPage() {
               return;
             }
             track('signup_completed', { method: 'email' });
-            await nav({ to: '/' });
+            // Confirmation-disabled deployments (local dev) return a session
+            // immediately, so also navigate right away for that path.
+            router.history.push(sanitizedNext);
           })}
         >
           <label className="block">
@@ -102,7 +116,7 @@ function SignupPage() {
           </Button>
         </form>
         <p className="mt-6 text-sm text-ink-soft">
-          <Link to="/auth/login" className="underline">
+          <Link to="/auth/login" search={{ next }} className="underline">
             {t('auth.login')}
           </Link>
         </p>

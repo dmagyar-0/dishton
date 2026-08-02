@@ -1,3 +1,4 @@
+import { buildFollowLink } from '@/lib/follow-link';
 import { type AddFollowInput, AddFollowSchema } from '@/lib/forms/household';
 import {
   type FollowedHousehold,
@@ -15,7 +16,7 @@ import { Badge, Button, Card, IconButton, Skeleton, useToast } from '@/ui/primit
 import { Input } from '@/ui/primitives/Input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from '@tanstack/react-router';
-import { Share2, X } from 'lucide-react';
+import { Copy, Link as LinkIcon, Share2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -246,6 +247,15 @@ function FollowCodeCard({
     }
   };
 
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(buildFollowLink(code.code));
+      push({ variant: 'success', title: t('household_settings.sharing.link_copied') });
+    } catch {
+      push({ variant: 'error', title: t('household_settings.sharing.link_copy_failed') });
+    }
+  };
+
   const onRevoke = async () => {
     try {
       await revoke.mutateAsync(code.code);
@@ -274,24 +284,35 @@ function FollowCodeCard({
         'hover:-rotate-[0.25deg]',
       )}
     >
-      <button
-        type="button"
-        onClick={() => void copyCode()}
-        className="block w-full text-left"
-        title={t('household_settings.sharing.copy_code')}
-      >
-        <span className="block break-all pr-8 font-display tracking-[0.15em] text-aubergine text-base sm:text-lg sm:tracking-[0.2em]">
+      <div className="pr-8">
+        <span className="block break-all font-display tracking-[0.15em] text-aubergine text-base sm:text-lg sm:tracking-[0.2em]">
           {code.code}
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-xs">
             {t('household_settings.members.expires_in', { when: expiresIn })}
           </Badge>
-          <span className="text-ink-soft text-xs">
-            {t('household_settings.sharing.tap_to_copy')}
-          </span>
         </span>
-      </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void copyLink()}
+            leftIcon={<LinkIcon size={16} strokeWidth={1.5} />}
+          >
+            {t('household_settings.sharing.copy_link')}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => void copyCode()}
+            leftIcon={<Copy size={16} strokeWidth={1.5} />}
+          >
+            {t('household_settings.sharing.copy_code')}
+          </Button>
+        </div>
+      </div>
       {isOwner && (
         <IconButton
           variant="ghost"

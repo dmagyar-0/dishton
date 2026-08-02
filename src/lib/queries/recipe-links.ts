@@ -4,6 +4,7 @@
 // docs/superpowers/specs/2026-06-14-followed-recipe-pantry-links-design.md.
 
 import { useAuth } from '@/lib/auth';
+import { pickCanonicalHousehold } from '@/lib/canonical-household';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import type { RecipeListRow } from './recipes';
@@ -18,9 +19,7 @@ export type LinkedRecipeRow = RecipeListRow & { is_link: true };
 // falling back to the first membership. Mirrors /following's target selection
 // so a saved recipe lands where the user's own recipes live.
 export function usePantryHouseholdId(): string {
-  return useAuth(
-    (s) => (s.memberships.find((m) => m.is_personal) ?? s.memberships[0])?.household_id ?? '',
-  );
+  return useAuth((s) => pickCanonicalHousehold(s.memberships)?.household_id ?? '');
 }
 
 export function useRecipeLinks(householdId: string, enabled = true) {

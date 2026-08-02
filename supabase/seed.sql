@@ -195,6 +195,17 @@ insert into app.recipe_shares (recipe_id, token, created_by) values
    '00000000-0000-0000-0000-000000000001')
 on conflict (recipe_id) do nothing;
 
+-- Deterministic follow code for Carol's Kitchen so local visual validation
+-- and the design-snapshot capture can hit /f/<code> without UI setup, at
+-- every stage: signed-out, and signed-in-but-not-following (a fresh
+-- signup). Alice already follows Carol's Kitchen (above), so the same code
+-- also covers the "already following" landing state for her.
+insert into app.household_follow_codes (code, household_id, created_by) values
+  ('f_DEADBEEFCAFE',
+   '22222222-2222-2222-2222-222222222222',
+   '00000000-0000-0000-0000-000000000003')
+on conflict (code) do nothing;
+
 ------------------------------------------------------------------------------
 -- Feature flags per docs/15-roadmap-and-flags.md.
 -- Local defaults: follows_enabled=true, public_household_pages=false.

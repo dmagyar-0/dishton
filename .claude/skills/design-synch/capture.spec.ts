@@ -24,6 +24,10 @@ const PASSWORD = 'test-password-1234';
 const PANTRY = '11111111-1111-1111-1111-111111111111';
 const TARTE = '33333333-3333-3333-3333-333333333333';
 const SHARE_TOKEN = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+// Carol's Kitchen follow code — alice already follows Carol's Kitchen in the
+// seed, so this same live code covers both "not yet following" (a fresh
+// signup) and "already following" (alice) landing states.
+const FOLLOW_CODE = 'f_DEADBEEFCAFE';
 
 function viewportDir(projectName: string): string {
   return projectName === 'mobile-chrome' ? 'mobile' : 'desktop';
@@ -104,6 +108,14 @@ test('snapshot: unauthenticated', async ({ page }, info) => {
 
   await page.goto('/r/deadbeefdeadbeefdeadbeefdeadbeef');
   await shot(page, info, '07-public-share-inactive');
+
+  // Follow-link landing — live code (seeded, Carol's Kitchen) signed out,
+  // and an unknown code for the invalid/expired/revoked state.
+  await page.goto(`/f/${FOLLOW_CODE}`);
+  await shot(page, info, '08-follow-link-signed-out');
+
+  await page.goto('/f/f_UNKNOWNCODEAB');
+  await shot(page, info, '09-follow-link-invalid');
 });
 
 // ---------------------------------------------------------------------------
@@ -162,6 +174,11 @@ test('snapshot: solo user', async ({ page }, info) => {
   // empty state for a fresh user.
   await page.goto('/households');
   await shot(page, info, '22-households-empty');
+
+  // Follow-link landing — signed in, not yet following (a fresh solo
+  // household never follows anyone by default).
+  await page.goto(`/f/${FOLLOW_CODE}`);
+  await shot(page, info, '23-follow-link-not-following');
 });
 
 // ---------------------------------------------------------------------------
@@ -256,6 +273,25 @@ test('snapshot: household user', async ({ page }, info) => {
   // Households — populated (The Pantry follows Carol's Kitchen in the seed).
   await page.goto('/households');
   await shot(page, info, '46-households-populated');
+
+  // Follow-link landing — signed in, already following (alice/The Pantry
+  // already follows Carol's Kitchen via the seeded code).
+  await page.goto(`/f/${FOLLOW_CODE}`);
+  await shot(page, info, '46b-follow-link-already-following');
+
+  // Follow-link landing — signed in, own household. Generate a fresh follow
+  // code for The Pantry (alice owns it) and visit it as herself.
+  await page.goto('/households');
+  if (await tap(page.getByRole('button', { name: /generate follow code/i }))) {
+    const ownCode = await page
+      .locator('text=/^f_[A-Z2-7]{12}$/')
+      .first()
+      .textContent();
+    if (ownCode) {
+      await page.goto(`/f/${ownCode.trim()}`);
+      await shot(page, info, '46c-follow-link-own-household');
+    }
+  }
 
   // Admin metrics — alice is the seeded app_admin (see supabase/seed.sql).
   // 30d is the default range; the RPCs return a zero-filled row per day even

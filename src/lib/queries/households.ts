@@ -203,9 +203,10 @@ export function useHouseholdFollowCodes(householdId: string) {
   });
 }
 
-export function useFollowedHouseholds(householdId: string) {
+export function useFollowedHouseholds(householdId: string, enabled = true) {
   return useQuery({
     queryKey: ['household', householdId, 'following'],
+    enabled: enabled && householdId.length > 0,
     queryFn: async (): Promise<FollowedHousehold[]> => {
       const { data, error } = await supabase
         .from('follows')
@@ -467,6 +468,25 @@ export function useAddFollow(currentHouseholdId: string) {
         queryKey: ['household', currentHouseholdId, 'following'],
       });
     },
+  });
+}
+
+export type PeekFollowCode = { household_id: string; household_name: string };
+
+// Anon-capable name lookup for the /f/<code> landing page: resolves a live
+// follow code to the household it belongs to without requiring a session,
+// via the peek_follow_code RPC. Returns null for anything that isn't a live
+// code — unknown, expired, or revoked are indistinguishable by design (see
+// the RPC's own comment in 20260802120000_follow_links.sql).
+export function usePeekFollowCode(code: string) {
+  return useQuery({
+    queryKey: ['follow-code-peek', code],
+    queryFn: async (): Promise<PeekFollowCode | null> => {
+      const { data, error } = await supabase.rpc('peek_follow_code', { p_code: code });
+      if (error) throw error;
+      return (data ?? null) as PeekFollowCode | null;
+    },
+    staleTime: 30_000,
   });
 }
 
