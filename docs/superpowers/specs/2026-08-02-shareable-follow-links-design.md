@@ -111,6 +111,38 @@ duplicated. No household picker.
 "Already following" and "own household" are both derived client-side from the
 auth store and `useFollowedHouseholds`; neither needs a new query.
 
+### Auto-follow after auth: the `dishton.follow_intent` sessionStorage key
+
+A signed-out visitor who presses "Sign up to follow" or "Log in" is trying to
+follow a specific household, not just sign in — the `next=/f/<code>` round
+trip alone only returns them to the landing card, where they'd have to press
+Follow a second time. `FollowLinkPage` closes that gap: pressing either action
+first records `sessionStorage.setItem('dishton.follow_intent', code)`, and on
+return to `/f/<code>` (now authenticated), the page checks that key against
+the current code, runs the exact same `add_follow` → navigate-to-`/h/<id>`
+path the Follow button runs, and shows the button's loading treatment instead
+of the "Follow X?" prompt while it's in flight — no second click, no flash of
+the prompt card.
+
+The key is read and cleared in the same step, before the follow call is
+awaited, so a failure (or a re-render) can never re-fire it or trap the
+visitor in a loop; on failure the page falls back to the manual Follow button
+with the error surfaced via the existing toast. Auto-follow never fires for
+the "own household" or "already following" states — those short-circuit
+first, even with a matching key.
+
+This is sessionStorage-keyed rather than a `?auto=1` URL param carried through
+`next`, deliberately: a URL param would let a crafted `/f/<code>?auto=1` link
+auto-follow anyone who is already signed in and merely opens it, with no
+confirming click. The sessionStorage key only exists if this same person, in
+this same tab, pressed "Sign up to follow" or "Log in" moments earlier, so it
+captures real intent and can't be forged by a link. Because
+`enable_confirmations = false` in `supabase/config.toml`, signup mints a
+session in the same tab and the key survives the round trip; if confirmation
+is ever enabled and the visitor confirms from a different tab, the key simply
+isn't there and the page degrades to today's manual Follow button — an
+acceptable, intended fallback.
+
 ### Auth round-trip: the `next` search param
 
 `src/routes/auth/login.tsx` and `src/routes/auth/signup.tsx` gain an optional

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,12 +15,17 @@ vi.mock('@tanstack/react-router', () => ({
     children,
     to,
     search,
+    onClick,
   }: {
     children?: ReactNode;
     to?: string;
     search?: Record<string, string>;
+    onClick?: () => void;
   }) => (
-    <a href={`${typeof to === 'string' ? to : '#'}${search ? `?next=${search.next}` : ''}`}>
+    <a
+      href={`${typeof to === 'string' ? to : '#'}${search ? `?next=${search.next}` : ''}`}
+      onClick={onClick}
+    >
       {children}
     </a>
   ),
@@ -64,6 +69,8 @@ import { FollowLinkPage } from './FollowLinkPage';
 
 const CODE = 'f_LEBIJFTCMN6S';
 
+const FOLLOW_INTENT_KEY = 'dishton.follow_intent';
+
 function reset() {
   sessionValue = null;
   membershipsValue = [];
@@ -75,6 +82,7 @@ function reset() {
   addFollowMutateAsync.mockReset().mockResolvedValue('followed-id');
   navigateMock.mockReset();
   push.mockReset();
+  sessionStorage.clear();
 }
 
 describe('FollowLinkPage', () => {
@@ -98,6 +106,26 @@ describe('FollowLinkPage', () => {
     expect(login?.getAttribute('href')).toBe(`/auth/login?next=/f/${CODE}`);
   });
 
+  it('records follow intent before leaving for signup, keyed to this code', () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = null;
+    render(<FollowLinkPage code={CODE} />);
+
+    screen.getByText('follow_link.signup_action').closest('a')?.click();
+    expect(sessionStorage.getItem(FOLLOW_INTENT_KEY)).toBe(CODE);
+  });
+
+  it('records follow intent before leaving for login, keyed to this code', () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = null;
+    render(<FollowLinkPage code={CODE} />);
+
+    screen.getByText('follow_link.login_action').closest('a')?.click();
+    expect(sessionStorage.getItem(FOLLOW_INTENT_KEY)).toBe(CODE);
+  });
+
   it('offers a Follow button when signed in and not yet following', async () => {
     reset();
     peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
@@ -111,6 +139,106 @@ describe('FollowLinkPage', () => {
     const button = screen.getByRole('button', { name: 'follow_link.follow_action' });
     await user.click(button);
     expect(addFollowMutateAsync).toHaveBeenCalledWith(CODE);
+  });
+
+  it('completes the follow automatically, with no click, when a matching intent is stored', async () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = { user: { id: 'u1' } };
+    membershipsValue = [{ household_id: 'h_mine', role: 'owner', is_personal: true }];
+    followedData = [];
+    sessionStorage.setItem(FOLLOW_INTENT_KEY, CODE);
+
+    render(<FollowLinkPage code={CODE} />);
+
+    await waitFor(() => expect(addFollowMutateAsync).toHaveBeenCalledWith(CODE));
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/h/$householdId',
+        params: { householdId: 'followed-id' },
+      }),
+    );
+    // Consumed up front so it can never re-fire or trap the visitor in a loop.
+    expect(sessionStorage.getItem(FOLLOW_INTENT_KEY)).toBeNull();
+  });
+
+  it('does not auto-follow when no intent is stored (a signed-in user opening the link cold)', () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = { user: { id: 'u1' } };
+    membershipsValue = [{ household_id: 'h_mine', role: 'owner', is_personal: true }];
+    followedData = [];
+
+    render(<FollowLinkPage code={CODE} />);
+
+    expect(addFollowMutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'follow_link.follow_action' })).toBeInTheDocument();
+  });
+
+  it('does not auto-follow when the stored intent is for a different code', () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = { user: { id: 'u1' } };
+    membershipsValue = [{ household_id: 'h_mine', role: 'owner', is_personal: true }];
+    followedData = [];
+    sessionStorage.setItem(FOLLOW_INTENT_KEY, 'f_someOtherHousehold');
+
+    render(<FollowLinkPage code={CODE} />);
+
+    expect(addFollowMutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'follow_link.follow_action' })).toBeInTheDocument();
+    // Untouched: it belongs to a different in-flight flow, not this code.
+    expect(sessionStorage.getItem(FOLLOW_INTENT_KEY)).toBe('f_someOtherHousehold');
+  });
+
+  it('falls back to the manual button, with the error surfaced, when the auto-follow attempt fails', async () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = { user: { id: 'u1' } };
+    membershipsValue = [{ household_id: 'h_mine', role: 'owner', is_personal: true }];
+    followedData = [];
+    addFollowMutateAsync.mockReset().mockRejectedValue(new Error('network blip'));
+    sessionStorage.setItem(FOLLOW_INTENT_KEY, CODE);
+
+    render(<FollowLinkPage code={CODE} />);
+
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(expect.objectContaining({ variant: 'error' })),
+    );
+    expect(navigateMock).not.toHaveBeenCalled();
+    // Cleared up front, before the mutation was even awaited, so a failed
+    // attempt can never re-fire or trap the visitor in a loop.
+    expect(sessionStorage.getItem(FOLLOW_INTENT_KEY)).toBeNull();
+
+    const button = await screen.findByRole('button', { name: 'follow_link.follow_action' });
+    expect(button).toBeEnabled();
+  });
+
+  it('does not auto-follow the own-household state even with a matching intent', () => {
+    reset();
+    peekData = { household_id: 'h_mine', household_name: 'My Kitchen' };
+    sessionValue = { user: { id: 'u1' } };
+    membershipsValue = [{ household_id: 'h_mine', role: 'owner', is_personal: true }];
+    sessionStorage.setItem(FOLLOW_INTENT_KEY, CODE);
+
+    render(<FollowLinkPage code={CODE} />);
+
+    expect(addFollowMutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByText('follow_link.own_title')).toBeInTheDocument();
+  });
+
+  it('does not auto-follow the already-following state even with a matching intent', () => {
+    reset();
+    peekData = { household_id: 'h_carol', household_name: "Carol's Kitchen" };
+    sessionValue = { user: { id: 'u1' } };
+    membershipsValue = [{ household_id: 'h_mine', role: 'owner', is_personal: true }];
+    followedData = [{ followed_household_id: 'h_carol' }];
+    sessionStorage.setItem(FOLLOW_INTENT_KEY, CODE);
+
+    render(<FollowLinkPage code={CODE} />);
+
+    expect(addFollowMutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByText(`follow_link.already_title::Carol's Kitchen`)).toBeInTheDocument();
   });
 
   it('shows "already following" when the caller already follows the household', () => {
