@@ -1,23 +1,33 @@
 import { useFeatureFlag } from '@/feature-flags';
 import { authErrorCopy } from '@/lib/auth-errors';
 import { type LoginInput, LoginSchema } from '@/lib/forms/auth';
+import { sanitizeNextPath } from '@/lib/safe-redirect';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/ui/primitives/Button';
 import { Card } from '@/ui/primitives/Card';
 import { Input } from '@/ui/primitives/Input';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
+
+// `next` carries a signed-out visitor back to where they started (e.g. a
+// /f/<code> follow link) after a successful sign-in. Validated loosely here —
+// sanitizeNextPath is the actual gate, applied right before navigation — so an
+// unsanitized value never lingers in the URL bar for the confirmed session.
+const Search = z.object({ next: z.string().optional() });
 
 export const Route = createFileRoute('/auth/login')({
+  validateSearch: Search,
   component: LoginPage,
 });
 
 function LoginPage() {
   const { t } = useTranslation();
-  const nav = useNavigate();
+  const { next } = Route.useSearch();
+  const router = useRouter();
   const googleEnabled = useFeatureFlag('google_auth');
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -39,7 +49,7 @@ function LoginPage() {
               setServerError(authErrorCopy(error.message));
               return;
             }
-            await nav({ to: '/' });
+            router.history.push(sanitizeNextPath(next));
           })}
         >
           <label className="block">
@@ -100,7 +110,7 @@ function LoginPage() {
             {t('auth.forgot')}
           </Link>
           <span className="mx-2">·</span>
-          <Link to="/auth/signup" className="underline">
+          <Link to="/auth/signup" search={{ next }} className="underline">
             {t('auth.signup')}
           </Link>
         </p>

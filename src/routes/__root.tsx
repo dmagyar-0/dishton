@@ -41,9 +41,12 @@ function ErrorFallback() {
 function RootShell() {
   const matches = useMatches();
   const onAuthRoute = matches.some((m) => m.routeId.startsWith('/auth/'));
-  // Public share pages (/r/<token>) render their own minimal frame: anon
-  // visitors have no memberships for the AppShell nav or imports provider.
-  const onPublicRoute = matches.some((m) => m.routeId.startsWith('/r/'));
+  // Public share pages (/r/<token>) and follow-link landing pages (/f/<code>)
+  // render their own minimal frame: anon visitors have no memberships for the
+  // AppShell nav or imports provider.
+  const onPublicRoute = matches.some(
+    (m) => m.routeId.startsWith('/r/') || m.routeId.startsWith('/f/'),
+  );
   // ActiveImportsProvider wraps the app shell (not the auth routes) so it
   // sees route changes and survives navigation, but doesn't run while the
   // user is on the login screen with no profile to subscribe under.

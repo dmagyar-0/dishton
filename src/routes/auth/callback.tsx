@@ -1,15 +1,23 @@
+import { sanitizeNextPath } from '@/lib/safe-redirect';
 import { supabase } from '@/lib/supabase';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { z } from 'zod';
+
+// See src/routes/auth/login.tsx for the `next` sanitization contract. Signup
+// threads its `next` through here via emailRedirectTo.
+const Search = z.object({ next: z.string().optional() });
 
 export const Route = createFileRoute('/auth/callback')({
+  validateSearch: Search,
   component: CallbackPage,
 });
 
 function CallbackPage() {
   const { t } = useTranslation();
-  const nav = useNavigate();
+  const { next } = Route.useSearch();
+  const router = useRouter();
   useEffect(() => {
     let cancelled = false;
     // Password recovery emails issued before /auth/update-password existed
@@ -23,7 +31,7 @@ function CallbackPage() {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (cancelled) return;
       if (event === 'PASSWORD_RECOVERY') {
-        void nav({ to: '/auth/update-password' });
+        router.history.push('/auth/update-password');
       }
     });
 
@@ -32,14 +40,17 @@ function CallbackPage() {
       // detectSessionInUrl: true. Just wait for it then redirect.
       await supabase.auth.getSession();
       if (cancelled) return;
-      await nav({ to: isRecovery ? '/auth/update-password' : '/' });
+      // Recovery keeps priority over `next` — a password-reset link must
+      // always land on the update-password form, even if it somehow also
+      // carried a next param.
+      router.history.push(isRecovery ? '/auth/update-password' : sanitizeNextPath(next));
     })();
 
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
-  }, [nav]);
+  }, [next, router]);
   return (
     <main className="min-h-dvh grid place-items-center text-ink-soft">
       {t('auth.callback.signing_in')}

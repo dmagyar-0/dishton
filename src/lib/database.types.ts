@@ -1089,6 +1089,7 @@ export type Database = {
         }[]
       }
       normalize_quantity: { Args: { q: Json }; Returns: Json }
+      peek_follow_code: { Args: { p_code: string }; Returns: Json }
       popular_tags: {
         Args: { p_household_ids: string[]; p_limit?: number }
         Returns: {
