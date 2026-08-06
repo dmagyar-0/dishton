@@ -4,37 +4,22 @@ Dishton is a recipe-collection PWA. React + Vite SPA backed by Supabase (Postgre
 
 ## Setup
 
+Requires Node 22 (`.nvmrc`), pnpm 10+, Docker, and the `supabase` CLI.
+
 ```bash
 pnpm install
-supabase start              # Docker required; runs Postgres, Auth, Storage, Edge Functions
+supabase start              # Docker required
 cp .env.example .env.local  # Fill from `supabase status`
 pnpm db:reset               # Apply migrations + seed
 pnpm dev                    # SPA at http://localhost:5173
 pnpm fn:serve               # Edge Functions at http://localhost:54321 (no JWT verification)
 ```
 
-Requires Node 22 (`.nvmrc`), pnpm 10+, Docker, and the `supabase` CLI.
-
-## Commands
-
-| Task | Command |
-|------|---------|
-| Typecheck | `pnpm typecheck` |
-| Lint / format | `pnpm lint` / `pnpm format` (Biome) |
-| Unit tests (domain) | `pnpm test:unit` |
-| Component tests | `pnpm test:components` |
-| Coverage | `pnpm test:coverage` |
-| Edge Function tests (Deno) | `pnpm test:edge` |
-| DB schema + RLS tests | `pnpm test:db` |
-| E2E (Playwright) | `pnpm test:e2e` |
-| Build | `pnpm build` |
-| Deploy Edge Functions | `pnpm fn:deploy` |
-
-Prefer a single test file over the whole suite during iteration. Run `pnpm typecheck && pnpm lint` after a series of changes.
+Scripts live in `package.json`. `pnpm typecheck && pnpm lint` are the gates to run after a series of changes; test layers split as `test:unit` (domain), `test:components`, `test:edge` (Deno), `test:db` (RLS), `test:e2e` (Playwright).
 
 ## Architecture
 
-- **`src/domain/`** — Zod schemas + pure business logic. **No React, no I/O.** Coverage threshold: 90%.
+- **`src/domain/`** — Zod schemas + pure business logic. **No React, no I/O.** Held to a 90% coverage threshold.
 - **`src/ui/`** — React components grouped by feature (`recipe`, `search`, `shell`, `household`, `primitives`).
 - **`src/routes/`** — TanStack Router file-based routes.
 - **`src/lib/`** — Queries, forms, i18n, hooks.
@@ -48,22 +33,14 @@ Prefer a single test file over the whole suite during iteration. Run `pnpm typec
 2. SQL schema — `supabase/migrations/`
 3. Design tokens — Tailwind config + Radix primitives
 
-## Code style
-
-- Biome enforces formatting and lint (`biome.json`): 2 spaces, 100-col width, single quotes, semicolons, trailing commas.
-- TypeScript is strict with `noUncheckedIndexedAccess`. Use `import type` for type-only imports.
-- Path alias `@/` resolves to `src/`.
-- Avoid `any` and non-null assertions (`!`) — Biome warns on both.
+Formatting and lint are owned by Biome (`biome.json`) and enforced by `pnpm lint` — match the surrounding code rather than reasoning about the rules. `@/` resolves to `src/`.
 
 ## Testing
 
-- Vitest for SPA (unit + components), Deno test for Edge Functions and DB, Playwright for E2E.
-- Coverage thresholds: domain 90% lines/branches/functions; overall 70% lines.
-- Co-locate component tests next to components. Domain tests live under `src/domain/`.
-- **Visual validation is required for any user-facing change** before claiming a feature complete. **Run the `validating-features-visually` skill — it is the authoritative guide for *how* to run this, including inside the remote Claude-Code-on-the-web container.** It boots a local Supabase + `pnpm preview`, drives Playwright through signup + the new flow + adjacent surfaces at desktop and mobile viewports, and screenshots each step. Typecheck and unit tests don't catch flash-of-wrong-content, mobile overflow, or wrong post-signup field population — recent merges (#61, #62, #63) all needed follow-up fixes for exactly this class of bug.
-  - **Do not skip it because "Docker isn't running" or the CLI is missing** — the skill documents the setup: start the daemon (`sudo dockerd &`), install the Supabase CLI tarball, then `supabase start -x edge-runtime,functions` (the `-x` is required in the sandbox — edge-runtime/functions hit an rlimit error). Follow the skill's prerequisites + procedure rather than improvising.
-  - For features whose write/read path runs entirely through Supabase RLS (e.g. the recipe-chat history sidebar), you can seed rows directly so the flow is exercisable without the Edge Functions the local stack can't run.
-- **Keep the `design-synch` skill current with the UI.** Whenever you add a new window, view, route, modal, dialog, or significant UI state to the app, add a matching capture step (`goto`/interaction + `shot(...)`) to `.claude/skills/design-synch/capture.spec.ts` so the design snapshot — which keeps the Claude design web app in sync — covers it. A new surface that isn't added to the capture spec silently won't appear in the snapshot.
+Vitest for the SPA, Deno test for Edge Functions and DB, Playwright for E2E. Co-locate component tests next to components; domain tests live under `src/domain/`.
+
+- **Visual validation is required for any user-facing change** before claiming a feature complete. Run the `validating-features-visually` skill — it is authoritative for how, including inside the remote Claude-Code-on-the-web container (Docker daemon, Supabase CLI, and the `-x edge-runtime,functions` flag the sandbox needs). Typecheck and unit tests don't catch flash-of-wrong-content, mobile overflow, or wrong post-signup field population; merges #61, #62 and #63 each needed follow-up fixes for exactly that. Tooling not being up yet is not a reason to skip it — the skill documents the setup.
+- **Keep the `design-synch` skill current with the UI.** When you add a route, modal, dialog, or significant UI state, add a matching capture step to `.claude/skills/design-synch/capture.spec.ts` — a surface missing from that spec is silently missing from the design snapshot.
 
 ## Edge Functions (Deno)
 
@@ -84,8 +61,6 @@ Prefer a single test file over the whole suite during iteration. Run `pnpm typec
 - Feature flags live in `src/feature-flags/` and gate behavior via `VITE_FEATURE_*` env vars.
 - New deploys force session logout via `VITE_RELEASE_SHA` (set in CI, not locally).
 
-## Superpowers skills
+## Skills
 
-Skills are installed under `.claude/skills/` (from [obra/superpowers](https://github.com/obra/superpowers) and [anthropics/skills](https://github.com/anthropics/skills), MIT). **At session start, invoke `using-superpowers` via the `Skill` tool.** Prefer matching a skill over improvising.
-
-Available: `using-superpowers`, `brainstorming`, `writing-plans`, `executing-plans`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `validating-features-visually`, `requesting-code-review`, `receiving-code-review`, `dispatching-parallel-agents`, `subagent-driven-development`, `using-git-worktrees`, `finishing-a-development-branch`, `writing-skills`, `frontend-design`.
+Two skills are installed under `.claude/skills/`, both Dishton-specific: `validating-features-visually` (required before calling a user-facing change complete) and `design-synch` (full UI snapshot for the design web app). The general-purpose superpowers process skills have been removed.

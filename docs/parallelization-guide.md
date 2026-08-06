@@ -4,7 +4,7 @@
 
 Tell future sessions how to work on Dishton in parallel without colliding.
 Restate the work-stream graph from the master plan, give a concrete recipe
-for spinning up a `using-git-worktrees` worktree per stream, list each
+for spinning up a git worktree per stream, list each
 tier's input docs / owned repo paths / done-criteria, name the three frozen
 hand-off contracts (Zod `Recipe` schema, SQL schema, design tokens), and
 enumerate the most likely collision risks plus how to avoid each. This doc
@@ -75,8 +75,8 @@ disjoint and each consumes only docs from earlier tiers.
 
 ## Worktree recipe
 
-Use the `using-git-worktrees` superpower for every parallel stream. The
-naming convention is:
+Use a dedicated git worktree for every parallel stream. The naming
+convention is:
 
 ```
 claude/dishton-stream-<tier><letter>
