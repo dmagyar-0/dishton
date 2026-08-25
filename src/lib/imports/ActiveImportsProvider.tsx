@@ -370,6 +370,25 @@ export function ActiveImportsProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (done.length === 0 && failed.length === 0) return;
+      // Mirror the single-`done` case above: one failure on its own can name
+      // its reason instead of just being counted. Background imports exist so
+      // the user can close the app, so this is a normal way to meet a failure
+      // — and "1 import(s) couldn't be finished" tells them nothing about
+      // whether retrying the same link is worth it.
+      //
+      // `needs_review` keeps the summary: its reason lives in payload.reason,
+      // not in `error`, so failedErrorKey would fall back to errors.internal
+      // and we would trade a vague message for a wrong one.
+      const soleFailure = done.length === 0 && failed.length === 1 ? failed[0] : undefined;
+      if (soleFailure?.status === 'failed') {
+        push({
+          variant: 'error',
+          persist: true,
+          title: t('import.away_summary_title'),
+          description: t(failedErrorKey(soleFailure.error)),
+        });
+        return;
+      }
       push({
         variant: failed.length > 0 && done.length === 0 ? 'error' : 'info',
         persist: true,
