@@ -70,7 +70,10 @@ vi.mock('@/lib/supabase', () => {
   };
 });
 
-import { ActiveImportsProvider } from './ActiveImportsProvider';
+import de from '@/lib/i18n.de';
+import en from '@/lib/i18n.en';
+import hu from '@/lib/i18n.hu';
+import { ActiveImportsProvider, failedErrorKey } from './ActiveImportsProvider';
 
 const doneRow = {
   id: 'j1',
@@ -96,6 +99,33 @@ beforeEach(() => {
   localStorage.clear();
 });
 afterEach(() => vi.clearAllMocks());
+
+describe('failedErrorKey', () => {
+  // The edge function writes `caption_no_recipe` for an Instagram post whose
+  // caption carries no recipe (the recipe is only in the video). That code has
+  // to survive the round trip: written by import-instagram, mapped here, and
+  // present in every locale — otherwise the user silently gets the generic
+  // "something went wrong" instead of the reason they can act on.
+  it('maps caption_no_recipe to its own message rather than the generic one', () => {
+    expect(failedErrorKey('caption_no_recipe')).toBe('errors.caption_no_recipe');
+  });
+
+  it('keeps the generic empty code distinct from the Instagram-specific one', () => {
+    expect(failedErrorKey('empty')).toBe('errors.empty');
+  });
+
+  it('falls back to errors.internal for an unknown or missing code', () => {
+    expect(failedErrorKey('something_new')).toBe('errors.internal');
+    expect(failedErrorKey(null)).toBe('errors.internal');
+    expect(failedErrorKey(undefined)).toBe('errors.internal');
+  });
+
+  it('has a string for every locale', () => {
+    for (const messages of [en, de, hu]) {
+      expect(messages.errors.caption_no_recipe).toBeTruthy();
+    }
+  });
+});
 
 describe('ActiveImportsProvider reopen pop-up', () => {
   it('announces a terminal import that completed past the stored mark', async () => {

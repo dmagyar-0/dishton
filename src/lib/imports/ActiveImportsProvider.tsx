@@ -83,6 +83,7 @@ const KNOWN_FAILED_CODES = new Set([
   'source_too_large',
   'instagram_unavailable',
   'empty',
+  'caption_no_recipe',
   'object_not_found',
   'forbidden_path',
   'not_image',
@@ -90,7 +91,7 @@ const KNOWN_FAILED_CODES = new Set([
   'network',
 ]);
 
-function failedErrorKey(code: string | null | undefined): string {
+export function failedErrorKey(code: string | null | undefined): string {
   return code && KNOWN_FAILED_CODES.has(code) ? `errors.${code}` : 'errors.internal';
 }
 

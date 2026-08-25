@@ -594,6 +594,10 @@ export default {
     schema_failed: 'Az oldalról hiányoznak bizonyos receptadatok, amelyekre szükségünk van.',
     instagram_unavailable:
       'Az Instagram nem tudta megosztani azt a bejegyzést. Próbálj egy nyilvános bejegyzést, vagy illeszd be a receptet kézzel.',
+    empty:
+      'Nem találtunk receptet ebben a forrásban. Próbálj másik linket vagy bejegyzést, vagy add hozzá kézzel.',
+    caption_no_recipe:
+      'Ennek a bejegyzésnek a szövegében nincs meg a recept — valószínűleg csak a videóban szerepel. Próbálj egy másik linket, vagy add hozzá képernyőképről.',
     photo_too_large: 'Ez a fotó meghaladja a 10 MB-os korlátot. Próbálj egy kisebb képet.',
     photo_too_many: 'Egyszerre legfeljebb {{max}} fotót csatolhatsz.',
     photo_wrong_type: 'Válassz egy JPEG- vagy PNG-képet.',

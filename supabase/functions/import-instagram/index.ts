@@ -379,14 +379,21 @@ serve(async (req: Request) => {
           value.reason === "instagram_unavailable" || value.reason === "empty"
         ) {
           // 'empty' = the model returned a schema-valid but content-less draft
-          // (no ingredients and no steps), which happens when the caption has
-          // no recipe in it. Fail with a clear "no recipe found" message rather
-          // than saving a blank recipe.
+          // (no ingredients and no steps). On Instagram that almost always
+          // means the caption is pure blurb + hashtags and the recipe only
+          // exists inside the video, so the import can never succeed for this
+          // URL no matter how many times it is retried. Record it under its
+          // own code so the SPA can say "the caption has no recipe" instead of
+          // the generic "we couldn't find a recipe", which reads like a
+          // transient fetch failure and invites a pointless retry.
+          const errorCode = value.reason === "empty"
+            ? "caption_no_recipe"
+            : value.reason;
           await callerClient
             .from("import_jobs")
             .update({
               status: "failed",
-              error: value.reason,
+              error: errorCode,
               payload: { url: body.url, latency_ms: value.latencyMs },
             })
             .eq("id", jobId);
