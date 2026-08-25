@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({
   liveRows: [] as unknown[],
   terminalRows: [] as unknown[],
-  pushed: [] as Array<{ title: string }>,
+  pushed: [] as Array<{ title: string; description?: unknown }>,
   fromCalls: 0,
   subscribes: 0,
   removes: 0,
@@ -14,7 +14,9 @@ const h = vi.hoisted(() => ({
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 vi.mock('@/ui/primitives/Toast', () => ({
-  useToast: () => ({ push: (toast: { title: string }) => h.pushed.push(toast) }),
+  useToast: () => ({
+    push: (toast: { title: string; description?: unknown }) => h.pushed.push(toast),
+  }),
 }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => () => {} }));
 vi.mock('@tanstack/react-query', () => ({
@@ -70,7 +72,10 @@ vi.mock('@/lib/supabase', () => {
   };
 });
 
-import { ActiveImportsProvider } from './ActiveImportsProvider';
+import de from '@/lib/i18n.de';
+import en from '@/lib/i18n.en';
+import hu from '@/lib/i18n.hu';
+import { ActiveImportsProvider, failedErrorKey } from './ActiveImportsProvider';
 
 const doneRow = {
   id: 'j1',
@@ -86,6 +91,20 @@ const doneRow = {
   completed_at: '2026-06-02T00:00:00.000Z',
 };
 
+const failedRow = {
+  id: 'j2',
+  household_id: 'h1',
+  kind: 'instagram',
+  status: 'failed',
+  phase: 'ai',
+  progress_text: 'Asking the model',
+  recipe_id: null,
+  payload: { url: 'https://www.instagram.com/reel/Abc123/', latency_ms: 3200 },
+  error: 'caption_no_recipe',
+  created_at: '2026-06-02T00:00:00.000Z',
+  completed_at: '2026-06-02T00:00:00.000Z',
+};
+
 beforeEach(() => {
   h.liveRows = [];
   h.terminalRows = [];
@@ -96,6 +115,33 @@ beforeEach(() => {
   localStorage.clear();
 });
 afterEach(() => vi.clearAllMocks());
+
+describe('failedErrorKey', () => {
+  // The edge function writes `caption_no_recipe` for an Instagram post whose
+  // caption carries no recipe (the recipe is only in the video). That code has
+  // to survive the round trip: written by import-instagram, mapped here, and
+  // present in every locale — otherwise the user silently gets the generic
+  // "something went wrong" instead of the reason they can act on.
+  it('maps caption_no_recipe to its own message rather than the generic one', () => {
+    expect(failedErrorKey('caption_no_recipe')).toBe('errors.caption_no_recipe');
+  });
+
+  it('keeps the generic empty code distinct from the Instagram-specific one', () => {
+    expect(failedErrorKey('empty')).toBe('errors.empty');
+  });
+
+  it('falls back to errors.internal for an unknown or missing code', () => {
+    expect(failedErrorKey('something_new')).toBe('errors.internal');
+    expect(failedErrorKey(null)).toBe('errors.internal');
+    expect(failedErrorKey(undefined)).toBe('errors.internal');
+  });
+
+  it('has a string for every locale', () => {
+    for (const messages of [en, de, hu]) {
+      expect(messages.errors.caption_no_recipe).toBeTruthy();
+    }
+  });
+});
 
 describe('ActiveImportsProvider reopen pop-up', () => {
   it('announces a terminal import that completed past the stored mark', async () => {
@@ -140,6 +186,58 @@ describe('ActiveImportsProvider reopen pop-up', () => {
     await waitFor(() => expect(h.removes).toBeGreaterThanOrEqual(1));
     await waitFor(() => expect(h.subscribes).toBe(2));
     await waitFor(() => expect(h.fromCalls).toBeGreaterThan(callsAfterMount));
+  });
+
+  it('names the reason when a single import failed while away', async () => {
+    // Background imports exist so the user can close the app, so meeting a
+    // failure on reopen is normal. The count summary ("1 import(s) couldn't be
+    // finished") gives them nothing to act on — for an Instagram caption with
+    // no recipe in it, the difference is knowing not to retry the same link.
+    localStorage.setItem('dishton:imports:lastNotified:p1', '2026-06-01T00:00:00.000Z');
+    h.terminalRows = [failedRow];
+    render(
+      <ActiveImportsProvider>
+        <div />
+      </ActiveImportsProvider>,
+    );
+    await waitFor(() =>
+      expect(h.pushed.some((toast) => toast.description === 'errors.caption_no_recipe')).toBe(true),
+    );
+    expect(h.pushed.some((toast) => toast.description === 'import.away_summary_failed')).toBe(
+      false,
+    );
+  });
+
+  it('keeps the count summary when several imports failed while away', async () => {
+    localStorage.setItem('dishton:imports:lastNotified:p1', '2026-06-01T00:00:00.000Z');
+    h.terminalRows = [failedRow, { ...failedRow, id: 'j3', error: 'empty' }];
+    render(
+      <ActiveImportsProvider>
+        <div />
+      </ActiveImportsProvider>,
+    );
+    await waitFor(() =>
+      expect(h.pushed.some((toast) => toast.title === 'import.away_summary_title')).toBe(true),
+    );
+    // Two different reasons can't be named in one line, so it stays a count.
+    expect(h.pushed.some((toast) => toast.description === 'errors.caption_no_recipe')).toBe(false);
+  });
+
+  it('leaves a lone needs_review row on the summary rather than guessing a reason', async () => {
+    // needs_review carries its reason in payload.reason, not in `error`, so
+    // naming it here would resolve to errors.internal — a wrong message is
+    // worse than a vague one.
+    localStorage.setItem('dishton:imports:lastNotified:p1', '2026-06-01T00:00:00.000Z');
+    h.terminalRows = [{ ...failedRow, id: 'j4', status: 'needs_review', error: null }];
+    render(
+      <ActiveImportsProvider>
+        <div />
+      </ActiveImportsProvider>,
+    );
+    await waitFor(() =>
+      expect(h.pushed.some((toast) => toast.title === 'import.away_summary_title')).toBe(true),
+    );
+    expect(h.pushed.some((toast) => toast.description === 'errors.internal')).toBe(false);
   });
 
   it('does not announce when nothing is newer than the mark', async () => {
