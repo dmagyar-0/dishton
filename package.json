@@ -73,7 +73,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4",
     "@vitest/coverage-v8": "^2",
-    "fast-check": "^3",
+    "fast-check": "^4",
     "jsdom": "^25",
     "tailwindcss": "^4",
     "typescript": "^5.6",
