@@ -627,6 +627,14 @@ export default {
       view_table: 'Megjelenítés táblázatként',
       no_data: 'Ebben az időszakban még nincs adat.',
       load_error: 'Nem sikerült betölteni az adatokat. Próbáld újra.',
+      users: {
+        title: 'Felhasználók',
+        subtitle: 'Minden regisztrált fiók, e-mail címmel támogatáshoz és moderáláshoz.',
+        email: 'E-mail',
+        display_name: 'Név',
+        joined: 'Regisztrált',
+        last_sign_in: 'Utolsó bejelentkezés',
+      },
       active_users: {
         title: 'Aktív felhasználók',
         subtitle: 'Egyedi bejelentkezett profilok legalább egy rögzített eseménnyel.',

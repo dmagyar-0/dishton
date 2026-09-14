@@ -643,6 +643,14 @@ export default {
       view_table: 'Als Tabelle anzeigen',
       no_data: 'Noch keine Daten in diesem Zeitraum.',
       load_error: 'Daten konnten nicht geladen werden. Bitte erneut versuchen.',
+      users: {
+        title: 'Nutzer',
+        subtitle: 'Alle registrierten Konten, mit E-Mail für Support und Moderation.',
+        email: 'E-Mail',
+        display_name: 'Name',
+        joined: 'Registriert',
+        last_sign_in: 'Letzte Anmeldung',
+      },
       active_users: {
         title: 'Aktive Nutzer',
         subtitle: 'Eindeutige angemeldete Profile mit mindestens einem erfassten Ereignis.',

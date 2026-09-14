@@ -624,6 +624,14 @@ export default {
       view_table: 'View as table',
       no_data: 'No data in this range yet.',
       load_error: "Couldn't load this data. Try again.",
+      users: {
+        title: 'Users',
+        subtitle: 'Every signed-up account, with email for support and moderation.',
+        email: 'Email',
+        display_name: 'Name',
+        joined: 'Joined',
+        last_sign_in: 'Last sign-in',
+      },
       active_users: {
         title: 'Active users',
         subtitle: 'Distinct signed-in profiles with at least one recorded event.',

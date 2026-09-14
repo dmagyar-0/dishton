@@ -8,6 +8,7 @@ import { AppOpensSection } from './AppOpensSection';
 import { DateRangeSelector } from './DateRangeSelector';
 import { EdgeReliabilitySection } from './EdgeReliabilitySection';
 import { ImportsSection } from './ImportsSection';
+import { UsersSection } from './UsersSection';
 
 // Content of /admin/metrics, split out from the route file so it can be unit
 // tested without a router context (see src/routes/admin/metrics.tsx, which is
@@ -27,6 +28,7 @@ export function AdminMetricsPage() {
         <DateRangeSelector value={days} onChange={setDays} />
       </div>
 
+      <UsersSection />
       <ActiveUsersSection range={range} />
       <AppOpensSection range={range} />
       <ImportsSection range={range} />
