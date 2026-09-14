@@ -33,7 +33,7 @@ begin
   return query
     select
       p.id as profile_id,
-      u.email,
+      u.email::text,
       p.display_name,
       p.created_at,
       u.last_sign_in_at
