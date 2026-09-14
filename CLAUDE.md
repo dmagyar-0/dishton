@@ -54,21 +54,51 @@ Vitest for the SPA, Deno test for Edge Functions and DB, Playwright for E2E. Co-
   the seed could be masking (`app.feature_flags` rows, migrations applied)
   directly against the deployed database, read-only.
 
-  From the remote Claude-Code-on-the-web container a browser often **cannot**
-  reach the deployed site: the agent proxy relays `curl` fine but drops
-  Chromium's tunnels (`net::ERR_CONNECTION_RESET`, `ws_closed_mid_exchange` in
-  `$HTTPS_PROXY/__agentproxy/status`), and the authenticated surfaces need
-  production credentials this environment does not hold. When that happens, do
-  not silently downgrade to "the local run passed". Do the checks that are
-  still possible and state the gap:
+  `scripts/verify-production.mjs` does all of this — run it, don't hand-roll it:
 
-  - `curl` the deployed page and its `/assets/*.js`, and grep the live bundle
-    for markers of the change (new i18n keys, new element ids). That proves the
-    code actually shipped, rather than inferring it from a green deploy.
-  - Query the deployed database read-only for the runtime state the feature
-    depends on.
-  - Then say explicitly that visual confirmation is outstanding, and ask for a
-    screenshot of the surface from someone who is signed in.
+  ```bash
+  node scripts/verify-production.mjs --marker <new-i18n-key>      # anonymous
+  node --env-file=<creds> scripts/verify-production.mjs --authed \
+    --marker save_link_action_to --out prod-verification          # signed in
+  ```
+
+  It fetches the deployed bundle and asserts your `--marker`s are really in it
+  (proof the code shipped, not an inference from a green deploy), then drives
+  the live site at desktop and 390px, screenshotting each state and failing on
+  horizontal overflow or raw i18n keys. Two things it handles that a hand-rolled
+  Playwright run gets wrong here:
+
+  - **Chromium cannot reach the internet from this container.** The agent proxy
+    relays Node's `fetch` fine but drops the browser's own tunnels
+    (`net::ERR_CONNECTION_RESET`; `ws_closed_mid_exchange` in
+    `$HTTPS_PROXY/__agentproxy/status`). The script intercepts every browser
+    request and fulfils it from Node, so the page is still the real production
+    app over the real network — only the transport differs.
+  - **Production analytics are live.** `app.metrics_active_users` counts
+    `distinct profile_id` from `app.analytics_events`, so a signed-in smoke run
+    would show up as a real user in the admin dashboard. The script blocks that
+    endpoint, leaving no metrics footprint. Pass `--keep-analytics` only if you
+    deliberately want the writes.
+
+  **Credentials.** A dedicated account exists for this —
+  `prod-smoke@dishton.test` (profile `aaaaaaaa-0000-4000-8000-00000050c0de`),
+  with a self-contained fixture it owns outright: household `Smoke Source
+  Kitchen` holding the recipe `Smoke Test Lemonade`, followed by the smoke
+  account's personal household. That exercises the followed-household browse and
+  save surface without touching any real user's data. **No password is stored
+  anywhere.** Reset it to a fresh random value at run time through the Supabase
+  connector, write it to an env file in your scratchpad (never a command line,
+  never the repo), and use `node --env-file`:
+
+  ```sql
+  update auth.users
+     set encrypted_password = extensions.crypt('<fresh-random>', extensions.gen_salt('bf')),
+         updated_at = now()
+   where email = 'prod-smoke@dishton.test';
+  ```
+
+  If a check cannot be run at all, say so plainly rather than downgrading to
+  "the local run passed".
 - **Keep the `design-synch` skill current with the UI.** When you add a route, modal, dialog, or significant UI state, add a matching capture step to `.claude/skills/design-synch/capture.spec.ts` — a surface missing from that spec is silently missing from the design snapshot.
 
 ## Edge Functions (Deno)
