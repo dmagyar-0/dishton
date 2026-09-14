@@ -76,6 +76,25 @@ export function useHousehold(householdId: string) {
   });
 }
 
+// Id + name for each household the user belongs to. Surfaces that must let a
+// multi-household user choose between their memberships need names, and
+// `Membership` (from the auth store) carries only ids.
+export function useMyHouseholds(householdIds: string[]) {
+  return useQuery({
+    queryKey: ['my-households', [...householdIds].sort()],
+    enabled: householdIds.length > 0,
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const { data, error } = await supabase
+        .from('households')
+        .select('id, name')
+        .in('id', householdIds);
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+    staleTime: 60_000,
+  });
+}
+
 // Returns just the allowed tag list. Recipe edit screens use this to populate
 // the TagPicker chips. Sharing the same `['household', id]` cache key as
 // useHousehold means the settings screen and the picker stay in sync after a

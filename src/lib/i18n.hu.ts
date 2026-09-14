@@ -102,6 +102,9 @@ export default {
   households: {
     title: 'Háztartások',
     subtitle: 'Oszd meg a konyhádat más háztartásokkal, és kövesd az övéiket.',
+    switcher_label: 'Háztartás',
+    switcher_help:
+      'A követőkódok és követések egy háztartáshoz tartoznak. Válaszd ki, melyiket kezeled.',
   },
   following: {
     title: 'Követett',
@@ -121,6 +124,7 @@ export default {
     browse_help:
       'Bármelyik receptet elmentheted a saját gyűjteményedbe — szinkronban marad az eredetivel.',
     browse_back: 'Vissza a saját receptjeimhez',
+    browse_section: 'Az ő receptjeik',
     browse_recipes: 'Receptek böngészése',
     open: 'Megnyitás',
     unfollow: 'Követés megszüntetése',

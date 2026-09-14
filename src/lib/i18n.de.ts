@@ -103,6 +103,9 @@ export default {
   households: {
     title: 'Haushalte',
     subtitle: 'Teile deine Küche mit anderen Haushalten und folge ihren.',
+    switcher_label: 'Haushalt',
+    switcher_help:
+      'Folge-Codes und Abos gehören zu einem Haushalt. Wähle, welchen du verwalten möchtest.',
   },
   following: {
     title: 'Folge ich',
@@ -121,6 +124,7 @@ export default {
     browse_help:
       'Speichere jedes Rezept in deiner eigenen Sammlung — es bleibt mit dem Original synchron.',
     browse_back: 'Zurück zu meinen Rezepten',
+    browse_section: 'Ihre Rezepte',
     browse_recipes: 'Rezepte ansehen',
     open: 'Öffnen',
     unfollow: 'Entfolgen',

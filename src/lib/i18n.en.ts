@@ -101,6 +101,9 @@ export default {
   households: {
     title: 'Households',
     subtitle: 'Share your kitchen with other households and follow theirs.',
+    switcher_label: 'Household',
+    switcher_help:
+      'Follow codes and follows belong to one household. Pick which of yours to manage.',
   },
   following: {
     title: 'Following',
@@ -119,6 +122,7 @@ export default {
     browse_help:
       'Save any recipe here to your own collection — it stays in sync with the original.',
     browse_back: 'Back to my recipes',
+    browse_section: 'Their recipes',
     browse_recipes: 'Browse recipes',
     open: 'Open',
     unfollow: 'Unfollow',

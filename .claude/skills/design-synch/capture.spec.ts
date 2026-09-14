@@ -298,10 +298,19 @@ test('snapshot: household user', async ({ page }, info) => {
   // distinct state from your own list: it carries the followed-household
   // banner instead of the personal greeting, and every card shows an
   // always-visible save-to-collection control.
+  // Alice belongs to both a personal household and the shared The Pantry, and
+  // the seeded follow lives on the latter -- so reaching Carol's Kitchen means
+  // switching households first. Capture the switcher itself too.
   await page.goto('/households');
+  if (await tap(page.locator('#households-switcher'))) {
+    await shot(page, info, '46d-households-switcher-open');
+    await tap(page.getByRole('option', { name: /the pantry/i }));
+    await page.waitForTimeout(800);
+    await shot(page, info, '46e-households-shared-follows');
+  }
   if (await tap(page.getByRole('link', { name: /browse recipes/i }).first())) {
     await page.waitForURL(/\/h\//, { timeout: 20_000 });
-    await shot(page, info, '46d-followed-household-browse');
+    await shot(page, info, '46f-followed-household-browse');
   }
 
   // Admin metrics — alice is the seeded app_admin (see supabase/seed.sql).

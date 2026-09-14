@@ -179,7 +179,11 @@ function RecipeListPage() {
       ? t('search.results')
       : selected.length === 1 && selected[0]
         ? categoryLabel(selected[0])
-        : t('recipe.latest_imports');
+        : // "Latest imports" is the viewer's own framing; on someone else's
+          // collection nothing here was imported by them.
+          viewingOtherHousehold
+          ? t('following.browse_section')
+          : t('recipe.latest_imports');
 
   const showNoMatches =
     !sourceLoading && filtered.length === 0 && (searchActive || selected.length > 0);
@@ -391,16 +395,20 @@ function RecipeListPage() {
       )}
 
       {/* Always-visible shortcut to the import flow. `fixed` keeps it pinned to
-          the bottom-center of the viewport as the recipe list scrolls. */}
-      <Link
-        to="/h/$householdId/import"
-        params={{ householdId }}
-        aria-label={t('nav.import_action')}
-        title={t('nav.import_action')}
-        className="fixed bottom-6 left-1/2 z-40 flex h-[58px] w-[58px] -translate-x-1/2 items-center justify-center rounded-full bg-saffron text-saffron-ink shadow-press-lg transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-px active:translate-y-0"
-      >
-        <Plus size={28} strokeWidth={2} aria-hidden="true" />
-      </Link>
+          the bottom-center of the viewport as the recipe list scrolls. Hidden
+          on a followed household: it targets the household being VIEWED, so
+          there it would offer to import into someone else's kitchen. */}
+      {!viewingOtherHousehold && (
+        <Link
+          to="/h/$householdId/import"
+          params={{ householdId }}
+          aria-label={t('nav.import_action')}
+          title={t('nav.import_action')}
+          className="fixed bottom-6 left-1/2 z-40 flex h-[58px] w-[58px] -translate-x-1/2 items-center justify-center rounded-full bg-saffron text-saffron-ink shadow-press-lg transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-px active:translate-y-0"
+        >
+          <Plus size={28} strokeWidth={2} aria-hidden="true" />
+        </Link>
+      )}
 
       <CustomizeHomeSheet
         open={customizeOpen}

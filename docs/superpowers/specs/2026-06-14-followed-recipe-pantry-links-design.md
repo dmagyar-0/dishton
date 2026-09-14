@@ -119,6 +119,27 @@ seeing how it could be done. Three causes, all fixed on
    rather than a door. `FollowedRow` now carries an explicit "Browse recipes"
    control alongside Unfollow, and stacks rather than crowds at 390px.
 
+Visual validation then found a fourth, larger cause, which the three fixes
+above did not touch:
+
+4. **A follow on a shared household was unreachable.** `/households` scoped
+   itself to `pickCanonicalHousehold()` — personal-preferred — with no way to
+   change it. A user whose follow lived on a SHARED household (the seed's own
+   `The Pantry → Carol's Kitchen` is exactly this) read "You are not following
+   any households yet" on a page where the follow demonstrably existed, and had
+   no route to those recipes at all. `/households` now offers a household
+   switcher to multi-household users (single-household users see no change),
+   backed by `resolveManagedHousehold()` in `src/lib/canonical-household.ts`,
+   which falls back to the canonical household when a pick goes stale.
+
+Two more bugs on the followed-household surface, both found in the same pass:
+
+- The section header read **"LATEST IMPORTS"** over recipes the viewer had not
+  imported. It now reads "Their recipes" when viewing someone else's collection.
+- The **import FAB** was rendered on a followed household's page, targeting the
+  household being *viewed* — i.e. offering to import into someone else's
+  kitchen. It is now hidden there.
+
 `.claude/skills/design-synch/capture.spec.ts` gained a `46d` step for the
 followed-household browse view, which the snapshot had never covered.
 
