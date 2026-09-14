@@ -143,7 +143,31 @@ Two more bugs on the followed-household surface, both found in the same pass:
 `.claude/skills/design-synch/capture.spec.ts` gained a `46d` step for the
 followed-household browse view, which the snapshot had never covered.
 
-Still out of scope, unchanged from v1: full-text **search** over linked
-recipes. `app.search_recipes` filters `household_id = any(household_ids)`, so a
-saved link is invisible to text search even though tag filtering (client-side,
-over the merged list) does find it.
+## Follow-up (2026-09-14, part 2) — search, and saving into the right household
+
+Two things remained. Both are now done.
+
+**Search over linked recipes** (the v1 "out of scope" item) is closed by
+`supabase/migrations/20260914120000_search_includes_links.sql`.
+`app.search_recipes` gains `include_links boolean default false`; when true it
+also matches recipes linked into the searched households. The default keeps
+every existing caller — and the followed-household browse view, which does not
+merge links — on the old narrow behaviour, so search matches what the list
+shows. The function stays security-invoker, so RLS still bounds the result;
+`include_links` only selects among rows the caller may already read. Client
+side, a hit whose `household_id` is not one of the searched households can only
+have come from the link branch, so it is marked `is_link: true` with no extra
+query and badges like any other link.
+
+**Saves landed in the wrong household.** `usePantryHouseholdId()` always
+resolved to the canonical (personal-preferred) household, so a user whose
+recipes live in a SHARED household saved followed recipes into a personal
+household they never open — and on the recipe page the only control read "Save
+to my pantry", which says nothing about where "my pantry" is when you have two.
+The followed-collection routes now carry a `from` search param naming the
+household you browsed out of; `usePantryHouseholdId(from)` honours it through
+`resolveManagedHousehold` (falling back to canonical when absent or stale), and
+both save controls name the destination — "Save to The Pantry" — whenever the
+viewer has more than one household. `/households`' "Browse recipes" seeds
+`from`, and the home grid carries it onto the recipe detail route so the target
+survives the click.

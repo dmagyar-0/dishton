@@ -429,6 +429,8 @@ export default {
     delete_failed_body:
       'Beim Entfernen des Rezepts ist etwas schiefgelaufen. Bitte gleich noch einmal versuchen.',
     save_link_action: 'In meine Speisekammer',
+    save_link_action_to: 'In {{name}} speichern',
+    save_link_saved_to: 'In {{name}} gespeichert',
     save_link_saved: 'In Speisekammer',
     save_link_success_title: 'In deiner Speisekammer gespeichert',
     save_link_success_body: '„{{title}}" bleibt mit dem Original synchron.',

@@ -1,6 +1,10 @@
 import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
-import { useHousehold, useUpdateHouseholdPrimaryTags } from '@/lib/queries/households';
+import {
+  useHousehold,
+  useMyHouseholds,
+  useUpdateHouseholdPrimaryTags,
+} from '@/lib/queries/households';
 import {
   useLinkedRecipeIds,
   usePantryHouseholdId,
@@ -37,6 +41,11 @@ import { requireAuth } from '../../_guards';
 const Search = z.object({
   q: z.string().optional(),
   tag: z.union([z.string(), z.array(z.string())]).optional(),
+  // The household you arrived FROM when browsing a followed collection. It is
+  // the household a save lands in, so browsing out of a shared household saves
+  // back into it. Validated against real memberships downstream, so a hand-
+  // edited value can only fall back to the canonical household.
+  from: z.string().uuid().optional(),
 });
 
 export const Route = createFileRoute('/h/$householdId/')({
@@ -64,7 +73,14 @@ function RecipeListPage() {
   const isMember = memberships.some((m) => m.household_id === householdId);
   const followsEnabled = useFeatureFlag('follows_enabled');
   // The household saved links land in / are read from (the user's own pantry).
-  const pantryId = usePantryHouseholdId();
+  const pantryId = usePantryHouseholdId(params.from);
+  // Name it on the save control when the user has more than one household --
+  // "Save to my pantry" is ambiguous the moment there are two candidates.
+  const myHouseholds = useMyHouseholds(
+    useMemo(() => memberships.map((m) => m.household_id), [memberships]),
+  );
+  const pantryName =
+    memberships.length > 1 ? myHouseholds.data?.find((h) => h.id === pantryId)?.name : undefined;
 
   // Own pantry: pull in the live links saved into this household, badged and
   // merged with own recipes. Only meaningful for a member view with follows on.
@@ -100,8 +116,11 @@ function RecipeListPage() {
 
   const q = params.q ?? '';
   const searchActive = q.trim().length >= 2;
-  // Scoped to THIS household only — Home stays single-household.
-  const search = useRecipeSearch(q, [householdId]);
+  // Scoped to THIS household only — Home stays single-household. Links are
+  // searchable on the same terms the browse list merges them (your own
+  // household), so typing a saved recipe's name finds it just like filtering
+  // by its tag already did.
+  const search = useRecipeSearch(q, [householdId], linksEnabled);
   const list = useRecipeList(householdId);
 
   // Browse view = own recipes + saved links, newest first (link rows carry the
@@ -330,12 +349,14 @@ function RecipeListPage() {
                       recipeId={r.id}
                       recipeTitle={r.title}
                       pantryHouseholdId={pantryId}
+                      pantryName={pantryName}
                       saved={linkedIds.data?.has(r.id) ?? false}
                     />
                   )}
                   <Link
                     to="/h/$householdId/r/$recipeId"
                     params={{ householdId: r.household_id, recipeId: r.id }}
+                    search={viewingOtherHousehold ? { from: pantryId } : {}}
                     className="block group/link"
                   >
                     <Card className="h-full overflow-hidden bg-paper p-0 transition-[transform,box-shadow] duration-[var(--duration-fast)] hover:-translate-y-0.5 hover:shadow-press-lg">

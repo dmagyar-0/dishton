@@ -419,6 +419,8 @@ export default {
     delete_failed_title: 'Couldn’t delete',
     delete_failed_body: 'Something went wrong removing this recipe. Try again in a moment.',
     save_link_action: 'Save to my pantry',
+    save_link_action_to: 'Save to {{name}}',
+    save_link_saved_to: 'Saved to {{name}}',
     save_link_saved: 'Saved to pantry',
     save_link_success_title: 'Saved to your pantry',
     save_link_success_body: '"{{title}}" will stay in sync with the original.',

@@ -311,6 +311,12 @@ test('snapshot: household user', async ({ page }, info) => {
   if (await tap(page.getByRole('link', { name: /browse recipes/i }).first())) {
     await page.waitForURL(/\/h\//, { timeout: 20_000 });
     await shot(page, info, '46f-followed-household-browse');
+    // The followed recipe's detail page: it carries the labelled save control
+    // naming the destination household, a distinct state from an own recipe.
+    if (await tap(page.locator('a[href*="/r/"]').first())) {
+      await page.waitForTimeout(800);
+      await shot(page, info, '46g-followed-recipe-detail');
+    }
   }
 
   // Admin metrics — alice is the seeded app_admin (see supabase/seed.sql).

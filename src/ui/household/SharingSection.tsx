@@ -389,6 +389,9 @@ function FollowedRow({
         <Link
           to="/h/$householdId"
           params={{ householdId: followed.followed_household_id }}
+          // Carry the household you're browsing FROM: it's the one a save lands
+          // in, so a follow held by a shared household saves back into it.
+          search={{ from: householdId }}
           className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink"
         >
           <BookOpen size={14} strokeWidth={1.5} aria-hidden="true" />

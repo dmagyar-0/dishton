@@ -419,6 +419,8 @@ export default {
     delete_failed_title: 'Nem sikerült törölni',
     delete_failed_body: 'Hiba történt a recept eltávolításakor. Próbáld újra egy pillanat múlva.',
     save_link_action: 'Mentés a kamrámba',
+    save_link_action_to: 'Mentés ide: {{name}}',
+    save_link_saved_to: 'Elmentve ide: {{name}}',
     save_link_saved: 'Kamrában',
     save_link_success_title: 'Elmentve a kamrádba',
     save_link_success_body: 'A(z) „{{title}}" mindig az eredetivel szinkronban marad.',

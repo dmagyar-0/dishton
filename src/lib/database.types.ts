@@ -1110,7 +1110,7 @@ export type Database = {
         Returns: string
       }
       search_recipes: {
-        Args: { household_ids: string[]; q: string }
+        Args: { household_ids: string[]; include_links?: boolean; q: string }
         Returns: {
           canonical_unit_system: string
           created_at: string

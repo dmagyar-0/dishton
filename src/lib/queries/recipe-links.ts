@@ -4,7 +4,7 @@
 // docs/superpowers/specs/2026-06-14-followed-recipe-pantry-links-design.md.
 
 import { useAuth } from '@/lib/auth';
-import { pickCanonicalHousehold } from '@/lib/canonical-household';
+import { resolveManagedHousehold } from '@/lib/canonical-household';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import type { RecipeListRow } from './recipes';
@@ -15,11 +15,14 @@ import type { RecipeListRow } from './recipes';
 // card links straight to the source.
 export type LinkedRecipeRow = RecipeListRow & { is_link: true };
 
-// The canonical household a solo user saves into: their personal household,
-// falling back to the first membership. Mirrors /following's target selection
-// so a saved recipe lands where the user's own recipes live.
-export function usePantryHouseholdId(): string {
-  return useAuth((s) => pickCanonicalHousehold(s.memberships)?.household_id ?? '');
+// Which household a save lands in. `preferred` is the household the user
+// reached the followed collection FROM (carried as the `from` search param), so
+// someone browsing out of a shared household saves back into that household
+// rather than into a personal one they never open. It falls back to the
+// canonical household whenever `from` is absent or no longer a membership, so
+// single-household users are unaffected.
+export function usePantryHouseholdId(preferred?: string): string {
+  return useAuth((s) => resolveManagedHousehold(s.memberships, preferred));
 }
 
 export function useRecipeLinks(householdId: string, enabled = true) {

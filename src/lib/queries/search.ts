@@ -3,17 +3,28 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import type { RecipeListRow } from './recipes';
 
-export function useRecipeSearch(q: string, householdIds: string[]) {
+// `includeLinks` widens the search to recipes SAVED into these households from
+// households they follow (see queries/recipe-links.ts). Pass it only where the
+// browse list also merges links -- i.e. your own household -- so what search
+// finds matches what the list shows.
+export function useRecipeSearch(q: string, householdIds: string[], includeLinks = false) {
   return useQuery({
-    queryKey: ['search', q, householdIds],
+    queryKey: ['search', q, householdIds, includeLinks],
     enabled: q.trim().length >= 2,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('search_recipes', {
         q,
         household_ids: householdIds,
+        include_links: includeLinks,
       });
       if (error) throw error;
-      const rows = (data ?? []) as unknown as RecipeListRow[];
+      // A hit whose household isn't one we searched can only have arrived via
+      // the link branch, so it needs the same badge/remove treatment the browse
+      // list gives links. No extra round-trip needed to tell them apart.
+      const searched = new Set(householdIds);
+      const rows = ((data ?? []) as unknown as RecipeListRow[]).map((r) =>
+        searched.has(r.household_id) ? r : { ...r, is_link: true },
+      );
       // Never the query text itself -- just that a search ran and how many
       // results it found.
       track('search_performed', { result_count: rows.length });
