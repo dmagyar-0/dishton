@@ -26,6 +26,9 @@ vi.mock('@/lib/queries/metrics', () => ({
   useMetricsEdgeFailures: () => mocks.emptyQuery,
   useMetricsStuckImports: () => mocks.emptyQuery,
 }));
+vi.mock('@/lib/queries/adminUsers', () => ({
+  useAdminUsers: () => mocks.emptyQuery,
+}));
 
 import { AdminMetricsPage } from './AdminMetricsPage';
 
@@ -37,6 +40,7 @@ describe('AdminMetricsPage', () => {
   it('renders every section with zero data across the board', () => {
     const { container } = render(<AdminMetricsPage />);
     expect(screen.getByText('admin.metrics.title')).toBeInTheDocument();
+    expect(screen.getByText('admin.metrics.users.title')).toBeInTheDocument();
     expect(screen.getByText('admin.metrics.active_users.title')).toBeInTheDocument();
     expect(screen.getByText('admin.metrics.app_opens.title')).toBeInTheDocument();
     expect(screen.getByText('admin.metrics.imports.title')).toBeInTheDocument();
