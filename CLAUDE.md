@@ -40,6 +40,7 @@ Formatting and lint are owned by Biome (`biome.json`) and enforced by `pnpm lint
 Vitest for the SPA, Deno test for Edge Functions and DB, Playwright for E2E. Co-locate component tests next to components; domain tests live under `src/domain/`.
 
 - **Visual validation is required for any user-facing change** before claiming a feature complete. Run the `validating-features-visually` skill — it is authoritative for how, including inside the remote Claude-Code-on-the-web container (Docker daemon, Supabase CLI, and the `-x edge-runtime,functions` flag the sandbox needs). Typecheck and unit tests don't catch flash-of-wrong-content, mobile overflow, or wrong post-signup field population; merges #61, #62 and #63 each needed follow-up fixes for exactly that. Tooling not being up yet is not a reason to skip it — the skill documents the setup.
+- **Verify on production after every deploy** before telling anyone a change is live. Run the `verifying-in-production` skill — it is authoritative for how (`scripts/verify-production.mjs`, the smoke account, and the two sandbox workarounds a hand-rolled Playwright run gets wrong). A green local suite is not evidence: the local stack is seeded by `supabase/seed.sql`, which a deployed project never runs, so anything the seed sets up is true locally and may be false in production. #166 shipped a whole surface with every gate green while the feature was dark in prod, because `follows_enabled` existed only as a seeded row (#167).
 - **Keep the `design-synch` skill current with the UI.** When you add a route, modal, dialog, or significant UI state, add a matching capture step to `.claude/skills/design-synch/capture.spec.ts` — a surface missing from that spec is silently missing from the design snapshot.
 
 ## Edge Functions (Deno)
@@ -63,4 +64,4 @@ Vitest for the SPA, Deno test for Edge Functions and DB, Playwright for E2E. Co-
 
 ## Skills
 
-Two skills are installed under `.claude/skills/`, both Dishton-specific: `validating-features-visually` (required before calling a user-facing change complete) and `design-synch` (full UI snapshot for the design web app). The general-purpose superpowers process skills have been removed.
+Three skills are installed under `.claude/skills/`, all Dishton-specific: `validating-features-visually` (required before calling a user-facing change complete), `verifying-in-production` (required after a deploy lands, before calling it live) and `design-synch` (full UI snapshot for the design web app). The general-purpose superpowers process skills have been removed.
