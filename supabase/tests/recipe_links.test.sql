@@ -226,4 +226,69 @@ select pg_temp.check_ok(
     'cccccccc-0000-0000-0000-000000000022'::uuid,
     'dddddddd-0000-0000-0000-000000000011'::uuid) = 1);
 
+------------------------------------------------------------------------------
+-- 9. Search reaches linked recipes (20260914120000_search_includes_links).
+--
+-- Until that migration app.search_recipes filtered strictly on
+-- household_id = any(household_ids), so a saved link was invisible to text
+-- search while tag filtering found it. include_links defaults to false so the
+-- old callers (and the followed-household browse view, which does not merge
+-- links) keep the narrow behaviour.
+------------------------------------------------------------------------------
+
+create or replace function pg_temp.q_as_search_count(
+  p_persona uuid, p_q text, p_households uuid[], p_include_links boolean
+) returns bigint language plpgsql as $$
+declare n bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_persona::text, 'role', 'authenticated')::text,
+    true);
+  select count(*) into n
+    from app.search_recipes(p_q, p_households, p_include_links);
+  perform set_config('role', 'postgres', true);
+  return n;
+end;
+$$;
+
+-- Test 8 removed the link; restore it so the search assertions have one.
+insert into app.recipe_links (household_id, recipe_id, created_by) values
+  ('cccccccc-0000-0000-0000-000000000022',
+   'dddddddd-0000-0000-0000-000000000011',
+   '00000000-0000-0000-0000-0000000000bb')
+on conflict do nothing;
+
+select pg_temp.check_ok(
+  'search without include_links misses a linked recipe (pre-fix behaviour)',
+  pg_temp.q_as_search_count(
+    '00000000-0000-0000-0000-0000000000bb'::uuid, 'stew',
+    array['cccccccc-0000-0000-0000-000000000022']::uuid[], false) = 0);
+
+select pg_temp.check_ok(
+  'search with include_links finds the linked recipe',
+  pg_temp.q_as_search_count(
+    '00000000-0000-0000-0000-0000000000bb'::uuid, 'stew',
+    array['cccccccc-0000-0000-0000-000000000022']::uuid[], true) = 1);
+
+select pg_temp.check_ok(
+  'prefix matching still applies to linked recipes',
+  pg_temp.q_as_search_count(
+    '00000000-0000-0000-0000-0000000000bb'::uuid, 'ste',
+    array['cccccccc-0000-0000-0000-000000000022']::uuid[], true) = 1);
+
+select pg_temp.check_ok(
+  'own recipes are still found alongside links',
+  pg_temp.q_as_search_count(
+    '00000000-0000-0000-0000-0000000000bb'::uuid, 'soup',
+    array['cccccccc-0000-0000-0000-000000000022']::uuid[], true) = 1);
+
+-- include_links must not become a way to read another household's collection:
+-- D neither belongs to nor follows H2, so RLS strips both branches.
+select pg_temp.check_ok(
+  'include_links does not let an outsider read H2 links',
+  pg_temp.q_as_search_count(
+    '00000000-0000-0000-0000-0000000000dd'::uuid, 'stew',
+    array['cccccccc-0000-0000-0000-000000000022']::uuid[], true) = 0);
+
 select label, ok from _t_results order by label;

@@ -24,7 +24,10 @@ vi.mock('@/lib/auth', () => ({
   useAuth: (sel: (s: unknown) => unknown) =>
     sel({
       profile: { id: 'p1' },
-      memberships: [{ household_id: 'h-personal', is_personal: true, role: 'owner' }],
+      memberships: [
+        { household_id: 'h-shared', is_personal: false, role: 'owner' },
+        { household_id: 'h-personal', is_personal: true, role: 'owner' },
+      ],
     }),
 }));
 
@@ -50,6 +53,18 @@ describe('recipe-links queries', () => {
 
   it('usePantryHouseholdId prefers the personal household', () => {
     const { result } = renderHook(() => usePantryHouseholdId(), { wrapper });
+    expect(result.current).toBe('h-personal');
+  });
+
+  it('usePantryHouseholdId saves into the household you browsed FROM', () => {
+    // Someone who reached a followed collection out of a shared household must
+    // save back into it, not into a personal household they never open.
+    const { result } = renderHook(() => usePantryHouseholdId('h-shared'), { wrapper });
+    expect(result.current).toBe('h-shared');
+  });
+
+  it('usePantryHouseholdId ignores a `from` that is not one of your households', () => {
+    const { result } = renderHook(() => usePantryHouseholdId('h-not-mine'), { wrapper });
     expect(result.current).toBe('h-personal');
   });
 

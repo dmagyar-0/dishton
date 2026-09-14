@@ -7,6 +7,7 @@ import {
 } from '@/domain';
 import { useFeatureFlag } from '@/feature-flags';
 import { useAuth } from '@/lib/auth';
+import { useMyHouseholds } from '@/lib/queries/households';
 import { useLinkedRecipeIds, usePantryHouseholdId } from '@/lib/queries/recipe-links';
 import { useIsRecipeEditor, useRecipe } from '@/lib/queries/recipes';
 import { useCachedTranslations, useTranslateRecipe } from '@/lib/queries/translations';
@@ -38,6 +39,9 @@ const Search = z
       .string()
       .regex(/^[a-z]{2}(-[A-Z]{2})?$/)
       .optional(),
+    // The household to save this recipe INTO, carried from the followed
+    // collection you opened it from. See the home route's `from`.
+    from: z.string().uuid().optional(),
   })
   .refine(
     (s) => !(s.scale !== undefined && s.servings !== undefined),
@@ -74,8 +78,15 @@ function RecipeDetailPage() {
   // Viewing a recipe from a household you follow (not one you belong to): offer
   // a save-to-pantry toggle. The recipe's own household_id is the route param.
   const isMember = memberships.some((m) => m.household_id === householdId);
-  const pantryId = usePantryHouseholdId();
+  const pantryId = usePantryHouseholdId(search.from);
   const canSaveLink = followsEnabled && !isMember && pantryId.length > 0;
+  const myHouseholds = useMyHouseholds(
+    useMemo(() => memberships.map((m) => m.household_id), [memberships]),
+  );
+  // With two or more households "Save to my pantry" doesn't say WHICH, so name
+  // the destination on the button.
+  const pantryName =
+    memberships.length > 1 ? myHouseholds.data?.find((h) => h.id === pantryId)?.name : undefined;
   const linkedIds = useLinkedRecipeIds(pantryId, canSaveLink);
   const cachedLangsQ = useCachedTranslations(recipeId);
 
@@ -294,6 +305,7 @@ function RecipeDetailPage() {
               recipeId={recipeId}
               recipeTitle={displayed.recipe.title}
               pantryHouseholdId={pantryId}
+              pantryName={pantryName}
               saved={linkedIds.data?.has(recipeId) ?? false}
             />
           </div>

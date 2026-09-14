@@ -7,20 +7,35 @@ type Props = {
   recipeId: string;
   recipeTitle: string;
   pantryHouseholdId: string;
+  // Named on the button when the viewer has more than one household, so it is
+  // clear WHICH collection this lands in.
+  pantryName?: string;
   saved: boolean;
 };
 
 // Labeled save/remove toggle for the recipe detail page, shown when viewing a
 // followed household's recipe. Mirrors the Edit link's styling so it sits in the
 // same title-row action cluster.
-export function RecipeDetailSaveButton({ recipeId, recipeTitle, pantryHouseholdId, saved }: Props) {
+export function RecipeDetailSaveButton({
+  recipeId,
+  recipeTitle,
+  pantryHouseholdId,
+  pantryName,
+  saved,
+}: Props) {
   const { t } = useTranslation();
   const { push } = useToast();
   const save = useSaveRecipeLink(pantryHouseholdId);
   const remove = useRemoveRecipeLink(pantryHouseholdId);
   const pending = save.isPending || remove.isPending;
 
-  const label = saved ? t('recipe.save_link_saved') : t('recipe.save_link_action');
+  const label = saved
+    ? pantryName
+      ? t('recipe.save_link_saved_to', { name: pantryName })
+      : t('recipe.save_link_saved')
+    : pantryName
+      ? t('recipe.save_link_action_to', { name: pantryName })
+      : t('recipe.save_link_action');
 
   const handleClick = () => {
     if (pending) return;

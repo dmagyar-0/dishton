@@ -37,11 +37,29 @@ weighting above.
 Two RPCs are exposed (defined in [04-data-model.md](./04-data-model.md)):
 
 ```sql
-app.search_recipes(q text, household_ids uuid[]) returns setof app.recipes
+app.search_recipes(q text, household_ids uuid[], include_links boolean default false)
+  returns setof app.recipes
 ```
 
 The SPA passes `household_ids = [own, ...followed]` so a single search covers
 the whole accessible surface.
+
+`include_links` (added by `20260914120000_search_includes_links.sql`) also
+matches recipes **saved into** those households from households they follow
+(`app.recipe_links`, see
+[09-recipe-views.md](./09-recipe-views.md)). Without it a saved recipe was
+invisible to text search while tag filtering — which runs client-side over the
+merged list — still found it. It defaults to `false` so search keeps matching
+what the list actually shows: the home page merges links only for a household
+you are a MEMBER of, so browsing a followed household passes `false` and does
+not surface the links that household has itself saved. The function stays
+security-invoker, so the caller's RLS on both `app.recipes` and
+`app.recipe_links` still bounds the result — `include_links` selects among rows
+the caller may already read, it never widens access.
+
+A hit whose `household_id` is not one of the searched households can only have
+arrived via the link branch, so `useRecipeSearch` marks it `is_link: true`
+without another round-trip, and the card badges it like any other saved link.
 
 A second RPC, added here:
 

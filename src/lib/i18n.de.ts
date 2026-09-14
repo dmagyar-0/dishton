@@ -103,6 +103,9 @@ export default {
   households: {
     title: 'Haushalte',
     subtitle: 'Teile deine Küche mit anderen Haushalten und folge ihren.',
+    switcher_label: 'Haushalt',
+    switcher_help:
+      'Folge-Codes und Abos gehören zu einem Haushalt. Wähle, welchen du verwalten möchtest.',
   },
   following: {
     title: 'Folge ich',
@@ -117,6 +120,12 @@ export default {
     empty_title: 'Noch keine Küchen abonniert',
     empty_body: 'Füge oben einen Folge-Code ein, um die Rezepte eines anderen Haushalts zu sehen.',
     followed_at: 'Folge seit {{date}}',
+    browse_title: 'Rezepte von {{name}}',
+    browse_help:
+      'Speichere jedes Rezept in deiner eigenen Sammlung — es bleibt mit dem Original synchron.',
+    browse_back: 'Zurück zu meinen Rezepten',
+    browse_section: 'Ihre Rezepte',
+    browse_recipes: 'Rezepte ansehen',
     open: 'Öffnen',
     unfollow: 'Entfolgen',
     unfollow_confirm_title: '{{name}} entfolgen?',
@@ -420,6 +429,8 @@ export default {
     delete_failed_body:
       'Beim Entfernen des Rezepts ist etwas schiefgelaufen. Bitte gleich noch einmal versuchen.',
     save_link_action: 'In meine Speisekammer',
+    save_link_action_to: 'In {{name}} speichern',
+    save_link_saved_to: 'In {{name}} gespeichert',
     save_link_saved: 'In Speisekammer',
     save_link_success_title: 'In deiner Speisekammer gespeichert',
     save_link_success_body: '„{{title}}" bleibt mit dem Original synchron.',

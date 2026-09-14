@@ -92,3 +92,82 @@ as a follow-up.
 - `src/lib/queries/recipe-links.test.tsx` — insert payload, remove scoping +
   RLS-no-op detection, join-row flattening, pantry household selection.
 - Visual validation per CLAUDE.md.
+
+## Follow-up (2026-09-14) — discoverability
+
+The v1 UI above shipped complete and correct, but was effectively unreachable:
+a user who wanted to save a followed household's recipe reported simply not
+seeing how it could be done. Three causes, all fixed on
+`claude/recipe-linking-households-apco4z`:
+
+1. **The save control was hover-only on desktop.** `RecipeCardSaveButton`
+   carried `md:opacity-0 md:group-hover/card:opacity-100` in its unsaved state,
+   copied from the delete overlay. Delete is a secondary, destructive action on
+   your own card; save is the *primary* action of the followed-household browse
+   view. It now renders unconditionally (mobile was already unaffected).
+2. **Nothing said whose kitchen you were in.** The browse view rendered
+   `HomeGreeting` — "Good morning, {name} / What are we cooking?" — identically
+   to your own list, so the page gave no cue that these recipes belonged to
+   someone else or could be kept. A new `FollowedHouseholdBanner` names the
+   household, links back to your own recipes, and states that recipes here can
+   be saved. It is gated on `pantryId` being resolved (not on `isMember` alone)
+   so a cold load cannot flash it over your own page before `memberships`
+   arrive, and its save hint is suppressed when saving isn't actually available
+   (follows flag off).
+3. **The only entry point was a bare text link.** On `/households`, the followed
+   household's *name* was the sole route to its recipes, reading as a label
+   rather than a door. `FollowedRow` now carries an explicit "Browse recipes"
+   control alongside Unfollow, and stacks rather than crowds at 390px.
+
+Visual validation then found a fourth, larger cause, which the three fixes
+above did not touch:
+
+4. **A follow on a shared household was unreachable.** `/households` scoped
+   itself to `pickCanonicalHousehold()` — personal-preferred — with no way to
+   change it. A user whose follow lived on a SHARED household (the seed's own
+   `The Pantry → Carol's Kitchen` is exactly this) read "You are not following
+   any households yet" on a page where the follow demonstrably existed, and had
+   no route to those recipes at all. `/households` now offers a household
+   switcher to multi-household users (single-household users see no change),
+   backed by `resolveManagedHousehold()` in `src/lib/canonical-household.ts`,
+   which falls back to the canonical household when a pick goes stale.
+
+Two more bugs on the followed-household surface, both found in the same pass:
+
+- The section header read **"LATEST IMPORTS"** over recipes the viewer had not
+  imported. It now reads "Their recipes" when viewing someone else's collection.
+- The **import FAB** was rendered on a followed household's page, targeting the
+  household being *viewed* — i.e. offering to import into someone else's
+  kitchen. It is now hidden there.
+
+`.claude/skills/design-synch/capture.spec.ts` gained a `46d` step for the
+followed-household browse view, which the snapshot had never covered.
+
+## Follow-up (2026-09-14, part 2) — search, and saving into the right household
+
+Two things remained. Both are now done.
+
+**Search over linked recipes** (the v1 "out of scope" item) is closed by
+`supabase/migrations/20260914120000_search_includes_links.sql`.
+`app.search_recipes` gains `include_links boolean default false`; when true it
+also matches recipes linked into the searched households. The default keeps
+every existing caller — and the followed-household browse view, which does not
+merge links — on the old narrow behaviour, so search matches what the list
+shows. The function stays security-invoker, so RLS still bounds the result;
+`include_links` only selects among rows the caller may already read. Client
+side, a hit whose `household_id` is not one of the searched households can only
+have come from the link branch, so it is marked `is_link: true` with no extra
+query and badges like any other link.
+
+**Saves landed in the wrong household.** `usePantryHouseholdId()` always
+resolved to the canonical (personal-preferred) household, so a user whose
+recipes live in a SHARED household saved followed recipes into a personal
+household they never open — and on the recipe page the only control read "Save
+to my pantry", which says nothing about where "my pantry" is when you have two.
+The followed-collection routes now carry a `from` search param naming the
+household you browsed out of; `usePantryHouseholdId(from)` honours it through
+`resolveManagedHousehold` (falling back to canonical when absent or stale), and
+both save controls name the destination — "Save to The Pantry" — whenever the
+viewer has more than one household. `/households`' "Browse recipes" seeds
+`from`, and the home grid carries it onto the recipe detail route so the target
+survives the click.

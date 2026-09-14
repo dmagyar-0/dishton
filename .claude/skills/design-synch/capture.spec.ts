@@ -293,6 +293,32 @@ test('snapshot: household user', async ({ page }, info) => {
     }
   }
 
+  // Followed-household browse — Carol's Kitchen, reached the way a user
+  // actually gets there (the "Browse recipes" control on /households). A
+  // distinct state from your own list: it carries the followed-household
+  // banner instead of the personal greeting, and every card shows an
+  // always-visible save-to-collection control.
+  // Alice belongs to both a personal household and the shared The Pantry, and
+  // the seeded follow lives on the latter -- so reaching Carol's Kitchen means
+  // switching households first. Capture the switcher itself too.
+  await page.goto('/households');
+  if (await tap(page.locator('#households-switcher'))) {
+    await shot(page, info, '46d-households-switcher-open');
+    await tap(page.getByRole('option', { name: /the pantry/i }));
+    await page.waitForTimeout(800);
+    await shot(page, info, '46e-households-shared-follows');
+  }
+  if (await tap(page.getByRole('link', { name: /browse recipes/i }).first())) {
+    await page.waitForURL(/\/h\//, { timeout: 20_000 });
+    await shot(page, info, '46f-followed-household-browse');
+    // The followed recipe's detail page: it carries the labelled save control
+    // naming the destination household, a distinct state from an own recipe.
+    if (await tap(page.locator('a[href*="/r/"]').first())) {
+      await page.waitForTimeout(800);
+      await shot(page, info, '46g-followed-recipe-detail');
+    }
+  }
+
   // Admin metrics — alice is the seeded app_admin (see supabase/seed.sql).
   // 30d is the default range; the RPCs return a zero-filled row per day even
   // with no analytics_events, so this captures the real empty-data default

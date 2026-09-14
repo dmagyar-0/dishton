@@ -101,6 +101,9 @@ export default {
   households: {
     title: 'Households',
     subtitle: 'Share your kitchen with other households and follow theirs.',
+    switcher_label: 'Household',
+    switcher_help:
+      'Follow codes and follows belong to one household. Pick which of yours to manage.',
   },
   following: {
     title: 'Following',
@@ -115,6 +118,12 @@ export default {
     empty_title: 'No followed kitchens yet',
     empty_body: 'Paste a follow code above to start browsing another household’s recipes.',
     followed_at: 'Followed {{date}}',
+    browse_title: '{{name}}’s recipes',
+    browse_help:
+      'Save any recipe here to your own collection — it stays in sync with the original.',
+    browse_back: 'Back to my recipes',
+    browse_section: 'Their recipes',
+    browse_recipes: 'Browse recipes',
     open: 'Open',
     unfollow: 'Unfollow',
     unfollow_confirm_title: 'Unfollow {{name}}?',
@@ -410,6 +419,8 @@ export default {
     delete_failed_title: 'Couldn’t delete',
     delete_failed_body: 'Something went wrong removing this recipe. Try again in a moment.',
     save_link_action: 'Save to my pantry',
+    save_link_action_to: 'Save to {{name}}',
+    save_link_saved_to: 'Saved to {{name}}',
     save_link_saved: 'Saved to pantry',
     save_link_success_title: 'Saved to your pantry',
     save_link_success_body: '"{{title}}" will stay in sync with the original.',

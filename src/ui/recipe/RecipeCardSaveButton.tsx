@@ -10,6 +10,9 @@ type Props = {
   recipeTitle: string;
   // The household the link is saved into (the viewer's pantry).
   pantryHouseholdId: string;
+  // Its name, passed only when the viewer has more than one household -- then
+  // "Save to my pantry" doesn't say which, so the label names the destination.
+  pantryName?: string;
   saved: boolean;
   className?: string;
 };
@@ -21,6 +24,7 @@ export function RecipeCardSaveButton({
   recipeId,
   recipeTitle,
   pantryHouseholdId,
+  pantryName,
   saved,
   className,
 }: Props) {
@@ -30,7 +34,13 @@ export function RecipeCardSaveButton({
   const remove = useRemoveRecipeLink(pantryHouseholdId);
   const pending = save.isPending || remove.isPending;
 
-  const label = saved ? t('recipe.save_link_saved') : t('recipe.save_link_action');
+  const label = saved
+    ? pantryName
+      ? t('recipe.save_link_saved_to', { name: pantryName })
+      : t('recipe.save_link_saved')
+    : pantryName
+      ? t('recipe.save_link_action_to', { name: pantryName })
+      : t('recipe.save_link_action');
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -84,9 +94,12 @@ export function RecipeCardSaveButton({
         'bg-paper-2/85 backdrop-blur-sm shadow-press',
         'transition-[opacity,color,background-color] duration-[var(--duration-fast)]',
         'focus-visible:opacity-100 focus-visible:outline-none',
+        // Always visible. On a followed household's cards this is the primary
+        // action, not a secondary overlay like delete -- gating it behind
+        // :hover made saving undiscoverable on desktop entirely.
         saved
           ? 'text-saffron hover:bg-paper-2'
-          : 'text-ink-soft hover:bg-paper-2 hover:text-saffron md:opacity-0 md:group-hover/card:opacity-100 md:group-focus-within/card:opacity-100',
+          : 'text-ink-soft hover:bg-paper-2 hover:text-saffron',
         className,
       )}
     >

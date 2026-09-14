@@ -102,6 +102,9 @@ export default {
   households: {
     title: 'Háztartások',
     subtitle: 'Oszd meg a konyhádat más háztartásokkal, és kövesd az övéiket.',
+    switcher_label: 'Háztartás',
+    switcher_help:
+      'A követőkódok és követések egy háztartáshoz tartoznak. Válaszd ki, melyiket kezeled.',
   },
   following: {
     title: 'Követett',
@@ -117,6 +120,12 @@ export default {
     empty_body:
       'Illessz be fent egy követőkódot, hogy böngészni kezdd egy másik háztartás receptjeit.',
     followed_at: 'Követed: {{date}} óta',
+    browse_title: '{{name}} receptjei',
+    browse_help:
+      'Bármelyik receptet elmentheted a saját gyűjteményedbe — szinkronban marad az eredetivel.',
+    browse_back: 'Vissza a saját receptjeimhez',
+    browse_section: 'Az ő receptjeik',
+    browse_recipes: 'Receptek böngészése',
     open: 'Megnyitás',
     unfollow: 'Követés megszüntetése',
     unfollow_confirm_title: 'Megszünteted: {{name}} követését?',
@@ -410,6 +419,8 @@ export default {
     delete_failed_title: 'Nem sikerült törölni',
     delete_failed_body: 'Hiba történt a recept eltávolításakor. Próbáld újra egy pillanat múlva.',
     save_link_action: 'Mentés a kamrámba',
+    save_link_action_to: 'Mentés ide: {{name}}',
+    save_link_saved_to: 'Elmentve ide: {{name}}',
     save_link_saved: 'Kamrában',
     save_link_success_title: 'Elmentve a kamrádba',
     save_link_success_body: 'A(z) „{{title}}" mindig az eredetivel szinkronban marad.',
