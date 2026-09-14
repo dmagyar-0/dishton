@@ -157,6 +157,17 @@ the codebase ships with at MVP.
 | `feature_flags.public_household_pages` | runtime | `false` | `false` | `false` | `false` | [15](./15-roadmap-and-flags.md) (this doc) | v2 ships |
 | `feature_flags.public_recipe_shares` | runtime | `true` | `true` | `true` | `true` | [15](./15-roadmap-and-flags.md) (this doc) | Share links GA for 30 days with no kill-switch use |
 
+
+> **Runtime flags need a migration, not just `seed.sql`.** `app.feature_flags`
+> is created empty and each flagged feature inserts its own row when it ships
+> (`20260611120000_recipe_shares.sql` is the pattern). `useFeatureFlag` reads
+> the row with `.maybeSingle()` and treats a missing row as **false**, so a flag
+> whose row exists only in `supabase/seed.sql` is on in every local database and
+> test run and silently off in production. `follows_enabled` shipped that way
+> and dark-shipped the whole save-a-followed-recipe surface until
+> `20260914140000_seed_follows_enabled_flag.sql`. `scripts/check-flag-registry.mjs`
+> now fails the lint job if a runtime flag has no migration-created row.
+
 Conventions:
 
 - Build-time flags default to **off** in `production` until their phase

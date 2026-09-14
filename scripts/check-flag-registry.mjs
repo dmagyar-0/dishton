@@ -14,9 +14,15 @@
 //   2. Every flag token named in the doc table maps back to a registry flag
 //      (no doc-only / orphaned flags).
 //   3. Every build-time flag's env var has a row in .env.example.
+//   4. Every RUNTIME flag has its app.feature_flags row created by a migration.
+//      Runtime flags are read with .maybeSingle() and a missing row evaluates
+//      to false, so a flag whose row only exists in supabase/seed.sql is ON in
+//      every local database and test run but silently OFF in production. That
+//      is exactly how `follows_enabled` dark-shipped the whole save-a-followed-
+//      recipe surface: seeded locally, never inserted by a migration.
 
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -94,6 +100,30 @@ for (const key of new Set(docRuntimeKeys)) {
   if (!registryKeys.has(key)) {
     errors.push(
       `docs/15 references runtime flag "feature_flags.${key}" with no entry in registry.ts`,
+    );
+  }
+}
+
+// --- Check 4: every runtime flag's row is created by a migration. ---
+// seed.sql deliberately does NOT count: it runs on `supabase db reset` and
+// never against a deployed project.
+const migrationsDir = resolve(root, 'supabase/migrations');
+const migrationSrc = readdirSync(migrationsDir)
+  .filter((f) => f.endsWith('.sql'))
+  .map((f) => readFileSync(join(migrationsDir, f), 'utf8'))
+  .join('\n');
+
+// Collect the keys named by every `insert into app.feature_flags ... ;`.
+const seededByMigration = new Set();
+for (const stmt of migrationSrc.match(/insert\s+into\s+app\.feature_flags\b[\s\S]*?;/gi) ?? []) {
+  for (const m of stmt.matchAll(/'([a-z0-9_]+)'/g)) seededByMigration.add(m[1]);
+}
+
+for (const flag of registryFlags) {
+  if (flag.transport !== 'runtime' || !flag.key) continue;
+  if (!seededByMigration.has(flag.key)) {
+    errors.push(
+      `Runtime flag "${flag.key}" has no app.feature_flags row created by any migration (a row only in supabase/seed.sql is local-only, so the flag reads false in production)`,
     );
   }
 }
