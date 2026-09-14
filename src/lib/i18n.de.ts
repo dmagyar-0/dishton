@@ -117,6 +117,11 @@ export default {
     empty_title: 'Noch keine Küchen abonniert',
     empty_body: 'Füge oben einen Folge-Code ein, um die Rezepte eines anderen Haushalts zu sehen.',
     followed_at: 'Folge seit {{date}}',
+    browse_title: 'Rezepte von {{name}}',
+    browse_help:
+      'Speichere jedes Rezept in deiner eigenen Sammlung — es bleibt mit dem Original synchron.',
+    browse_back: 'Zurück zu meinen Rezepten',
+    browse_recipes: 'Rezepte ansehen',
     open: 'Öffnen',
     unfollow: 'Entfolgen',
     unfollow_confirm_title: '{{name}} entfolgen?',

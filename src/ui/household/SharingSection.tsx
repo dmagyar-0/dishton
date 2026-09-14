@@ -16,7 +16,7 @@ import { Badge, Button, Card, IconButton, Skeleton, useToast } from '@/ui/primit
 import { Input } from '@/ui/primitives/Input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from '@tanstack/react-router';
-import { Copy, Link as LinkIcon, Share2, X } from 'lucide-react';
+import { BookOpen, Copy, Link as LinkIcon, Share2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -372,8 +372,8 @@ function FollowedRow({
   };
 
   return (
-    <li className="flex items-center justify-between py-3">
-      <div>
+    <li className="flex flex-col items-start justify-between gap-2 py-3 sm:flex-row sm:items-center sm:gap-3">
+      <div className="min-w-0">
         <Link
           to="/h/$householdId"
           params={{ householdId: followed.followed_household_id }}
@@ -383,30 +383,42 @@ function FollowedRow({
         </Link>
         <p className="text-ink-soft text-xs">{followedAtLabel}</p>
       </div>
-      {isOwner && (
-        <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setConfirmOpen(true)}
-            disabled={unfollow.isPending}
-          >
-            {t('household_settings.sharing.unfollow')}
-          </Button>
-          <ConfirmDialog
-            open={confirmOpen}
-            onOpenChange={setConfirmOpen}
-            title={t('household_settings.sharing.unfollow_confirm_title', {
-              name: followed.household.name,
-            })}
-            body={t('household_settings.sharing.unfollow_confirm_body')}
-            confirmLabel={t('household_settings.sharing.unfollow_action')}
-            variant="destructive"
-            loading={unfollow.isPending}
-            onConfirm={onUnfollow}
-          />
-        </>
-      )}
+      <div className="flex shrink-0 items-center gap-1">
+        {/* The name above was the only way through to their recipes, and it
+          reads as a label rather than a door. Say so outright. */}
+        <Link
+          to="/h/$householdId"
+          params={{ householdId: followed.followed_household_id }}
+          className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] border border-cream-line bg-paper-2 px-3 text-sm text-ink-soft transition-colors duration-[var(--duration-fast)] hover:bg-paper hover:text-ink"
+        >
+          <BookOpen size={14} strokeWidth={1.5} aria-hidden="true" />
+          <span>{t('following.browse_recipes')}</span>
+        </Link>
+        {isOwner && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmOpen(true)}
+              disabled={unfollow.isPending}
+            >
+              {t('household_settings.sharing.unfollow')}
+            </Button>
+            <ConfirmDialog
+              open={confirmOpen}
+              onOpenChange={setConfirmOpen}
+              title={t('household_settings.sharing.unfollow_confirm_title', {
+                name: followed.household.name,
+              })}
+              body={t('household_settings.sharing.unfollow_confirm_body')}
+              confirmLabel={t('household_settings.sharing.unfollow_action')}
+              variant="destructive"
+              loading={unfollow.isPending}
+              onConfirm={onUnfollow}
+            />
+          </>
+        )}
+      </div>
     </li>
   );
 }

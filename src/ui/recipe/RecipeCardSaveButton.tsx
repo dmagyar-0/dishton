@@ -84,9 +84,12 @@ export function RecipeCardSaveButton({
         'bg-paper-2/85 backdrop-blur-sm shadow-press',
         'transition-[opacity,color,background-color] duration-[var(--duration-fast)]',
         'focus-visible:opacity-100 focus-visible:outline-none',
+        // Always visible. On a followed household's cards this is the primary
+        // action, not a secondary overlay like delete -- gating it behind
+        // :hover made saving undiscoverable on desktop entirely.
         saved
           ? 'text-saffron hover:bg-paper-2'
-          : 'text-ink-soft hover:bg-paper-2 hover:text-saffron md:opacity-0 md:group-hover/card:opacity-100 md:group-focus-within/card:opacity-100',
+          : 'text-ink-soft hover:bg-paper-2 hover:text-saffron',
         className,
       )}
     >

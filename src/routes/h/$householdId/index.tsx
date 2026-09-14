@@ -15,6 +15,7 @@ import { EmptyState } from '@/ui/primitives/EmptyState';
 import { RecipeImage } from '@/ui/primitives/RecipeImage';
 import { Skeleton } from '@/ui/primitives/Skeleton';
 import { useToast } from '@/ui/primitives/Toast';
+import { FollowedHouseholdBanner } from '@/ui/recipe/FollowedHouseholdBanner';
 import { HomeGreeting } from '@/ui/recipe/HomeGreeting';
 import { RecipeCardDeleteButton } from '@/ui/recipe/RecipeCardDeleteButton';
 import { RecipeCardRemoveLinkButton } from '@/ui/recipe/RecipeCardRemoveLinkButton';
@@ -72,6 +73,10 @@ function RecipeListPage() {
   // Followed-household browse: which of these recipes are already in my pantry,
   // so the save toggle can render its "saved" state without a per-card query.
   const browsingFollowed = followsEnabled && !isMember && pantryId.length > 0;
+  // Someone else's collection. Gated on memberships having loaded (pantryId is
+  // derived from them) so a cold load doesn't flash the banner over your own
+  // page before `memberships` arrives.
+  const viewingOtherHousehold = !isMember && pantryId.length > 0;
   const linkedIds = useLinkedRecipeIds(pantryId, browsingFollowed);
   // Solo = personal household with the current user as only member. We
   // use it to swap in a friendlier headline + empty state for new
@@ -183,7 +188,17 @@ function RecipeListPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 pt-6 pb-8">
-      <HomeGreeting />
+      {/* Someone else's collection reads as your own without this -- see
+        FollowedHouseholdBanner. */}
+      {viewingOtherHousehold ? (
+        <FollowedHouseholdBanner
+          householdName={household.data?.name}
+          myHouseholdId={pantryId}
+          canSave={browsingFollowed}
+        />
+      ) : (
+        <HomeGreeting />
+      )}
 
       <div className="mb-6 space-y-5">
         <SearchBar

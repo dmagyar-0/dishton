@@ -117,6 +117,11 @@ export default {
     empty_body:
       'Illessz be fent egy követőkódot, hogy böngészni kezdd egy másik háztartás receptjeit.',
     followed_at: 'Követed: {{date}} óta',
+    browse_title: '{{name}} receptjei',
+    browse_help:
+      'Bármelyik receptet elmentheted a saját gyűjteményedbe — szinkronban marad az eredetivel.',
+    browse_back: 'Vissza a saját receptjeimhez',
+    browse_recipes: 'Receptek böngészése',
     open: 'Megnyitás',
     unfollow: 'Követés megszüntetése',
     unfollow_confirm_title: 'Megszünteted: {{name}} követését?',

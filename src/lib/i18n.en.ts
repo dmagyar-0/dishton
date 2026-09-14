@@ -115,6 +115,11 @@ export default {
     empty_title: 'No followed kitchens yet',
     empty_body: 'Paste a follow code above to start browsing another household’s recipes.',
     followed_at: 'Followed {{date}}',
+    browse_title: '{{name}}’s recipes',
+    browse_help:
+      'Save any recipe here to your own collection — it stays in sync with the original.',
+    browse_back: 'Back to my recipes',
+    browse_recipes: 'Browse recipes',
     open: 'Open',
     unfollow: 'Unfollow',
     unfollow_confirm_title: 'Unfollow {{name}}?',

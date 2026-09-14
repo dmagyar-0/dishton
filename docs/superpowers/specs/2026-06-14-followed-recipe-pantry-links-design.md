@@ -92,3 +92,37 @@ as a follow-up.
 - `src/lib/queries/recipe-links.test.tsx` — insert payload, remove scoping +
   RLS-no-op detection, join-row flattening, pantry household selection.
 - Visual validation per CLAUDE.md.
+
+## Follow-up (2026-09-14) — discoverability
+
+The v1 UI above shipped complete and correct, but was effectively unreachable:
+a user who wanted to save a followed household's recipe reported simply not
+seeing how it could be done. Three causes, all fixed on
+`claude/recipe-linking-households-apco4z`:
+
+1. **The save control was hover-only on desktop.** `RecipeCardSaveButton`
+   carried `md:opacity-0 md:group-hover/card:opacity-100` in its unsaved state,
+   copied from the delete overlay. Delete is a secondary, destructive action on
+   your own card; save is the *primary* action of the followed-household browse
+   view. It now renders unconditionally (mobile was already unaffected).
+2. **Nothing said whose kitchen you were in.** The browse view rendered
+   `HomeGreeting` — "Good morning, {name} / What are we cooking?" — identically
+   to your own list, so the page gave no cue that these recipes belonged to
+   someone else or could be kept. A new `FollowedHouseholdBanner` names the
+   household, links back to your own recipes, and states that recipes here can
+   be saved. It is gated on `pantryId` being resolved (not on `isMember` alone)
+   so a cold load cannot flash it over your own page before `memberships`
+   arrive, and its save hint is suppressed when saving isn't actually available
+   (follows flag off).
+3. **The only entry point was a bare text link.** On `/households`, the followed
+   household's *name* was the sole route to its recipes, reading as a label
+   rather than a door. `FollowedRow` now carries an explicit "Browse recipes"
+   control alongside Unfollow, and stacks rather than crowds at 390px.
+
+`.claude/skills/design-synch/capture.spec.ts` gained a `46d` step for the
+followed-household browse view, which the snapshot had never covered.
+
+Still out of scope, unchanged from v1: full-text **search** over linked
+recipes. `app.search_recipes` filters `household_id = any(household_ids)`, so a
+saved link is invisible to text search even though tag filtering (client-side,
+over the merged list) does find it.

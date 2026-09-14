@@ -293,6 +293,17 @@ test('snapshot: household user', async ({ page }, info) => {
     }
   }
 
+  // Followed-household browse — Carol's Kitchen, reached the way a user
+  // actually gets there (the "Browse recipes" control on /households). A
+  // distinct state from your own list: it carries the followed-household
+  // banner instead of the personal greeting, and every card shows an
+  // always-visible save-to-collection control.
+  await page.goto('/households');
+  if (await tap(page.getByRole('link', { name: /browse recipes/i }).first())) {
+    await page.waitForURL(/\/h\//, { timeout: 20_000 });
+    await shot(page, info, '46d-followed-household-browse');
+  }
+
   // Admin metrics — alice is the seeded app_admin (see supabase/seed.sql).
   // 30d is the default range; the RPCs return a zero-filled row per day even
   // with no analytics_events, so this captures the real empty-data default
