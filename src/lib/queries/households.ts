@@ -353,19 +353,30 @@ export function useChangeMemberRole(householdId: string) {
   });
 }
 
+// Returns the personal household the RPC resolved or created when this was the
+// caller's last membership, else null. Leaving a household you joined via the
+// invite MERGE path used to end with zero memberships -- the merge deletes your
+// personal household -- so the caller landed on /onboarding with no way back to
+// a recipe list; the RPC now guarantees a home (20260914130000).
 export function useLeaveHousehold() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (householdId: string) => {
-      const { error } = await supabase.rpc('leave_household', { p_household: householdId });
+    mutationFn: async (householdId: string): Promise<string | null> => {
+      const { data, error } = await supabase.rpc('leave_household', {
+        p_household: householdId,
+      });
       if (error) throw error;
-      const remaining = useAuth
-        .getState()
-        .memberships.filter((m) => m.household_id !== householdId);
-      useAuth.getState().setMemberships(remaining);
-      return householdId;
+      // Refetch rather than filtering the old list: the RPC may have ADDED a
+      // membership (the fresh personal household), which local filtering can
+      // only ever remove -- that is what left the store empty and bounced the
+      // user to /onboarding. Mirrors useLeaveHouseholdWithRecipes.
+      const user = useAuth.getState().user;
+      if (user) {
+        await refreshAuthDerivedState(user.id);
+      }
+      return (data as unknown as string | null) ?? null;
     },
-    onSuccess: (householdId) => {
+    onSuccess: (_newPersonalId, householdId) => {
       void qc.invalidateQueries({ queryKey: ['household', householdId] });
     },
   });

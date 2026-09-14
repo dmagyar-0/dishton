@@ -1007,7 +1007,7 @@ export type Database = {
         Returns: boolean
       }
       is_valid_household_tags: { Args: { tags: string[] }; Returns: boolean }
-      leave_household: { Args: { p_household: string }; Returns: undefined }
+      leave_household: { Args: { p_household: string }; Returns: string }
       leave_household_with_recipes: {
         Args: { p_household: string }
         Returns: string

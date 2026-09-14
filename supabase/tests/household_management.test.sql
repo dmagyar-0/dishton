@@ -97,6 +97,14 @@ begin
 end;
 $$;
 
+-- Persona-independent assertion (state checks that aren't run as anyone).
+create or replace function pg_temp.check_ok(p_label text, p_check boolean)
+returns void language plpgsql as $$
+begin
+  insert into _t_results(label, ok) values (p_label, coalesce(p_check, false));
+end;
+$$;
+
 -- Call leave_household as a persona; return the SQLSTATE-text/error-message or
 -- the literal 'ok' if it succeeded.
 create or replace function pg_temp.call_leave_as(
@@ -358,6 +366,95 @@ begin
     values ('unauthenticated leave rejected', msg = 'not_authenticated');
 end;
 $$;
+
+------------------------------------------------------------------------------
+-- 12. Leaving your LAST household must leave you with a home
+--     (20260914130000_leave_household_keeps_a_home).
+--
+-- app.redeem_invite's merge path deletes the caller's personal household, so a
+-- user who joined by merging holds exactly one membership. leave_household used
+-- to just delete that row, leaving them with zero households -- the root route
+-- then resolves nothing and strands them on /onboarding. Fresh personas here so
+-- these assertions don't depend on what tests 1-11 did to the shared fixture.
+------------------------------------------------------------------------------
+
+alter table auth.users disable trigger on_auth_user_created;
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
+                        email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+                        created_at, updated_at) values
+  ('00000000-0000-0000-0000-000000000000',
+   '00000000-0000-0000-0000-0000000000c1',
+   'authenticated','authenticated','hm-solo@example.test',
+   crypt('test1234', gen_salt('bf')), now(),
+   '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('00000000-0000-0000-0000-000000000000',
+   '00000000-0000-0000-0000-0000000000c2',
+   'authenticated','authenticated','hm-multi@example.test',
+   crypt('test1234', gen_salt('bf')), now(),
+   '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now())
+on conflict (id) do nothing;
+alter table auth.users enable trigger on_auth_user_created;
+
+insert into app.profiles (id, display_name) values
+  ('00000000-0000-0000-0000-0000000000c1','HM Solo'),
+  ('00000000-0000-0000-0000-0000000000c2','HM Multi')
+on conflict (id) do nothing;
+
+-- S1 is shared and has its own owner, so our personas can always leave it.
+insert into app.households (id, name, owner_profile_id, is_personal) values
+  ('dddddddd-0000-0000-0000-0000000000c1','HM Shared 1',
+   '00000000-0000-0000-0000-00000000000a', false),
+  ('dddddddd-0000-0000-0000-0000000000c2','HM Shared 2',
+   '00000000-0000-0000-0000-00000000000a', false)
+on conflict (id) do nothing;
+
+insert into app.household_members (household_id, profile_id, role) values
+  ('dddddddd-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-00000000000a','owner'),
+  ('dddddddd-0000-0000-0000-0000000000c2','00000000-0000-0000-0000-00000000000a','owner'),
+  -- Solo mirrors the post-merge shape: one membership, no personal household.
+  ('dddddddd-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000c1','editor'),
+  -- Multi belongs to two, so leaving one still leaves them somewhere.
+  ('dddddddd-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000c2','editor'),
+  ('dddddddd-0000-0000-0000-0000000000c2','00000000-0000-0000-0000-0000000000c2','editor')
+on conflict do nothing;
+
+select pg_temp.check_ok(
+  'precondition: post-merge shape has no personal household',
+  (select count(*) from app.households
+    where owner_profile_id = '00000000-0000-0000-0000-0000000000c1' and is_personal) = 0);
+
+select pg_temp.check_ok(
+  'leaving your last household succeeds',
+  pg_temp.call_leave_as(
+    '00000000-0000-0000-0000-0000000000c1'::uuid,
+    'dddddddd-0000-0000-0000-0000000000c1'::uuid) = 'ok');
+
+select pg_temp.check_ok(
+  'leaving your last household leaves you with one, not zero',
+  (select count(*) from app.household_members
+    where profile_id = '00000000-0000-0000-0000-0000000000c1') = 1);
+
+select pg_temp.check_ok(
+  'the household you are left with is your own personal one',
+  (select count(*) from app.households h
+     join app.household_members m on m.household_id = h.id
+    where m.profile_id = '00000000-0000-0000-0000-0000000000c1'
+      and h.owner_profile_id = '00000000-0000-0000-0000-0000000000c1'
+      and h.is_personal
+      and m.role = 'owner') = 1);
+
+select pg_temp.check_ok(
+  'leaving one of several households creates nothing new',
+  pg_temp.call_leave_as(
+    '00000000-0000-0000-0000-0000000000c2'::uuid,
+    'dddddddd-0000-0000-0000-0000000000c1'::uuid) = 'ok');
+
+select pg_temp.check_ok(
+  'a multi-household member keeps exactly their remaining household',
+  (select count(*) from app.household_members
+    where profile_id = '00000000-0000-0000-0000-0000000000c2') = 1
+  and (select count(*) from app.households
+    where owner_profile_id = '00000000-0000-0000-0000-0000000000c2' and is_personal) = 0);
 
 -- Output the TAP rows.
 select label, ok from _t_results order by label;

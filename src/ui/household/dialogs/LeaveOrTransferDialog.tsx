@@ -64,15 +64,26 @@ export function LeaveOrTransferDialog({
 
   const isPending = leave.isPending || transfer.isPending || leaveWithRecipes.isPending;
 
+  // When that was the caller's last membership the RPC hands back the personal
+  // household it resolved or created; route straight there. Otherwise fall
+  // through to the root, which picks among the households they still have.
+  const goAfterLeaving = async (newPersonalId: string | null) => {
+    if (newPersonalId) {
+      await nav({ to: '/h/$householdId', params: { householdId: newPersonalId } });
+      return;
+    }
+    await nav({ to: '/' });
+  };
+
   const performLeave = async () => {
     try {
-      await leave.mutateAsync(householdId);
+      const newPersonalId = await leave.mutateAsync(householdId);
       onOpenChange(false);
       push({
         variant: 'success',
         title: t('household_settings.members.leave_success'),
       });
-      await nav({ to: '/' });
+      await goAfterLeaving(newPersonalId);
     } catch (err) {
       if (householdErrorCode(err) === 'last_owner') {
         setStage('transfer');
@@ -124,13 +135,13 @@ export function LeaveOrTransferDialog({
         title: t('household_settings.members.transfer_success'),
       });
       // Now that the caller is an editor, leaving is permitted.
-      await leave.mutateAsync(householdId);
+      const newPersonalId = await leave.mutateAsync(householdId);
       onOpenChange(false);
       push({
         variant: 'success',
         title: t('household_settings.members.leave_success'),
       });
-      await nav({ to: '/' });
+      await goAfterLeaving(newPersonalId);
     } catch (err) {
       push({
         variant: 'error',
