@@ -20,12 +20,12 @@ read a cache entry.
   (`kb. 8 db` → `servings: 1`), and (2) it left amount-less ingredients
   (`salt`, `olive oil`, `lime zest`) without `non_scalable_qty`. Two prompt rules
   fix both, in every run.
-- **Vision lane: Haiku 5.5 is close to Sonnet 4.6, but not clean. Kept on
-  Sonnet for now.** On the cookbook-matrix photos (now committed) it picked the
-  right column in 6/6 runs with **0 column bleed**, a big step up from Haiku 4.5,
-  which mixed all three columns. It still made small slips in 3 of 6 runs: one
-  dropped ingredient, one handwritten amount misread, and one run that kept the
-  crêpe-only steps. See [Stage 3](#stage-3--cookbook-matrix-photos).
+- **Vision lane: Sonnet 5.5 was clean on 6/6 photo runs, better than Sonnet
+  4.6 and ~10–30% cheaper. Haiku 5.5 is ~20× cheaper still but slipped on details.
+  Not switched yet (see [Stage 3](#stage-3--cookbook-matrix-photos)).** Haiku
+  5.5 picked the right column in 6/6 runs with 0 bleed (Haiku 4.5 mixed all
+  three columns), but slipped in 3 of 6: a dropped ingredient, a misread
+  handwritten amount, and leftover crêpe-only steps.
 - **Prompt caching removed** from the production client and the eval adapter (see
   [Caching](#caching)).
 
@@ -94,42 +94,69 @@ What stood out:
 ## Stage 3 — cookbook-matrix photos
 
 The photos are committed under `eval/round-2/fixtures/images/` (downscaled to
-1568 px, the size the API works at). Each case ran 3×, using the v2 prompt and
-gold-diffed by `score.ts`.
+1568 px, the size the API works at). Each case ran 3× per model, using the v2 prompt and
+gold-diffed by `score.ts`. Haiku 5.5 and Sonnet 5.5 both ran as subagent stand-ins;
+Haiku 4.5 and Sonnet 4.6 are the round-2 API runs. Raw outputs:
+[`outputs/v2-tuned-prompt/s3-*`](outputs/v2-tuned-prompt/) (Haiku 5.5) and
+[`outputs/sonnet-5-5-photos/`](outputs/sonnet-5-5-photos/).
 
 **Sweet Potato Cottage Pie**: 4 photos, note *"use only the middle column"*
 
-| | Haiku 4.5 (r2) | Sonnet 4.6 (r2, prod) | **Haiku 5.5 r1 / r2 / r3** |
-|---|---|---|---|
-| right dish | ❌ "Shepherd's Pie" | ✅ | ✅ ✅ ✅ |
-| recall | 63% | 100% | 100% / **95%** (dropped tamari) / 100% |
-| column bleed | 2 + hallucinations | 0 | 0 / 0 / 0 |
-| all 7 sections | ❌ | ✅ | ✅ ✅ ✅ |
-| plain 750 g potatoes kept | — | ❌ dropped | ✅ ✅ ✅ |
-| Fishless-only "add the wine… cashew" line in method | — | removed | kept ×3 (Opus 4.8 kept it too) |
+| | Haiku 4.5 (r2) | Sonnet 4.6 (r2, prod) | Haiku 5.5 r1 / r2 / r3 | **Sonnet 5.5 r1 / r2 / r3** |
+|---|---|---|---|---|
+| right dish | ❌ "Shepherd's Pie" | ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ |
+| recall | 63% | 100% | 100% / **95%** (dropped tamari) / 100% | 100% ×3 |
+| column bleed | 2 + hallucinations | 0 | 0 / 0 / 0 | 0 ×3 |
+| all 7 sections | ❌ | ✅ | ✅ ✅ ✅ | ✅ ✅ ✅ |
+| plain 750 g potatoes kept | — | ❌ dropped | ✅ ✅ ✅ | ✅ ✅ ✅ |
+| Fishless-only "add the wine… cashew" line in method | — | removed | kept ×3 (Opus 4.8 kept it too) | removed ×3 |
+| oven temp | — | — | 200 °C fan → "390 °F" ×2 (source says 425 °F) | 425 °F ×3 (matches source) |
 
 **American-style pancakes**: 2 photos. The note asks for the middle column
 with the user's handwritten amounts (150 g, 250 ml, 2.5 tbsp, 2.5 tbsp,
 1.9 tsp, 1.25 tsp written over the printed 120 g / 200 ml / 2 / 2 / 1½ / 1).
 
-| | r1 | r2 | r3 |
-|---|---|---|---|
-| right column, 0 bleed | ✅ | ✅ | ✅ |
-| flour 150 g / oat milk 250 ml (handwritten) | ✅ | ✅ | ✅ |
-| flax / maple 2.5 tbsp, vanilla 1.25 tsp (handwritten) | ✅ | ✅ | ✅ |
-| baking powder 1.9 tsp (handwritten) | ✅ | ❌ took printed 1½ | ✅ (but converted to 10 g; ≈ 7.5 g expected) |
-| crêpe-only step 3 excluded | ❌ kept | ✅ | ✅ |
-| servings ("Makes 4 to 6") | 4 | 4 | 4 |
+| | Haiku 5.5 r1 / r2 / r3 | **Sonnet 5.5 r1 / r2 / r3** |
+|---|---|---|
+| right column, 0 bleed | ✅ ✅ ✅ | ✅ ✅ ✅ |
+| flour 150 g / oat milk 250 ml (handwritten) | ✅ ✅ ✅ | ✅ ✅ ✅ |
+| flax / maple 2.5 tbsp, vanilla 1.25 tsp (handwritten) | ✅ ✅ ✅ | ✅ ✅ ✅ |
+| baking powder 1.9 tsp (handwritten) | ✅ / ❌ took printed 1½ / ✅ | ✅ ✅ ✅ (all converted to 10 g; ≈ 7.5 g expected) |
+| crêpe-only step 3 excluded | ❌ kept / ✅ / ✅ | ✅ ✅ ✅ |
+| servings ("Makes 4 to 6") | 4 ×3 | 4 ×3 |
 
-**Verdict:** Haiku 5.5 matches Sonnet 4.6 on what made Sonnet the vision default
-(column selection, no bleed, no hallucination) at roughly 1/20 of the price
-(estimated ~$0.004 vs ~$0.074 per 4-photo import). It is noisier on details: 3 of 6
-runs had one small slip. There is no Sonnet 4.6 baseline on the pancake case
-(Sonnet 4.6 can't be run as a subagent here), so the comparison is one-sided
-there. **The vision lane stays on Sonnet 4.6** until a live A/B with an API key
-(`pnpm eval:round2 -- --stage 3 --models sonnet,haiku55 --repeat 3`) confirms
-parity. Moving it is one line (`DEFAULT_MODEL.vision` or the
-`ANTHROPIC_MODEL_VISION` secret).
+No Sonnet 4.6 run exists for the pancake case (it can't be run as a subagent here).
+
+### Price per photo import
+
+Based on round 2's measured 4-photo call: ~9.7k input and ~3.0k output tokens
+with no cache, which matches Dishton's sporadic imports. The 5.x models count the
+same content as ~1.0–1.35× more tokens, so their figures are ranges. Prices are
+first-party list prices for prompts under 100K tokens.
+
+| model | $/MTok in / out | 4-photo import (pie) | 2-photo import (pancakes) | per 1,000 pie imports | quality on these photos |
+|---|---|---|---|---|---|
+| Haiku 4.5 | $1 / $5 | $0.025 (measured) | ~$0.017 | ~$25 | ❌ wrong dish |
+| Sonnet 4.6 (prod) | $3 / $15 | $0.074 (measured) | ~$0.05 | ~$74 | ✅, dropped plain potatoes |
+| **Sonnet 5.5** | $2 / $10 | **~$0.05–0.067** | ~$0.035–0.045 | ~$50–67 | ✅ clean 6/6 |
+| Haiku 5.5 | $0.10 / $0.50 | **~$0.0025–0.0035** | ~$0.002 | ~$3 | ✅ right column 6/6, 3 small slips |
+
+**Verdict:**
+
+- **Sonnet 5.5 is the best photo model tested.** All 6 runs were clean: right
+  column, every ingredient (incl. the plain potatoes Sonnet 4.6 dropped), every
+  handwritten amount, no variant-only steps, correct oven temperature. It is
+  also ~10–30% cheaper per import than Sonnet 4.6. It is a straight upgrade.
+- **Haiku 5.5 is ~20× cheaper than Sonnet 5.5** and gets the hard part (column
+  selection, no bleed) right every time, but slipped on a detail in 3 of 6 runs.
+  At Dishton's volume the absolute difference is about 5¢ per photo import.
+- **Not switched yet.** Moving the vision lane to Sonnet 5.5 needs a
+  request-shape change, because Sonnet 5.5 returns a 400 on both of these:
+  - a forced `tool_choice`: use `auto` and retry if the tool isn't called;
+  - `thinking: {type: 'disabled'}`: use `{type: 'between_tools'}`.
+
+  Moving to Haiku 5.5 is a one-line model change. Both are a production change
+  and wait for an explicit go-ahead.
 
 ## v1 → v2: the prompt change
 
