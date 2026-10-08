@@ -253,7 +253,7 @@ environments need it. Names are exact.
 | `SUPABASE_ACCESS_TOKEN` | CLI auth in CI | no | yes | yes | GitHub Actions secret `SUPABASE_ACCESS_TOKEN` |
 | `SUPABASE_PROJECT_REF_PROD` / `SUPABASE_PROJECT_REF_PREVIEW` | Tells `supabase link` which project (one per environment) | no | yes | yes | GitHub Actions secrets `SUPABASE_PROJECT_REF_PREVIEW`, `SUPABASE_PROJECT_REF_PROD` |
 | `ANTHROPIC_API_KEY` | Anthropic API auth for Edge Functions | yes | yes | yes | Supabase Dashboard function secrets per project |
-| `ANTHROPIC_MODEL` | Text lane; optional override, default `claude-haiku-4-5` | no | optional | optional | Supabase Dashboard function secrets per project |
+| `ANTHROPIC_MODEL` | Text lane; optional override, default `claude-haiku-5-5` | no | optional | optional | Supabase Dashboard function secrets per project |
 | `ANTHROPIC_MODEL_VISION` | Vision lane; optional override, default `claude-sonnet-4-6` | no | optional | optional | Supabase Dashboard function secrets per project |
 | `SENTRY_DSN_FRONTEND` | SPA error reporting | no (off) | yes | yes | Vercel env |
 | `SENTRY_DSN_FUNCTIONS` | Edge Function error reporting | no (off) | yes | yes | Supabase Dashboard function secrets |

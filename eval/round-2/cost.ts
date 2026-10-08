@@ -14,6 +14,7 @@ export type Price = { input: number; output: number };
 
 export const PRICES: Record<string, Price> = {
   'claude-haiku-4-5': { input: 1.0, output: 5.0 },
+  'claude-haiku-5-5': { input: 0.1, output: 0.5 }, // prompts <= 100K tokens
   'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
   'claude-opus-4-8': { input: 5.0, output: 25.0 },
 };

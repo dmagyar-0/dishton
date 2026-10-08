@@ -1,4 +1,4 @@
-# 07 — AI Integration (Anthropic Claude Haiku 4.5)
+# 07 — AI Integration (Anthropic Claude Haiku 5.5 + Sonnet 4.6)
 
 ## Purpose
 
@@ -47,8 +47,8 @@ import { env } from '../env.ts';
 
 export type Lane = 'text' | 'vision';
 
-const DEFAULT_MODEL = 'claude-haiku-4-5';
-const MAX_OUTPUT_TOKENS = 4096;
+const DEFAULT_MODEL = { text: 'claude-haiku-5-5', vision: 'claude-sonnet-4-6' };
+const MAX_OUTPUT_TOKENS = 8192;
 const TIMEOUT_MS: Record<Lane, number> = { text: 90_000, vision: 90_000 };
 const MAX_RETRIES = 3;
 const BACKOFF_MS = [1_000, 2_000, 4_000];
@@ -59,16 +59,16 @@ const client = new Anthropic({
 });
 
 export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
-  const model = opts.model ?? laneModel(opts.lane);  // text → Haiku 4.5, vision → Sonnet 4.6
+  const model = opts.model ?? laneModel(opts.lane);  // text → Haiku 5.5, vision → Sonnet 4.6
   const { system, rest } = splitSystem(opts.messages);
 
   // ... retry loop with timeout + jitter ...
   const resp = await client.messages.create({
     model,
     max_tokens: MAX_OUTPUT_TOKENS,
-    system,                      // [{type:'text', text, cache_control:{type:'ephemeral'}}]
+    system,                      // [{type:'text', text}] — no cache_control
     messages: rest,
-    ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+    thinking: { type: 'disabled' },
   }, { signal: ac.signal });
 
   const text = resp.content.map((b) => b.type === 'text' ? b.text : '').join('');
@@ -87,23 +87,26 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
 
 Notes:
 
-- **Per-lane model.** `lane: 'text'` runs Claude Haiku 4.5; `lane: 'vision'`
-  runs Claude Sonnet 4.6. Eval round 2 (`eval/round-2/README.md`) found Haiku
+- **Per-lane model.** `lane: 'text'` runs Claude Haiku 5.5; `lane: 'vision'`
+  runs Claude Sonnet 4.6. Eval round 3 (`eval/round-3/README.md`) moved the
+  text lane from Haiku 4.5 to Haiku 5.5: no regressions on the URL/caption
+  cases after two prompt clarifications, at ~1/10 the price. Eval round 2 (`eval/round-2/README.md`) found Haiku
   unreliable on multi-column cookbook-table photos (wrong dish, mixed columns,
   hallucinations) while Sonnet extracts them cleanly for ~$0.07/photo. Override
   per lane via `ANTHROPIC_MODEL` (text) / `ANTHROPIC_MODEL_VISION` (vision).
-- **No `effort` / `thinking`.** Haiku 4.5 does not support `effort` (400), and
-  eval round 2 found adaptive thinking gives no quality lift on extraction at
+- **Thinking off, no `effort`.** Every call sends `thinking: {type: 'disabled'}`
+  (Haiku 5.5 would otherwise think by default; accepted by every lane model).
+  Eval round 2 found adaptive thinking gives no quality lift on extraction at
   2–3× cost/latency — and it broke Opus on the matrix photo (token-budget
   truncation + column bleed). Keep the call shape simple on both lanes.
-- **Prompt caching.** The system block — which carries the large, stable
-  `RECIPE_JSON_SHAPE` preamble — is sent as a `TextBlockParam` with
-  `cache_control: {type: 'ephemeral'}`. After the first request in a lane,
-  the preamble serves from cache (≈90% input cost savings on the cached
-  portion). Verify via `usage.cache_read_input_tokens > 0`.
-- **Temperature.** Defaults to Anthropic's default (1.0). Translation prompts
-  pass `temperature: 0.2` explicitly when calling. Structuring relies on
-  prompt-driven JSON shape rather than low-temperature determinism.
+- **No prompt caching.** Imports are sporadic — minutes to hours apart — so a
+  5-minute cache entry almost always expires unread, and every call would pay
+  the 1.25× cache-write premium for nothing (Haiku 5.5's 512-token minimum
+  would make the system prompt cacheable on every call). The system block is
+  sent as a plain `TextBlockParam`.
+- **No sampling params.** Haiku 5.5 returns 400 on a non-default
+  `temperature`/`top_p`/`top_k`, so none are sent (translation used to pass
+  `temperature: 0.2`). Structuring relies on the forced tool schema.
 - **Retry policy.** Retries on `Anthropic.RateLimitError`,
   `Anthropic.InternalServerError`, `Anthropic.APIConnectionError`, and
   `Anthropic.APIError` with status >= 500 or status == 429. All other 4xx

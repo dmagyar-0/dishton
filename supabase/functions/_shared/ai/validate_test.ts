@@ -110,6 +110,22 @@ Deno.test('callAndValidate: valid first response succeeds without a repair turn'
   assertEquals(mock.calls.length, 1);
 });
 
+// Request shape (eval round 3): Haiku 5.5 on the text lane, no prompt caching
+// (imports are too sporadic for a cache entry to be read before it expires),
+// thinking off, and no sampling params (Haiku 5.5 400s on a non-default
+// temperature).
+Deno.test('aiChat request: Haiku 5.5 text default, uncached system, thinking off, no temperature', async () => {
+  using mock = anthropic([toolUseResponse(validRecipe())]);
+  const res = await callAndValidate(BASE_OPTS);
+  assert(res.ok, JSON.stringify(res));
+  const body = await mock.calls[0]!.json();
+  assertEquals(body.model, 'claude-haiku-5-5');
+  assertEquals(body.system, [{ type: 'text', text: 'sys' }]);
+  assertEquals(body.thinking, { type: 'disabled' });
+  assert(!('temperature' in body));
+  assert(!('cache_control' in body));
+});
+
 Deno.test('callAndValidate: schema failure triggers one repair turn that succeeds', async () => {
   // First draft is invalid (servings as a string); repaired draft is valid.
   using mock = anthropic([

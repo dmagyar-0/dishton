@@ -1,0 +1,269 @@
+{
+  "title": "Lime Cheesecake",
+  "description": "Whole food, gluten-free lime cheesecake with a lime curd topping.",
+  "source_type": "instagram",
+  "source_url": "https://www.instagram.com/reel/CHEESECAKE/",
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 1,
+  "total_time_min": null,
+  "hero_image_path": null,
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "1 egg",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "egg",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Lime Curd"
+    },
+    {
+      "position": 1,
+      "raw_text": "1/3 cup lime juice (3 limes)",
+      "quantity": {
+        "numerator": 1,
+        "denominator": 3
+      },
+      "unit": "cup_us",
+      "ingredient_name": "lime juice",
+      "notes": "(3 limes)",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Lime Curd"
+    },
+    {
+      "position": 2,
+      "raw_text": "honey 1-2 tbsp",
+      "quantity": 1,
+      "unit": "tbsp",
+      "ingredient_name": "honey",
+      "notes": "1-2 tbsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Lime Curd"
+    },
+    {
+      "position": 3,
+      "raw_text": "1 tsp butter",
+      "quantity": 5,
+      "unit": "g",
+      "ingredient_name": "butter",
+      "notes": "1 tsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Lime Curd"
+    },
+    {
+      "position": 4,
+      "raw_text": "lime zest",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "lime zest",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "Lime Curd"
+    },
+    {
+      "position": 5,
+      "raw_text": "1.5 cups almond meal",
+      "quantity": 140,
+      "unit": "g",
+      "ingredient_name": "almond meal",
+      "notes": "1.5 cups",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Base"
+    },
+    {
+      "position": 6,
+      "raw_text": "1/4 cup honey",
+      "quantity": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "unit": "cup_us",
+      "ingredient_name": "honey",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Base"
+    },
+    {
+      "position": 7,
+      "raw_text": "2 tbsp melted coconut oil",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "coconut oil",
+      "notes": "melted",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Base"
+    },
+    {
+      "position": 8,
+      "raw_text": "lime zest",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "lime zest",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "Base"
+    },
+    {
+      "position": 9,
+      "raw_text": "2 cups Greek yoghurt",
+      "quantity": 2,
+      "unit": "cup_us",
+      "ingredient_name": "Greek yoghurt",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Filling"
+    },
+    {
+      "position": 10,
+      "raw_text": "1 - 1.5 tbsp gelatine (more = firmer set)",
+      "quantity": 10,
+      "unit": "g",
+      "ingredient_name": "gelatine",
+      "notes": "1 - 1.5 tbsp (more = firmer set)",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Filling"
+    },
+    {
+      "position": 11,
+      "raw_text": "2 tbsp water",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "water",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Filling"
+    },
+    {
+      "position": 12,
+      "raw_text": "1/4 cup honey",
+      "quantity": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "unit": "cup_us",
+      "ingredient_name": "honey",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Filling"
+    },
+    {
+      "position": 13,
+      "raw_text": "1/4 cup lime juice (2-2.5 limes)",
+      "quantity": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "unit": "cup_us",
+      "ingredient_name": "lime juice",
+      "notes": "(2-2.5 limes)",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Filling"
+    },
+    {
+      "position": 14,
+      "raw_text": "lime zest",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "lime zest",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "Filling"
+    },
+    {
+      "position": 15,
+      "raw_text": "[optional] a handful of blueberries",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "blueberries",
+      "notes": "optional",
+      "scalable": false,
+      "non_scalable_qty": "handful",
+      "section": "Filling"
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Whisk the egg, honey and lime juice in a small pot over a low heat.",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Continuously whisk (to avoid scrambled egg) until it thickens.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "Add in the butter and lime zest.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Remove from the heat and allow to cool.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Combine the base ingredients and press firmly into a cake tin.",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Place the base in the fridge.",
+      "duration_min": null
+    },
+    {
+      "position": 6,
+      "body": "Whisk together the gelatine and 2 tbsp water, then set aside to bloom.",
+      "duration_min": null
+    },
+    {
+      "position": 7,
+      "body": "Mix together the yoghurt and honey.",
+      "duration_min": null
+    },
+    {
+      "position": 8,
+      "body": "Gently heat 1/4 cup lime juice with the gelatine until fully dissolved, without letting it get too hot.",
+      "duration_min": null
+    },
+    {
+      "position": 9,
+      "body": "Slowly pour the lime and gelatine mixture into the yoghurt, whisking continuously to avoid clumps.",
+      "duration_min": null
+    },
+    {
+      "position": 10,
+      "body": "Pour over the base and top with blueberries.",
+      "duration_min": null
+    },
+    {
+      "position": 11,
+      "body": "Spread the lime curd over the top, evening it out.",
+      "duration_min": null
+    },
+    {
+      "position": 12,
+      "body": "Allow to set in the fridge for at least 4 hours.",
+      "duration_min": 240
+    }
+  ]
+}

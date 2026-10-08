@@ -19,6 +19,8 @@ export type Candidate = {
 
 export const CANDIDATES: Candidate[] = [
   { label: 'haiku', model: 'claude-haiku-4-5' },
+  // Round 3: production text lane since 2026-10 (eval/round-3/README.md).
+  { label: 'haiku55', model: 'claude-haiku-5-5' },
   { label: 'sonnet', model: 'claude-sonnet-4-6' },
   {
     label: 'sonnet-think',

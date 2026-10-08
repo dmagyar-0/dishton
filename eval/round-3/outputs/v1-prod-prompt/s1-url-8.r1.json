@@ -1,0 +1,166 @@
+{
+  "title": "Banana Bread",
+  "description": "Our best ever banana bread is soft, moist and filled with a caramelized banana flavor. It’s easy to see why bakers love this recipe!",
+  "source_type": "url",
+  "source_url": "https://www.tasteofhome.com/recipes/best-ever-banana-bread/",
+  "source_language": "en-US",
+  "canonical_unit_system": "metric",
+  "servings": 16,
+  "total_time_min": 90,
+  "tags": [],
+  "hero_image_path": "https://www.tasteofhome.com/wp-content/uploads/2025/01/Best-Ever-Banana-Bread_EXPS_TOHD24_3309_JonathanMelendez_08.jpg",
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "1-3/4 cups all-purpose flour",
+      "quantity": 210,
+      "unit": "g",
+      "ingredient_name": "all-purpose flour",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "1-1/2 cups sugar",
+      "quantity": 300,
+      "unit": "g",
+      "ingredient_name": "sugar",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "1 teaspoon baking soda",
+      "quantity": 5,
+      "unit": "g",
+      "ingredient_name": "baking soda",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "1/2 teaspoon salt",
+      "quantity": 5,
+      "unit": "g",
+      "ingredient_name": "salt",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "2 large eggs, room temperature",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "eggs",
+      "notes": "large, room temperature",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "2 medium ripe bananas, mashed (1 cup)",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "ripe bananas",
+      "notes": "medium, mashed (1 cup)",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "1/2 cup canola oil",
+      "quantity": 0.5,
+      "unit": "cup_us",
+      "ingredient_name": "canola oil",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "1/4 cup plus 1 tablespoon buttermilk",
+      "quantity": 75,
+      "unit": "ml",
+      "ingredient_name": "buttermilk",
+      "notes": "1/4 cup plus 1 tablespoon",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 8,
+      "raw_text": "1 teaspoon vanilla extract",
+      "quantity": 1,
+      "unit": "tsp",
+      "ingredient_name": "vanilla extract",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 9,
+      "raw_text": "1 cup chopped walnuts, optional",
+      "quantity": 120,
+      "unit": "g",
+      "ingredient_name": "walnuts",
+      "notes": "chopped, optional",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Preheat oven to 350°F (175°C).",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "In a large bowl, stir together flour, sugar, baking soda and salt.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "In another bowl, combine the eggs, bananas, oil, buttermilk and vanilla.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Add the banana mixture to the flour mixture, stirring just until combined.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "If desired, fold in the walnuts.",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Pour into a greased or parchment-lined 9x5-in. loaf pan.",
+      "duration_min": null
+    },
+    {
+      "position": 6,
+      "body": "Bake until a toothpick inserted in the center comes out clean, 1-1/4 to 1-1/2 hours.",
+      "duration_min": 75
+    },
+    {
+      "position": 7,
+      "body": "Cool in pan for 15 minutes before removing to a wire rack.",
+      "duration_min": 15
+    }
+  ]
+}

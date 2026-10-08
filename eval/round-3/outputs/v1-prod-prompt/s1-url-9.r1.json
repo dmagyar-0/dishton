@@ -1,0 +1,186 @@
+{
+  "title": "French Toast",
+  "description": "Our tried-and-true favorite French toast recipe is anything but soggy, and has all the tips you need from choosing the perfect bread to making the best batter.",
+  "source_type": "url",
+  "source_url": "https://www.delish.com/cooking/recipe-ideas/a25649815/best-french-toast-recipe/",
+  "source_language": "en-US",
+  "canonical_unit_system": "imperial",
+  "servings": 3,
+  "total_time_min": 30,
+  "tags": [],
+  "hero_image_path": "https://hips.hearstapps.com/hmg-prod/images/delish-230308-french-toast-055-rv-index-641c84040274d.jpg?crop=0.500xw:1.00xh;0.249xw,0&resize=1200:*",
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "3 large eggs",
+      "quantity": 3,
+      "unit": "count",
+      "ingredient_name": "eggs",
+      "notes": "large",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "1 c. whole milk",
+      "quantity": 1,
+      "unit": "cup_us",
+      "ingredient_name": "whole milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "2 tbsp. granulated sugar",
+      "quantity": 25,
+      "unit": "g",
+      "ingredient_name": "granulated sugar",
+      "notes": "2 tbsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "1 1/2 tsp. pure vanilla extract",
+      "quantity": 1.5,
+      "unit": "tsp",
+      "ingredient_name": "pure vanilla extract",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "3/4 tsp. ground cinnamon",
+      "quantity": 2,
+      "unit": "g",
+      "ingredient_name": "ground cinnamon",
+      "notes": "3/4 tsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "3/4 tsp. kosher salt",
+      "quantity": 5,
+      "unit": "g",
+      "ingredient_name": "kosher salt",
+      "notes": "3/4 tsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "6 (1\"-thick) slices brioche or challah",
+      "quantity": 6,
+      "unit": "count",
+      "ingredient_name": "brioche or challah bread",
+      "notes": "1\"-thick slices",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "3 tsp. unsalted butter, divided, plus more for serving",
+      "quantity": 15,
+      "unit": "g",
+      "ingredient_name": "unsalted butter",
+      "notes": "3 tsp, divided, plus more for serving",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 8,
+      "raw_text": "3 tsp. neutral oil, divided",
+      "quantity": 3,
+      "unit": "tsp",
+      "ingredient_name": "neutral oil",
+      "notes": "divided",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 9,
+      "raw_text": "Pure maple syrup, for serving",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "pure maple syrup",
+      "notes": "for serving",
+      "scalable": false,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Preheat oven to 200°F (95°C).",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Set a wire rack in a baking sheet and set aside.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "In a large, wide bowl or pie plate, whisk eggs to blend.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Whisk in milk, granulated sugar, vanilla, cinnamon, and salt until combined.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Add 2 bread slices to egg mixture and let soak, partially submerged, until bottom half of bread is saturated, about 30 seconds.",
+      "duration_min": 1
+    },
+    {
+      "position": 5,
+      "body": "Using a fork, flip bread and soak 30 seconds longer.",
+      "duration_min": 1
+    },
+    {
+      "position": 6,
+      "body": "Meanwhile, in a large skillet over medium heat, heat 1 teaspoon butter and 1 teaspoon oil just until butter starts to bubble.",
+      "duration_min": null
+    },
+    {
+      "position": 7,
+      "body": "Add soaked bread and cook until golden brown and crisp on both sides, about 3 minutes per side.",
+      "duration_min": 6
+    },
+    {
+      "position": 8,
+      "body": "Transfer French toast to reserved rack and place in oven to stay warm.",
+      "duration_min": null
+    },
+    {
+      "position": 9,
+      "body": "Repeat with remaining butter, oil, and bread.",
+      "duration_min": null
+    },
+    {
+      "position": 10,
+      "body": "Divide French toast among plates.",
+      "duration_min": null
+    },
+    {
+      "position": 11,
+      "body": "Serve with more butter and maple syrup alongside.",
+      "duration_min": null
+    }
+  ]
+}

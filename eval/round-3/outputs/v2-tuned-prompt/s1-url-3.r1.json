@@ -1,0 +1,211 @@
+{
+  "title": "Chocolate Chip Cookies",
+  "description": "Crisp edges, chewy centers, melty chocolate chunks, and nutty, rich brown-butter flavor—these chocolate chip cookies deliver classic comfort in every bite.",
+  "source_type": "url",
+  "source_url": "https://www.bonappetit.com/recipe/bas-best-chocolate-chip-cookies",
+  "source_language": "en-US",
+  "canonical_unit_system": "metric",
+  "servings": 16,
+  "total_time_min": 40,
+  "tags": [],
+  "hero_image_path": "https://assets.bonappetit.com/photos/5ca534485e96521ff23b382b/16:9/w_4800,h_2700,c_limit/chocolate-chip-cookie.jpg",
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "1½ cups plus 1 Tbsp. (200 g) all-purpose flour (spooning into measuring cups, then leveling)",
+      "quantity": 200,
+      "unit": "g",
+      "ingredient_name": "all-purpose flour",
+      "notes": "1½ cups plus 1 Tbsp., spooned into measuring cups, then leveled",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "1¼ tsp. (4 g) Diamond Crystal or ¾ tsp. (4 g) Morton kosher salt",
+      "quantity": 4,
+      "unit": "g",
+      "ingredient_name": "kosher salt",
+      "notes": "1¼ tsp. Diamond Crystal or ¾ tsp. Morton",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "¾ tsp. (4 g) baking soda",
+      "quantity": 4,
+      "unit": "g",
+      "ingredient_name": "baking soda",
+      "notes": "¾ tsp.",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "¾ cup (1½ sticks; 169 g) unsalted butter, divided",
+      "quantity": 169,
+      "unit": "g",
+      "ingredient_name": "unsalted butter",
+      "notes": "¾ cup (1½ sticks), divided",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "1 cup (200 g) (packed) dark brown sugar",
+      "quantity": 200,
+      "unit": "g",
+      "ingredient_name": "dark brown sugar",
+      "notes": "1 cup, packed",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "¼ cup (50 g) granulated sugar",
+      "quantity": 50,
+      "unit": "g",
+      "ingredient_name": "granulated sugar",
+      "notes": "¼ cup",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "1 large egg",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "egg",
+      "notes": "large",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "2 large egg yolks",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "egg yolk",
+      "notes": "large",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 8,
+      "raw_text": "2 tsp. vanilla extract",
+      "quantity": 2,
+      "unit": "tsp",
+      "ingredient_name": "vanilla extract",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 9,
+      "raw_text": "6 oz. (170 g) bittersweet chocolate (60%–70% cacao), coarsely chopped, or semisweet chocolate chips",
+      "quantity": 170,
+      "unit": "g",
+      "ingredient_name": "bittersweet chocolate",
+      "notes": "6 oz.; 60%–70% cacao, coarsely chopped, or semisweet chocolate chips",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Place racks in upper and lower thirds of oven; preheat to 375°F (190°C).",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Whisk 1½ cups plus 1 Tbsp. (200 g) all-purpose flour, 1¼ tsp. (4 g) Diamond Crystal or ¾ tsp. (4 g) Morton kosher salt, and ¾ tsp. (4 g) baking soda in a small bowl; set flour mixture aside.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "Cook ½ cup (1 stick; 113 g) unsalted butter in a large saucepan over medium heat, swirling often and scraping bottom of pan with a heatproof rubber spatula, until butter foams, then browns, about 4 minutes.",
+      "duration_min": 4
+    },
+    {
+      "position": 3,
+      "body": "Scrape melted butter and any brown bits to a large heatproof mixing bowl and let cool 1 minute.",
+      "duration_min": 1
+    },
+    {
+      "position": 4,
+      "body": "Cut remaining ¼ cup (½ stick; 56 g) unsalted butter into small pieces and add to brown butter (it should start to melt but not foam and sizzle, so test with one piece before adding the rest).",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Once butter is melted, add 1 cup (200 g) (packed) dark brown sugar and ¼ cup (50 g) granulated sugar and whisk, breaking up any clumps, until sugar is incorporated and no lumps remain.",
+      "duration_min": null
+    },
+    {
+      "position": 6,
+      "body": "Add 1 large egg and 2 large egg yolks and whisk until sugar dissolves and mixture is smooth, about 30 seconds.",
+      "duration_min": 1
+    },
+    {
+      "position": 7,
+      "body": "Whisk in 2 tsp. vanilla extract.",
+      "duration_min": null
+    },
+    {
+      "position": 8,
+      "body": "Using rubber spatula, fold reserved dry ingredients into butter mixture just until no dry spots remain.",
+      "duration_min": null
+    },
+    {
+      "position": 9,
+      "body": "Fold in 6 oz. (170 g) bittersweet chocolate (60%–70% cacao), coarsely chopped, or semisweet chocolate chips.",
+      "duration_min": null
+    },
+    {
+      "position": 10,
+      "body": "If the dough is soft and slumps or oozes after being scooped, stir it back together several times and let rest 5–10 minutes until scoops hold their shape as the flour hydrates. The dough should be soft but hold its shape once scooped.",
+      "duration_min": null
+    },
+    {
+      "position": 11,
+      "body": "Using a 1½-oz. scoop (3 Tbsp.), portion out 16 balls of dough and divide between 2 parchment-paper-lined rimmed baking sheets.",
+      "duration_min": null
+    },
+    {
+      "position": 12,
+      "body": "Bake cookies, rotating sheets if cookies are browning very unevenly (otherwise, just leave them alone), until deep golden brown and firm around the edges, 8–10 minutes.",
+      "duration_min": 8
+    },
+    {
+      "position": 13,
+      "body": "Let cookies cool on baking sheets.",
+      "duration_min": null
+    },
+    {
+      "position": 14,
+      "body": "Do ahead: dough balls can be portioned 3 months ahead; freeze on cookie sheets and then transfer to a resealable plastic bag.",
+      "duration_min": null
+    },
+    {
+      "position": 15,
+      "body": "Do ahead: bake dough balls from frozen, adding 1–2 minutes onto the cook time.",
+      "duration_min": null
+    },
+    {
+      "position": 16,
+      "body": "Do ahead: cookies can be baked 3 days ahead. Store in an airtight container at room temperature.",
+      "duration_min": null
+    }
+  ]
+}

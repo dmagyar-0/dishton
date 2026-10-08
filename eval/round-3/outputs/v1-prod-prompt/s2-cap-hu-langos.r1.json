@@ -1,0 +1,156 @@
+{
+  "title": "Házi lángos",
+  "description": null,
+  "source_type": "instagram",
+  "source_url": "https://www.instagram.com/reel/LANGOS/",
+  "source_language": "hu",
+  "canonical_unit_system": "metric",
+  "servings": 1,
+  "total_time_min": null,
+  "tags": [],
+  "hero_image_path": null,
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "50 dkg finomliszt",
+      "quantity": 500,
+      "unit": "g",
+      "ingredient_name": "finomliszt",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "1 tasak szárazélesztő",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "szárazélesztő",
+      "notes": "tasak",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "3 dl langyos tej",
+      "quantity": 300,
+      "unit": "ml",
+      "ingredient_name": "tej",
+      "notes": "langyos",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "1 tk só",
+      "quantity": 6,
+      "unit": "g",
+      "ingredient_name": "só",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "1 tk cukor",
+      "quantity": 5,
+      "unit": "g",
+      "ingredient_name": "cukor",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "2 ek olaj",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "olaj",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "olaj a sütéshez",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "olaj",
+      "notes": "a sütéshez",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "2 gerezd fokhagyma",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "fokhagyma",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Tetejére"
+    },
+    {
+      "position": 8,
+      "raw_text": "tejföl",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "tejföl",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Tetejére"
+    },
+    {
+      "position": 9,
+      "raw_text": "reszelt sajt",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "sajt",
+      "notes": "reszelt",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Tetejére"
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "A langyos tejben felfuttatom az élesztőt a cukorral, kb. 10 perc.",
+      "duration_min": 10
+    },
+    {
+      "position": 1,
+      "body": "Hozzáadom a liszthez a sóval és az olajjal, és sima tésztává gyúrom.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "Letakarva kelni hagyom kb. 1 órát, amíg a duplájára nő.",
+      "duration_min": 60
+    },
+    {
+      "position": 3,
+      "body": "Kis cipókat formázok, ellapítom.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Bő forró olajban mindkét oldalát aranybarnára sütöm.",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Fokhagymás vízzel megkenem, tejföllel és reszelt sajttal tálalom.",
+      "duration_min": null
+    }
+  ]
+}

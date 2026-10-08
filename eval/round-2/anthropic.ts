@@ -1,6 +1,6 @@
 // Round-2 Anthropic adapter. Unlike the legacy eval/nim/anthropic.ts (text-mode
 // JSON, no tools, always sends temperature), this matches production: forced
-// `extract_recipe` tool use + prompt caching, with optional adaptive thinking
+// `extract_recipe` tool use (no prompt caching), with optional adaptive thinking
 // and effort. Raw HTTP (no SDK) so the exact request body is auditable.
 //
 // Key correctness notes:
@@ -76,11 +76,9 @@ function splitSystem(
   }
   if (systemTexts.length === 0) return { system: undefined, rest };
   return {
-    system: [{
-      type: 'text',
-      text: systemTexts.join('\n\n'),
-      cache_control: { type: 'ephemeral' },
-    }],
+    // No cache_control: production stopped caching the system prompt in round
+    // 3 (imports are too sporadic for a cache entry to be read).
+    system: [{ type: 'text', text: systemTexts.join('\n\n') }],
     rest,
   };
 }

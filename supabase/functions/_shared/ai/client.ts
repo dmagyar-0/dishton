@@ -1,7 +1,8 @@
 // Anthropic client wrapper. Authenticates with the Anthropic SDK, retries on
 // 5xx and 429 with backoff + jitter, never on other 4xx, surfaces typed
-// errors. Per-lane default model: Haiku 4.5 for text, Sonnet 4.6 for vision
-// (eval round 2 found Haiku unreliable on multi-column cookbook-table photos).
+// errors. Per-lane default model: Haiku 5.5 for text (eval round 3), Sonnet 4.6
+// for vision (eval round 2 found Haiku unreliable on multi-column cookbook-table
+// photos).
 //
 // Edge-function only — never imported from the SPA bundle.
 
@@ -11,13 +12,15 @@ import { isMockMode, mockAiChat } from './mock.ts';
 
 export type Lane = 'text' | 'vision';
 
-// Per-lane default model. Vision defaults to Sonnet 4.6: eval round 2
+// Per-lane default model. Text defaults to Haiku 5.5: eval round 3
+// (eval/round-3/README.md) found it matches or beats Haiku 4.5 on the URL and
+// caption lanes at a tenth of the price. Vision defaults to Sonnet 4.6: eval round 2
 // (eval/round-2/README.md) found Haiku 4.5 fails multi-column cookbook-table
 // photos (wrong dish, mixed columns, hallucinations) while Sonnet 4.6 extracts
 // them cleanly for ~$0.07/photo. Adaptive thinking did not help and is not used.
 // Override per lane via ANTHROPIC_MODEL (text) / ANTHROPIC_MODEL_VISION (vision).
 const DEFAULT_MODEL: Record<Lane, string> = {
-  text: 'claude-haiku-4-5',
+  text: 'claude-haiku-5-5',
   vision: 'claude-sonnet-4-6',
 };
 
@@ -26,7 +29,9 @@ function laneModel(lane: Lane): string {
   return override ?? DEFAULT_MODEL[lane];
 }
 
-const MAX_OUTPUT_TOKENS = 4096;
+// Haiku 5.5's tokenizer counts the same text as ~30% more tokens than Haiku
+// 4.5, so the old 4096 cap could truncate a long recipe's tool call.
+const MAX_OUTPUT_TOKENS = 8192;
 
 const TIMEOUT_MS: Record<Lane, number> = { text: 90_000, vision: 90_000 };
 const MAX_RETRIES = 3;
@@ -52,7 +57,6 @@ export type AiCallOpts = {
   messages: AiMessage[];
   estimatedTokens: number;
   signal?: AbortSignal;
-  temperature?: number;
   tools?: Anthropic.Tool[];
   tool_choice?: Anthropic.ToolChoice;
 };
@@ -116,9 +120,11 @@ function isRetryable(err: unknown): boolean {
 }
 
 // Pull the system message out of the AiMessage[] and convert to Anthropic's
-// `system` parameter shape. Adds a cache_control breakpoint so the (large,
-// stable) RECIPE_JSON_SHAPE preamble is served from cache after the first
-// request in a lane.
+// `system` parameter shape. Deliberately NOT prompt-cached: imports are
+// sporadic (minutes to hours apart), so a cache entry almost always expires
+// unread and every call would pay the 1.25x cache-write premium for nothing.
+// Haiku 5.5's 512-token minimum would otherwise make the ~2k-token system
+// prompt cacheable on every request.
 function splitSystem(messages: AiMessage[]): {
   system: Anthropic.TextBlockParam[] | undefined;
   rest: Anthropic.MessageParam[];
@@ -140,11 +146,7 @@ function splitSystem(messages: AiMessage[]): {
   }
   if (systemTexts.length === 0) return { system: undefined, rest };
   return {
-    system: [{
-      type: 'text',
-      text: systemTexts.join('\n\n'),
-      cache_control: { type: 'ephemeral' },
-    }],
+    system: [{ type: 'text', text: systemTexts.join('\n\n') }],
     rest,
   };
 }
@@ -163,7 +165,12 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
     max_tokens: MAX_OUTPUT_TOKENS,
     messages: rest,
     ...(system ? { system } : {}),
-    ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+    // Thinking off on every lane: eval round 2 found it adds cost/latency with
+    // no extraction gain, and Haiku 5.5 would otherwise think by default
+    // (eating into max_tokens on the untooled translate call). `disabled` is
+    // accepted by every model a lane can be pointed at. No temperature: Haiku
+    // 5.5 rejects non-default sampling params with a 400.
+    thinking: { type: 'disabled' },
     ...(opts.tools ? { tools: opts.tools } : {}),
     ...(opts.tool_choice ? { tool_choice: opts.tool_choice } : {}),
   };
