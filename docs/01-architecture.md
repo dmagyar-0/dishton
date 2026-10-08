@@ -70,7 +70,7 @@ is an Edge Function call.
 | **Postgres + RLS** | Authoritative recipe data, household membership, follow graph, FTS, `import_jobs` state, translation cache, AI rate budget row | Anything that requires a secret outside the DB; `auth.users` table belongs to GoTrue, never written directly |
 | **Storage** | `recipe-images` (public, served via signed URLs from the SPA), `imports` (private originals; only Edge Functions read) | Long-term archival or backup; rotation handled by Supabase platform |
 | **Edge Functions** | All Anthropic calls, all third-party fetches (oEmbed, blog HTML), Zod validation of model output, retry/backoff, writing `import_jobs` rows, decrementing `ai_rate_budget` | UI logic, browser-bound state, view-time computations |
-| **Anthropic API** | Text structuring, vision OCR-and-structuring, translation (text: `claude-haiku-5-5`, vision: `claude-sonnet-4-6`) | Storage, persistence, access control |
+| **Anthropic API** | Text structuring, vision OCR-and-structuring, translation (text: `claude-haiku-5-5`, vision: `claude-sonnet-5-5`) | Storage, persistence, access control |
 
 ## Data flows
 
@@ -165,7 +165,7 @@ Everything else is server-side only.
 | `VITE_SENTRY_DSN` | Vercel | SPA | optional, prod only |
 | `ANTHROPIC_API_KEY` | Supabase Functions secrets | Edge Functions | Anthropic API access |
 | `ANTHROPIC_MODEL` | Supabase Functions secrets | Edge Functions | text lane; optional override, default `claude-haiku-5-5` |
-| `ANTHROPIC_MODEL_VISION` | Supabase Functions secrets | Edge Functions | vision lane; optional override, default `claude-sonnet-4-6` |
+| `ANTHROPIC_MODEL_VISION` | Supabase Functions secrets | Edge Functions | vision lane; optional override, default `claude-sonnet-5-5` |
 | `IG_OEMBED_TOKEN` | Supabase Functions secrets | Edge: import-instagram | App-scoped Facebook Graph token |
 | `LOG_DRAIN_TOKEN` | Supabase Functions secrets | Edge Functions | structured-log forwarding |
 | `AI_MOCK_MODE` | local + CI only | Edge Functions | `playwright` to read fixtures instead of calling Anthropic |

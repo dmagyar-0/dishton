@@ -1,4 +1,4 @@
-# 07 — AI Integration (Anthropic Claude Haiku 5.5 + Sonnet 4.6)
+# 07 — AI Integration (Anthropic Claude Haiku 5.5 + Sonnet 5.5)
 
 ## Purpose
 
@@ -47,7 +47,7 @@ import { env } from '../env.ts';
 
 export type Lane = 'text' | 'vision';
 
-const DEFAULT_MODEL = { text: 'claude-haiku-5-5', vision: 'claude-sonnet-4-6' };
+const DEFAULT_MODEL = { text: 'claude-haiku-5-5', vision: 'claude-sonnet-5-5' };
 const MAX_OUTPUT_TOKENS = 8192;
 const TIMEOUT_MS: Record<Lane, number> = { text: 90_000, vision: 90_000 };
 const MAX_RETRIES = 3;
@@ -59,7 +59,7 @@ const client = new Anthropic({
 });
 
 export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
-  const model = opts.model ?? laneModel(opts.lane);  // text → Haiku 5.5, vision → Sonnet 4.6
+  const model = opts.model ?? laneModel(opts.lane);  // text → Haiku 5.5, vision → Sonnet 5.5
   const { system, rest } = splitSystem(opts.messages);
 
   // ... retry loop with timeout + jitter ...
@@ -68,7 +68,8 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
     max_tokens: MAX_OUTPUT_TOKENS,
     system,                      // [{type:'text', text}] — no cache_control
     messages: rest,
-    thinking: { type: 'disabled' },
+    thinking: thinkingFor(model),          // disabled, or between_tools on Sonnet 5.5
+    tool_choice: toolChoiceFor(model, opts.tool_choice), // forced → auto on Sonnet 5.5
   }, { signal: ac.signal });
 
   const text = resp.content.map((b) => b.type === 'text' ? b.text : '').join('');
@@ -88,14 +89,19 @@ export async function aiChat(opts: AiCallOpts): Promise<AiResult> {
 Notes:
 
 - **Per-lane model.** `lane: 'text'` runs Claude Haiku 5.5; `lane: 'vision'`
-  runs Claude Sonnet 4.6. Eval round 3 (`eval/round-3/README.md`) moved the
-  text lane from Haiku 4.5 to Haiku 5.5: no regressions on the URL/caption
-  cases after two prompt clarifications, at ~1/10 the price. Eval round 2 (`eval/round-2/README.md`) found Haiku
-  unreliable on multi-column cookbook-table photos (wrong dish, mixed columns,
-  hallucinations) while Sonnet extracts them cleanly for ~$0.07/photo. Override
+  runs Claude Sonnet 5.5. Eval round 3 (`eval/round-3/README.md`) moved the
+  text lane from Haiku 4.5 to Haiku 5.5 (no regressions on the URL/caption
+  cases after two prompt clarifications, ~1/10 the price) and the vision lane
+  from Sonnet 4.6 to Sonnet 5.5 (clean on 6/6 cookbook-matrix photo runs,
+  including handwritten amounts, at ~$0.05–0.067 vs $0.074 per 4-photo import). Override
   per lane via `ANTHROPIC_MODEL` (text) / `ANTHROPIC_MODEL_VISION` (vision).
-- **Thinking off, no `effort`.** Every call sends `thinking: {type: 'disabled'}`
-  (Haiku 5.5 would otherwise think by default; accepted by every lane model).
+- **Thinking off, no `effort`.** Calls send `thinking: {type: 'disabled'}`
+  (Haiku 5.5 would otherwise think by default); Sonnet 5.5 rejects `disabled`
+  and gets `{type: 'between_tools'}`, its thinking-off setting.
+- **Tool choice.** `extract_recipe` is forced via `tool_choice: {type: 'tool'}`,
+  except on Sonnet 5.5 (and Opus 5.5 / Fable 5.1), which reject a forced
+  `tool_choice` — there it is `auto`, the prompt asks for the tool, and
+  `callAndValidate` retries once if the model answers in text.
   Eval round 2 found adaptive thinking gives no quality lift on extraction at
   2–3× cost/latency — and it broke Opus on the matrix photo (token-budget
   truncation + column bleed). Keep the call shape simple on both lanes.

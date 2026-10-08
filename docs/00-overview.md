@@ -39,7 +39,7 @@ contradict a locked choice.
 | Auth methods | Email/password day one; Google OAuth wired but feature-flagged |
 | Sharing model | **Households** (shared, read/write) + **Follows** (read-only) |
 | AI provider | Anthropic API at `https://api.anthropic.com/v1/messages` |
-| AI model (text + vision) | `claude-haiku-5-5` (text) + `claude-sonnet-4-6` (vision) — see eval rounds 2–3 |
+| AI model (text + vision) | `claude-haiku-5-5` (text) + `claude-sonnet-5-5` (vision) — see eval rounds 2–3 |
 | AI key location | Server-side only, in Supabase Edge Functions |
 | Instagram ingestion | Public oEmbed endpoint (caption + thumbnail). No IG Graph API |
 | Storage strategy | Canonical recipe JSON in Postgres; per-language translations cached in `recipe_translations`; per-user unit conversion at view time |

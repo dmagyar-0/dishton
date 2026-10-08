@@ -20,10 +20,10 @@ read a cache entry.
   (`kb. 8 db` → `servings: 1`), and (2) it left amount-less ingredients
   (`salt`, `olive oil`, `lime zest`) without `non_scalable_qty`. Two prompt rules
   fix both, in every run.
-- **Vision lane: Sonnet 5.5 was clean on 6/6 photo runs, better than Sonnet
-  4.6 and ~10–30% cheaper. Haiku 5.5 is ~20× cheaper still but slipped on details.
-  Not switched yet (see [Stage 3](#stage-3--cookbook-matrix-photos)).** Haiku
-  5.5 picked the right column in 6/6 runs with 0 bleed (Haiku 4.5 mixed all
+- **Vision lane → `claude-sonnet-5-5`.** It was clean on 6/6 cookbook-matrix
+  photo runs, better than Sonnet 4.6 and ~10–30% cheaper (see
+  [Stage 3](#stage-3--cookbook-matrix-photos)). Haiku 5.5 is ~20× cheaper still
+  but not clean enough: it picked the right column in 6/6 runs with 0 bleed (Haiku 4.5 mixed all
   three columns), but slipped in 3 of 6: a dropped ingredient, a misread
   handwritten amount, and leftover crêpe-only steps.
 - **Prompt caching removed** from the production client and the eval adapter (see
@@ -150,13 +150,14 @@ first-party list prices for prompts under 100K tokens.
 - **Haiku 5.5 is ~20× cheaper than Sonnet 5.5** and gets the hard part (column
   selection, no bleed) right every time, but slipped on a detail in 3 of 6 runs.
   At Dishton's volume the absolute difference is about 5¢ per photo import.
-- **Not switched yet.** Moving the vision lane to Sonnet 5.5 needs a
-  request-shape change, because Sonnet 5.5 returns a 400 on both of these:
-  - a forced `tool_choice`: use `auto` and retry if the tool isn't called;
-  - `thinking: {type: 'disabled'}`: use `{type: 'between_tools'}`.
+- **Shipped: vision lane → Sonnet 5.5.** Sonnet 5.5 returns a 400 on two things
+  production sent, so `client.ts` now picks the request shape per model:
+  - forced `tool_choice` becomes `auto`, and `callAndValidate` retries once
+    when the model answers without calling the tool;
+  - `thinking: {type: 'disabled'}` becomes `{type: 'between_tools'}`, Sonnet
+    5.5's thinking-off setting.
 
-  Moving to Haiku 5.5 is a one-line model change. Both are a production change
-  and wait for an explicit go-ahead.
+  Migration `20261008130000` adds its price row.
 
 ## v1 → v2: the prompt change
 

@@ -108,16 +108,27 @@ export async function callAnthropic(opts: {
 
   const isOpus = opts.model.startsWith('claude-opus');
   const sendTemp = opts.temperature !== undefined && !isOpus && !opts.thinking;
+  // Sonnet 5.5 400s on a forced tool_choice and on thinking:disabled — mirror
+  // production (supabase/functions/_shared/ai/client.ts): auto + between_tools.
+  const isSonnet55 = opts.model.startsWith('claude-sonnet-5-5');
+  const toolChoice = isSonnet55 && opts.toolChoice?.type === 'tool'
+    ? { type: 'auto' }
+    : opts.toolChoice;
+  const thinking = opts.thinking
+    ? { type: opts.thinking }
+    : isSonnet55
+    ? { type: 'between_tools' }
+    : undefined;
 
   const body: Record<string, unknown> = {
     model: opts.model,
     max_tokens: opts.maxTokens ?? (opts.thinking ? 16_000 : 8_192),
     messages: rest,
     ...(system ? { system } : {}),
-    ...(sendTemp ? { temperature: opts.temperature } : {}),
+    ...(sendTemp && !isSonnet55 ? { temperature: opts.temperature } : {}),
     ...(opts.tools ? { tools: opts.tools } : {}),
-    ...(opts.toolChoice ? { tool_choice: opts.toolChoice } : {}),
-    ...(opts.thinking ? { thinking: { type: opts.thinking } } : {}),
+    ...(toolChoice ? { tool_choice: toolChoice } : {}),
+    ...(thinking ? { thinking } : {}),
     ...(opts.effort ? { output_config: { effort: opts.effort } } : {}),
   };
 
