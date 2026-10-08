@@ -22,7 +22,12 @@ import { extname } from '@std/path';
 const ALLOWED_TAGS: string[] = [];
 
 export type CaseKind = 'url' | 'caption' | 'image';
-export type BuiltCase = { messages: AiMessage[]; sourceExcerpt: string };
+export type BuiltCase = {
+  messages: AiMessage[];
+  sourceExcerpt: string;
+  // Image cases only: the photo paths in the order they are sent.
+  imagePaths?: string[];
+};
 
 export type EvalCase = {
   id: string;
@@ -184,6 +189,33 @@ export async function loadCases(): Promise<EvalCase[]> {
         sourceExcerpt: `${paths.length} photos: ${
           paths.map((p) => p.split('/').pop()).join(', ')
         } — note: "${comment}"`,
+        imagePaths: paths,
+      };
+    },
+  });
+
+  // Stage 3 — second matrix: a 3-column pancake table where the user has
+  // handwritten corrected amounts over the middle (American-style) column.
+  // Tests column selection AND reading handwriting over printed values; the
+  // method page also carries a crêpe-only step that should not leak in.
+  const pancakeDir = 'eval/round-2/fixtures/images/classic-pancakes';
+  const pancakeNote =
+    'Light and fluffy American-style pancakes (middle column). Use my handwritten amounts where I corrected the printed ones.';
+  cases.push({
+    id: 's3-img-pancakes',
+    stage: 3,
+    kind: 'image',
+    label: 'classic-pancakes (middle column + handwritten amounts)',
+    goldPath: 'eval/round-2/gold/american-pancakes.json',
+    build: async () => {
+      const paths = await listImages(pancakeDir);
+      if (paths.length === 0) throw new Error(`no images in ${pancakeDir}`);
+      return {
+        messages: await imageMessages(paths, pancakeNote),
+        sourceExcerpt: `${paths.length} photos: ${
+          paths.map((p) => p.split('/').pop()).join(', ')
+        } — note: "${pancakeNote}"`,
+        imagePaths: paths,
       };
     },
   });

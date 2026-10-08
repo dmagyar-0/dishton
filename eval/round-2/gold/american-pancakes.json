@@ -1,0 +1,22 @@
+{
+  "title": "American-Style Pancakes",
+  "titleExpect": "pancake",
+  "verify": "Read from the user's photos (2026-10-08). Middle column of the Classic Pancakes breakdown, with the user's handwritten amounts overriding the printed ones: 150g flour (printed 120g), 250ml oat milk (200ml), 2.5 tbsp ground flax (2), 2.5 tbsp maple syrup (2), 1.9 tsp baking powder (1½), 1.25 tsp vanilla (1); pinch of salt and ½ tsp oil unchanged. 'Makes 4 to 6' → servings 4. Method steps 1, 2 and 4 apply; step 3 is crêpe-only. 'amounts' checks the two values that need no unit conversion (flour g, oat milk ml) — the printed 120 g / 200 ml (or the other columns' 260/300 ml) mean the handwriting was missed or a column bled.",
+  "minSteps": 3,
+  "sections": [],
+  "expect": [
+    "flour",
+    "oat milk",
+    "flax",
+    "maple syrup",
+    "baking powder",
+    "vanilla",
+    "salt",
+    "oil"
+  ],
+  "forbidden": [],
+  "amounts": [
+    { "term": "flour", "quantity": 150, "unit": "g" },
+    { "term": "oat milk", "quantity": 250, "unit": "ml" }
+  ]
+}

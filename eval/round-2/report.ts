@@ -140,6 +140,7 @@ function goldBlock(g: GoldDiff): string[] {
     `- gold bleed (foreign-column ingredients): ${g.bleed.length === 0 ? 'none ✅' : `${g.bleed.length} ❌ — ${g.bleed.join(', ')}`}`,
     `- missing: ${g.missing.length ? g.missing.join(', ') : 'none'}`,
     `- ingredients: ${g.ingredientCount}, steps: ${g.stepCount} (stepOk=${g.stepOk})`,
+    `- amounts: ${g.amountMisses.length === 0 ? 'ok ✅' : `❌ ${g.amountMisses.join('; ')}`}`,
   ];
 }
 
