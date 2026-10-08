@@ -20,9 +20,12 @@ read a cache entry.
   (`kb. 8 db` → `servings: 1`), and (2) it left amount-less ingredients
   (`salt`, `olive oil`, `lime zest`) without `non_scalable_qty`. Two prompt rules
   fix both, in every run.
-- **Vision lane unchanged (Sonnet 4.6).** The Stage-3 cookbook-matrix photos are
-  not committed, so Haiku 5.5 could not be tested on the case that made us move
-  vision to Sonnet. Re-run Stage 3 before reconsidering.
+- **Vision lane: Haiku 5.5 is close to Sonnet 4.6, but not clean. Kept on
+  Sonnet for now.** On the cookbook-matrix photos (now committed) it picked the
+  right column in 6/6 runs with **0 column bleed**, a big step up from Haiku 4.5,
+  which mixed all three columns. It still made small slips in 3 of 6 runs: one
+  dropped ingredient, one handwritten amount misread, and one run that kept the
+  crêpe-only steps. See [Stage 3](#stage-3--cookbook-matrix-photos).
 - **Prompt caching removed** from the production client and the eval adapter (see
   [Caching](#caching)).
 
@@ -38,9 +41,11 @@ subagent confirmed it was running as `claude-haiku-5-5`.
   plus the real `extract_recipe` tool definition. Covers 7 Stage-1 URLs (the 6
   round-2 URLs plus Allrecipes, which fetched this time; Smitten Kitchen, Serious
   Eats and Epicurious are still blocked at fetch) and the 3 Stage-2 captions.
+  Stage 3: the two cookbook-matrix photo cases (`structuringFromImage`). The
+  subagent views the committed photos in send order.
 - **Task given to the subagent:** read the system prompt, user message and tool
   schema in full, then output exactly the forced `extract_recipe` tool input.
-- **Repeats:** URLs ×1, captions ×2.
+- **Repeats:** URLs ×1, captions ×2, photos ×3.
 - **Scoring:** strict Zod `Recipe` validation ([`score.ts`](score.ts)), then a
   field-by-field comparison against the recorded round-2 Haiku 4.5 / Sonnet 4.6 /
   Opus 4.8 outputs (`eval/round-2/runs/`), with manual review of ingredients and
@@ -85,6 +90,46 @@ What stood out:
   cap before most headings, so this is minor.
 - **Cosmetic:** `notes` sometimes repeats the original pre-conversion amount
   (`1.5 cups` next to 150 g). This is harmless and arguably useful.
+
+## Stage 3 — cookbook-matrix photos
+
+The photos are committed under `eval/round-2/fixtures/images/` (downscaled to
+1568 px, the size the API works at). Each case ran 3×, using the v2 prompt and
+gold-diffed by `score.ts`.
+
+**Sweet Potato Cottage Pie**: 4 photos, note *"use only the middle column"*
+
+| | Haiku 4.5 (r2) | Sonnet 4.6 (r2, prod) | **Haiku 5.5 r1 / r2 / r3** |
+|---|---|---|---|
+| right dish | ❌ "Shepherd's Pie" | ✅ | ✅ ✅ ✅ |
+| recall | 63% | 100% | 100% / **95%** (dropped tamari) / 100% |
+| column bleed | 2 + hallucinations | 0 | 0 / 0 / 0 |
+| all 7 sections | ❌ | ✅ | ✅ ✅ ✅ |
+| plain 750 g potatoes kept | — | ❌ dropped | ✅ ✅ ✅ |
+| Fishless-only "add the wine… cashew" line in method | — | removed | kept ×3 (Opus 4.8 kept it too) |
+
+**American-style pancakes**: 2 photos. The note asks for the middle column
+with the user's handwritten amounts (150 g, 250 ml, 2.5 tbsp, 2.5 tbsp,
+1.9 tsp, 1.25 tsp written over the printed 120 g / 200 ml / 2 / 2 / 1½ / 1).
+
+| | r1 | r2 | r3 |
+|---|---|---|---|
+| right column, 0 bleed | ✅ | ✅ | ✅ |
+| flour 150 g / oat milk 250 ml (handwritten) | ✅ | ✅ | ✅ |
+| flax / maple 2.5 tbsp, vanilla 1.25 tsp (handwritten) | ✅ | ✅ | ✅ |
+| baking powder 1.9 tsp (handwritten) | ✅ | ❌ took printed 1½ | ✅ (but converted to 10 g; ≈ 7.5 g expected) |
+| crêpe-only step 3 excluded | ❌ kept | ✅ | ✅ |
+| servings ("Makes 4 to 6") | 4 | 4 | 4 |
+
+**Verdict:** Haiku 5.5 matches Sonnet 4.6 on what made Sonnet the vision default
+(column selection, no bleed, no hallucination) at roughly 1/20 of the price
+(estimated ~$0.004 vs ~$0.074 per 4-photo import). It is noisier on details: 3 of 6
+runs had one small slip. There is no Sonnet 4.6 baseline on the pancake case
+(Sonnet 4.6 can't be run as a subagent here), so the comparison is one-sided
+there. **The vision lane stays on Sonnet 4.6** until a live A/B with an API key
+(`pnpm eval:round2 -- --stage 3 --models sonnet,haiku55 --repeat 3`) confirms
+parity. Moving it is one line (`DEFAULT_MODEL.vision` or the
+`ANTHROPIC_MODEL_VISION` secret).
 
 ## v1 → v2: the prompt change
 

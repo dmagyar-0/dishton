@@ -16,7 +16,7 @@ so a prompt change is automatically reflected in the next run.
 |-------|------|-------|--------|----------|
 | [Round 1](round-1/README.md) | 2026-05-03 | `structuringFromHtml` (URL, text lane) | 7 models x 6 recipes | `claude-haiku-4-5` best value; `claude-sonnet-4-6` quality reference; 4 of 5 NIM models failed on access (404/500/timeout), not quality. |
 | [Round 2](round-2/README.md) | 2026-06-01 | URL + caption + cookbook-matrix photo | 5 configs (Haiku 4.5 / Sonnet 4.6 / Opus 4.8 ± thinking) | Vision lane → `claude-sonnet-4-6`; text stays Haiku 4.5; adaptive thinking off. |
-| [Round 3](round-3/README.md) | 2026-10-08 | URL + caption (text lane) | Haiku 5.5 (subagent stand-in) × 10 cases | Text lane → `claude-haiku-5-5` (~1/10 cost, no regression after 2 prompt rules); prompt caching removed. |
+| [Round 3](round-3/README.md) | 2026-10-08 | URL + caption (text lane) | Haiku 5.5 (subagent stand-in) × 10 text + 2 photo cases | Text lane → `claude-haiku-5-5` (~1/10 cost, no regression after 2 prompt rules); prompt caching removed. Photos: right column 6/6, 0 bleed, minor slips in 3/6 → vision stays on Sonnet 4.6 pending a live A/B. |
 
 ## How a round is laid out
 

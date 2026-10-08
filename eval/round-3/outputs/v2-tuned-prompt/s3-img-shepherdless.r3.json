@@ -1,0 +1,305 @@
+{
+  "title": "Sweet Potato Cottage Pie",
+  "description": null,
+  "source_type": "photo",
+  "source_url": null,
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 6,
+  "total_time_min": null,
+  "hero_image_path": null,
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "1 medium leek",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "leek",
+      "notes": "medium",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "BASE VEG"
+    },
+    {
+      "position": 1,
+      "raw_text": "2 garlic cloves",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "garlic cloves",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "BASE VEG"
+    },
+    {
+      "position": 2,
+      "raw_text": "1 tbsp oil",
+      "quantity": 1,
+      "unit": "tbsp",
+      "ingredient_name": "oil",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "BASE VEG"
+    },
+    {
+      "position": 3,
+      "raw_text": "100g green beans",
+      "quantity": 100,
+      "unit": "g",
+      "ingredient_name": "green beans",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "CORE VEG"
+    },
+    {
+      "position": 4,
+      "raw_text": "1 carrot",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "carrot",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "CORE VEG"
+    },
+    {
+      "position": 5,
+      "raw_text": "1 parsnip",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "parsnip",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "CORE VEG"
+    },
+    {
+      "position": 6,
+      "raw_text": "1 × 400g tin of lentils",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "lentils",
+      "notes": "400g tin",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "BEANS/LENTILS"
+    },
+    {
+      "position": 7,
+      "raw_text": "1 × 400g tin of chickpeas",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "chickpeas",
+      "notes": "400g tin",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "BEANS/LENTILS"
+    },
+    {
+      "position": 8,
+      "raw_text": "800ml veg stock",
+      "quantity": 800,
+      "unit": "ml",
+      "ingredient_name": "vegetable stock",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "SAUCE"
+    },
+    {
+      "position": 9,
+      "raw_text": "6 sprigs of fresh thyme, leaves stripped",
+      "quantity": 6,
+      "unit": "count",
+      "ingredient_name": "fresh thyme",
+      "notes": "leaves stripped",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "SEASONING"
+    },
+    {
+      "position": 10,
+      "raw_text": "3 tbsp tamari or soy sauce",
+      "quantity": 3,
+      "unit": "tbsp",
+      "ingredient_name": "tamari or soy sauce",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "SEASONING"
+    },
+    {
+      "position": 11,
+      "raw_text": "½ tsp chilli powder",
+      "quantity": 0.5,
+      "unit": "tsp",
+      "ingredient_name": "chilli powder",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "SEASONING"
+    },
+    {
+      "position": 12,
+      "raw_text": "Salt and freshly ground black pepper (to taste)",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "salt and black pepper",
+      "notes": "freshly ground",
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "SEASONING"
+    },
+    {
+      "position": 13,
+      "raw_text": "750g potatoes",
+      "quantity": 750,
+      "unit": "g",
+      "ingredient_name": "potatoes",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "MASHED POTATO TOPPING"
+    },
+    {
+      "position": 14,
+      "raw_text": "750g sweet potatoes",
+      "quantity": 750,
+      "unit": "g",
+      "ingredient_name": "sweet potatoes",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "MASHED POTATO TOPPING"
+    },
+    {
+      "position": 15,
+      "raw_text": "100ml oat milk",
+      "quantity": 100,
+      "unit": "ml",
+      "ingredient_name": "oat milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "MASHED POTATO TOPPING"
+    },
+    {
+      "position": 16,
+      "raw_text": "3 tbsp olive oil",
+      "quantity": 3,
+      "unit": "tbsp",
+      "ingredient_name": "olive oil",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "MASHED POTATO TOPPING"
+    },
+    {
+      "position": 17,
+      "raw_text": "Salt and freshly ground black pepper (to taste)",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "salt and black pepper",
+      "notes": "freshly ground",
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "MASHED POTATO TOPPING"
+    },
+    {
+      "position": 18,
+      "raw_text": "Coriander pesto (p. 167)",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "coriander pesto",
+      "notes": "p. 167",
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "TO SERVE"
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Preheat the oven to 200°C (390°F) fan/425°F/gas 7.",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Peel and finely dice the base veg. Deseed the chilli (if using) if you want to dial down the heat.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "Peel the core veg and chop into bite-size pieces.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Drain and rinse the tinned beans/lentils.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Heat the tablespoon of oil in a large saucepan on a medium heat. Add the base veg and cook for 4 to 6 minutes, stirring regularly, until they start to brown.",
+      "duration_min": 4
+    },
+    {
+      "position": 5,
+      "body": "Add the core veg and the beans/lentils along with a generous pinch of salt and some freshly ground black pepper. Stir well, put the lid on and leave to sweat for 10 to 15 minutes, stirring occasionally, until the veg are soft.",
+      "duration_min": 10
+    },
+    {
+      "position": 6,
+      "body": "To deglaze the pan after cooking your veg, add a few tablespoons of water or stock to the pan. When the liquid begins to bubble, it will release all the brown bits from the bottom of the pan. One of the keys to good cooking is to never waste flavour and these brown bits have lots of it, which will add more depth to your dish, so, using a wooden spoon, scrape the brown bits off the bottom of the pan and incorporate them into the veg.",
+      "duration_min": null
+    },
+    {
+      "position": 7,
+      "body": "Once the veg are cooked, add the sauce ingredients and the seasoning. If making the fishless pie, add the wine first and bring to the boil to allow the alcohol to evaporate before adding the cashew cream and veg stock.",
+      "duration_min": null
+    },
+    {
+      "position": 8,
+      "body": "Bring to the boil, then reduce the heat and simmer for 10 minutes, until the sauce thickens. Taste and adjust the seasoning if needed.",
+      "duration_min": 10
+    },
+    {
+      "position": 9,
+      "body": "Meanwhile, to make the mashed potato topping, cut the potatoes and/or sweet potatoes into bite-size pieces. (We like to leave the skin on our potatoes since that's where a lot of nutrition is and to give our bakes a more rustic look.)",
+      "duration_min": null
+    },
+    {
+      "position": 10,
+      "body": "Put the potatoes and/or sweet potatoes into a large saucepan of cold salted water. Bring to the boil, then reduce the heat and cook for 10 to 15 minutes, until tender.",
+      "duration_min": 10
+    },
+    {
+      "position": 11,
+      "body": "Drain the potatoes, then return them to the hot saucepan for a few minutes to let them dry out.",
+      "duration_min": null
+    },
+    {
+      "position": 12,
+      "body": "Add the oat milk and olive oil, then mash until smooth. Season well with salt and pepper.",
+      "duration_min": null
+    },
+    {
+      "position": 13,
+      "body": "Transfer the veg and sauce mixture to a large baking dish (approx. 32cm × 24cm), then add the mashed potatoes on top. The dish should be two-thirds full with the veg and sauce mixture and the remaining one-third should be the mashed potato topping. Use the tines of a fork to make drills on the mash, which will turn crisp and golden in the oven.",
+      "duration_min": null
+    },
+    {
+      "position": 14,
+      "body": "Bake in the preheated oven for 15 minutes, until the potato topping starts to turn golden and the sauce is bubbling.",
+      "duration_min": 15
+    },
+    {
+      "position": 15,
+      "body": "To serve, garnish with a few sprigs of fresh thyme or serve with some pesto on the side, then bring the dish straight to the table to allow everyone to help themselves.",
+      "duration_min": null
+    }
+  ]
+}
