@@ -1,6 +1,6 @@
 // Round-2 Anthropic adapter. Unlike the legacy eval/nim/anthropic.ts (text-mode
 // JSON, no tools, always sends temperature), this matches production: forced
-// `extract_recipe` tool use + prompt caching, with optional adaptive thinking
+// `extract_recipe` tool use (no prompt caching), with optional adaptive thinking
 // and effort. Raw HTTP (no SDK) so the exact request body is auditable.
 //
 // Key correctness notes:
@@ -76,11 +76,9 @@ function splitSystem(
   }
   if (systemTexts.length === 0) return { system: undefined, rest };
   return {
-    system: [{
-      type: 'text',
-      text: systemTexts.join('\n\n'),
-      cache_control: { type: 'ephemeral' },
-    }],
+    // No cache_control: production stopped caching the system prompt in round
+    // 3 (imports are too sporadic for a cache entry to be read).
+    system: [{ type: 'text', text: systemTexts.join('\n\n') }],
     rest,
   };
 }
@@ -110,16 +108,27 @@ export async function callAnthropic(opts: {
 
   const isOpus = opts.model.startsWith('claude-opus');
   const sendTemp = opts.temperature !== undefined && !isOpus && !opts.thinking;
+  // Sonnet 5.5 400s on a forced tool_choice and on thinking:disabled — mirror
+  // production (supabase/functions/_shared/ai/client.ts): auto + between_tools.
+  const isSonnet55 = opts.model.startsWith('claude-sonnet-5-5');
+  const toolChoice = isSonnet55 && opts.toolChoice?.type === 'tool'
+    ? { type: 'auto' }
+    : opts.toolChoice;
+  const thinking = opts.thinking
+    ? { type: opts.thinking }
+    : isSonnet55
+    ? { type: 'between_tools' }
+    : undefined;
 
   const body: Record<string, unknown> = {
     model: opts.model,
     max_tokens: opts.maxTokens ?? (opts.thinking ? 16_000 : 8_192),
     messages: rest,
     ...(system ? { system } : {}),
-    ...(sendTemp ? { temperature: opts.temperature } : {}),
+    ...(sendTemp && !isSonnet55 ? { temperature: opts.temperature } : {}),
     ...(opts.tools ? { tools: opts.tools } : {}),
-    ...(opts.toolChoice ? { tool_choice: opts.toolChoice } : {}),
-    ...(opts.thinking ? { thinking: { type: opts.thinking } } : {}),
+    ...(toolChoice ? { tool_choice: toolChoice } : {}),
+    ...(thinking ? { thinking } : {}),
     ...(opts.effort ? { output_config: { effort: opts.effort } } : {}),
   };
 

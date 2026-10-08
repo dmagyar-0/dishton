@@ -45,6 +45,9 @@ export type Gold = {
   sections: string[];
   expect: string[]; // ingredient terms that SHOULD appear (this variant)
   forbidden: string[]; // ingredient terms from OTHER variants — appearing = bleed
+  // Exact amounts to check (e.g. a handwritten correction over a printed
+  // value): the first ingredient matching `term` must carry this quantity+unit.
+  amounts?: { term: string; quantity: number; unit: string }[];
 };
 
 export type GoldDiff = {
@@ -56,6 +59,8 @@ export type GoldDiff = {
   ingredientCount: number;
   stepCount: number;
   stepOk: boolean;
+  // One entry per gold `amounts` check that failed, e.g. "flour: 120 g ≠ 150 g".
+  amountMisses: string[];
 };
 
 function norm(s: string): string {
@@ -86,6 +91,21 @@ export function goldDiff(r: RecipeData, gold: Gold): GoldDiff {
     (termPresent(texts, term) ? matched : missing).push(term);
   }
   const bleed = gold.forbidden.filter((term) => termPresent(texts, term));
+  const amountMisses: string[] = [];
+  for (const a of gold.amounts ?? []) {
+    const words = norm(a.term).split(' ').filter(Boolean);
+    const ing = r.ingredients.find((_, i) => words.every((w) => texts[i]!.includes(w)));
+    const q = typeof ing?.quantity === 'number'
+      ? ing.quantity
+      : ing?.quantity
+      ? ing.quantity.numerator / ing.quantity.denominator
+      : null;
+    if (!ing || q !== a.quantity || ing.unit !== a.unit) {
+      amountMisses.push(
+        `${a.term}: ${ing ? `${q ?? 'null'} ${ing.unit ?? ''}`.trim() : 'missing'} ≠ ${a.quantity} ${a.unit}`,
+      );
+    }
+  }
   const titleOk = gold.titleExpect ? norm(r.title).includes(norm(gold.titleExpect)) : true;
   return {
     recall: gold.expect.length ? matched.length / gold.expect.length : 1,
@@ -96,6 +116,7 @@ export function goldDiff(r: RecipeData, gold: Gold): GoldDiff {
     ingredientCount: r.ingredients.length,
     stepCount: r.steps.length,
     stepOk: r.steps.length >= gold.minSteps,
+    amountMisses,
   };
 }
 

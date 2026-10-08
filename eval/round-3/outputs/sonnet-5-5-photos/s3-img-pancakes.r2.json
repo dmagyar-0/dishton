@@ -1,0 +1,139 @@
+{
+  "title": "Classic American-Style Pancakes",
+  "description": "Light and fluffy American-style pancakes made with oat milk and ground flax seeds.",
+  "source_type": "photo",
+  "source_url": null,
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 4,
+  "total_time_min": null,
+  "hero_image_path": null,
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "150g plain white flour",
+      "quantity": 150,
+      "unit": "g",
+      "ingredient_name": "plain white flour",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "250ml oat milk",
+      "quantity": 250,
+      "unit": "ml",
+      "ingredient_name": "oat milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "2.5 tbsp ground flax seeds",
+      "quantity": 20,
+      "unit": "g",
+      "ingredient_name": "ground flax seeds",
+      "notes": "2.5 tbsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "2.5 tbsp maple syrup",
+      "quantity": 2.5,
+      "unit": "tbsp",
+      "ingredient_name": "maple syrup",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "1.9 tsp baking powder",
+      "quantity": 10,
+      "unit": "g",
+      "ingredient_name": "baking powder",
+      "notes": "1.9 tsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "1.25 tsp vanilla extract",
+      "quantity": 1.25,
+      "unit": "tsp",
+      "ingredient_name": "vanilla extract",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "Pinch of salt",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "salt",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "pinch",
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "1/2 tsp oil",
+      "quantity": 0.5,
+      "unit": "tsp",
+      "ingredient_name": "oil",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Put all the ingredients except the oil into a blender and blend until smooth, or whisk together in a large bowl.",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Leave the batter to sit for a couple of minutes.",
+      "duration_min": 2
+    },
+    {
+      "position": 2,
+      "body": "Heat the oil in a large non-stick frying pan on a medium heat until it's warm.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Pour 5 to 8 tablespoons of batter into the pan per pancake and don't spread them out.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "When bubbles or air pockets start to appear and the top of the pancake starts to dry out, it's time to turn them (a small silicone spatula will help to flip them).",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Turn your pancakes over and cook for 1 minute more, until golden.",
+      "duration_min": 1
+    },
+    {
+      "position": 6,
+      "body": "Serve with toppings: a dollop of non-dairy yoghurt, fruit compote or stewed fruit, fresh fruit or berries or caramelized banana, and a generous drizzle of maple syrup or your favourite sweetener.",
+      "duration_min": null
+    }
+  ]
+}

@@ -1,0 +1,290 @@
+{
+  "title": "Chocolate Cake",
+  "description": "Master the chocolate cake with an airy, light sponge and rich buttercream filling. It's simple enough for an afternoon tea but special enough for a party too",
+  "source_type": "url",
+  "source_url": "https://www.bbcgoodfood.com/recipes/easy-chocolate-cake",
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 14,
+  "total_time_min": 55,
+  "hero_image_path": "https://images.immediate.co.uk/production/volatile/sites/30/2020/08/easy_chocolate_cake-b62f92c.jpg?resize=440,400",
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "200g golden caster sugar",
+      "quantity": 200,
+      "unit": "g",
+      "ingredient_name": "golden caster sugar",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "200g unsalted butter softened plus extra for the tins",
+      "quantity": 200,
+      "unit": "g",
+      "ingredient_name": "unsalted butter",
+      "notes": "softened, plus extra for the tins",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "4 large eggs",
+      "quantity": 4,
+      "unit": "count",
+      "ingredient_name": "eggs",
+      "notes": "large",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "200g self-raising flour",
+      "quantity": 200,
+      "unit": "g",
+      "ingredient_name": "self-raising flour",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "2 tbsp cocoa powder",
+      "quantity": 10,
+      "unit": "g",
+      "ingredient_name": "cocoa powder",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "1 tsp baking powder",
+      "quantity": 4,
+      "unit": "g",
+      "ingredient_name": "baking powder",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "½ tsp vanilla extract",
+      "quantity": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "unit": "tsp",
+      "ingredient_name": "vanilla extract",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "2 tbsp milk",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 8,
+      "raw_text": "100g milk chocolate chopped",
+      "quantity": 100,
+      "unit": "g",
+      "ingredient_name": "milk chocolate",
+      "notes": "chopped",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 9,
+      "raw_text": "200g butter softened",
+      "quantity": 200,
+      "unit": "g",
+      "ingredient_name": "butter",
+      "notes": "softened",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 10,
+      "raw_text": "400g icing sugar",
+      "quantity": 400,
+      "unit": "g",
+      "ingredient_name": "icing sugar",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 11,
+      "raw_text": "5 tbsp cocoa powder",
+      "quantity": 30,
+      "unit": "g",
+      "ingredient_name": "cocoa powder",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 12,
+      "raw_text": "2 tbsp milk",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 13,
+      "raw_text": "50g dark chocolate",
+      "quantity": 50,
+      "unit": "g",
+      "ingredient_name": "dark chocolate",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 14,
+      "raw_text": "25g milk chocolate",
+      "quantity": 25,
+      "unit": "g",
+      "ingredient_name": "milk chocolate",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 15,
+      "raw_text": "25g white chocolate",
+      "quantity": 25,
+      "unit": "g",
+      "ingredient_name": "white chocolate",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Heat oven to 190°C (375°F), 170°C (340°F) fan, or gas 5.",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Butter the base and sides of two 20cm round sandwich tins and line the bases with baking parchment.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "In a large bowl, beat together 200g golden caster sugar, 200g softened unsalted butter, 4 large eggs, 200g self-raising flour, 2 tbsp cocoa powder, 1 tsp baking powder, ½ tsp vanilla extract, 2 tbsp milk and a pinch of salt until pale.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Divide the mixture between the prepared tins.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Bake for 20 mins or until a skewer inserted into the centre of the cake comes out clean.",
+      "duration_min": 20
+    },
+    {
+      "position": 5,
+      "body": "Leave to cool in the tin for 10 mins.",
+      "duration_min": 10
+    },
+    {
+      "position": 6,
+      "body": "Turn out onto a wire rack to cool completely.",
+      "duration_min": null
+    },
+    {
+      "position": 7,
+      "body": "For the buttercream, put 100g chopped milk chocolate in a heatproof bowl and melt in the microwave, stirring every 30 secs.",
+      "duration_min": null
+    },
+    {
+      "position": 8,
+      "body": "Leave the melted chocolate to cool for 5 mins.",
+      "duration_min": 5
+    },
+    {
+      "position": 9,
+      "body": "Mash 200g softened butter and 400g icing sugar together with a fork, then switch to a wooden spoon or electric beaters, if you have them.",
+      "duration_min": null
+    },
+    {
+      "position": 10,
+      "body": "Sift in 5 tbsp cocoa powder with a pinch of salt.",
+      "duration_min": null
+    },
+    {
+      "position": 11,
+      "body": "Pour in the melted chocolate and 2 tbsp milk, then mix again until smooth.",
+      "duration_min": null
+    },
+    {
+      "position": 12,
+      "body": "Sandwich the cakes together on a cake stand or large plate with half of the buttercream.",
+      "duration_min": null
+    },
+    {
+      "position": 13,
+      "body": "Spread the rest of the buttercream on top.",
+      "duration_min": null
+    },
+    {
+      "position": 14,
+      "body": "Decorate with chocolate shards, if you like.",
+      "duration_min": null
+    },
+    {
+      "position": 15,
+      "body": "To make chocolate shards, melt 50g dark chocolate and pour it onto a tray lined with baking parchment or foil.",
+      "duration_min": null
+    },
+    {
+      "position": 16,
+      "body": "Melt 25g milk chocolate and 25g white chocolate and drizzle them over the dark chocolate before it sets.",
+      "duration_min": null
+    },
+    {
+      "position": 17,
+      "body": "Shake the tray gently to level the mixture.",
+      "duration_min": null
+    },
+    {
+      "position": 18,
+      "body": "Leave to set somewhere cool, then chop into shards.",
+      "duration_min": null
+    }
+  ]
+}

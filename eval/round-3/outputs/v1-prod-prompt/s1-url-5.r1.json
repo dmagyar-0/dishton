@@ -1,0 +1,182 @@
+{
+  "title": "Perfect Roast Chicken",
+  "description": null,
+  "source_type": "url",
+  "source_url": "https://www.foodnetwork.com/recipes/ina-garten/perfect-roast-chicken-recipe-1940592",
+  "source_language": "en",
+  "canonical_unit_system": "imperial",
+  "servings": 8,
+  "total_time_min": 130,
+  "tags": [],
+  "hero_image_path": "https://food.fnr.sndimg.com/content/dam/images/food/fullset/2011/11/23/0/FN_perfect-chicken-014_s4x3.jpg.rend.hgtvcom.1280.1280.suffix/1384540895467.webp",
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "1 (5 to 6 pound) roasting chicken",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "roasting chicken",
+      "notes": "5 to 6 pound",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "Kosher salt",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "kosher salt",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "Freshly ground black pepper",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "freshly ground black pepper",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "1 large bunch fresh thyme, plus 20 sprigs",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "fresh thyme",
+      "notes": "large bunch, plus 20 sprigs",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "1 lemon, halved",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "lemon",
+      "notes": "halved",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "1 head garlic, cut in half crosswise",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "garlic",
+      "notes": "cut in half crosswise",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "2 tablespoons (1/4 stick) butter, melted",
+      "quantity": 28,
+      "unit": "g",
+      "ingredient_name": "butter",
+      "notes": "2 tablespoons (1/4 stick), melted",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "1 large yellow onion, thickly sliced",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "yellow onion",
+      "notes": "large, thickly sliced",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 8,
+      "raw_text": "4 carrots cut into 2-inch chunks",
+      "quantity": 4,
+      "unit": "count",
+      "ingredient_name": "carrots",
+      "notes": "cut into 2-inch chunks",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 9,
+      "raw_text": "1 bulb of fennel, tops removed, and cut into wedges",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "fennel bulb",
+      "notes": "tops removed, cut into wedges",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 10,
+      "raw_text": "Olive oil",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "olive oil",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Preheat the oven to 425°F (220°C).",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Remove the chicken giblets. Rinse the chicken inside and out. Remove any excess fat and leftover pin feathers and pat the outside dry.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "Liberally salt and pepper the inside of the chicken. Stuff the cavity with the bunch of thyme, both halves of lemon, and all the garlic.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "Brush the outside of the chicken with the butter and sprinkle again with salt and pepper. Tie the legs together with kitchen string and tuck the wing tips under the body of the chicken.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Place the onions, carrots, and fennel in a roasting pan. Toss with salt, pepper, 20 sprigs of thyme, and olive oil, then spread around the bottom of the roasting pan.",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Place the chicken on top of the vegetables in the roasting pan.",
+      "duration_min": null
+    },
+    {
+      "position": 6,
+      "body": "Roast the chicken for 1 1/2 hours, or until the juices run clear when you cut between a leg and thigh.",
+      "duration_min": 90
+    },
+    {
+      "position": 7,
+      "body": "Remove the chicken and vegetables to a platter and cover with aluminum foil for about 20 minutes.",
+      "duration_min": 20
+    },
+    {
+      "position": 8,
+      "body": "Slice the chicken onto a platter and serve it with the vegetables.",
+      "duration_min": null
+    }
+  ]
+}

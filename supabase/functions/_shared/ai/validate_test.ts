@@ -110,6 +110,22 @@ Deno.test('callAndValidate: valid first response succeeds without a repair turn'
   assertEquals(mock.calls.length, 1);
 });
 
+// Request shape (eval round 3): Haiku 5.5 on the text lane, no prompt caching
+// (imports are too sporadic for a cache entry to be read before it expires),
+// thinking off, and no sampling params (Haiku 5.5 400s on a non-default
+// temperature).
+Deno.test('aiChat request: Haiku 5.5 text default, uncached system, thinking off, no temperature', async () => {
+  using mock = anthropic([toolUseResponse(validRecipe())]);
+  const res = await callAndValidate(BASE_OPTS);
+  assert(res.ok, JSON.stringify(res));
+  const body = await mock.calls[0]!.json();
+  assertEquals(body.model, 'claude-haiku-5-5');
+  assertEquals(body.system, [{ type: 'text', text: 'sys' }]);
+  assertEquals(body.thinking, { type: 'disabled' });
+  assert(!('temperature' in body));
+  assert(!('cache_control' in body));
+});
+
 Deno.test('callAndValidate: schema failure triggers one repair turn that succeeds', async () => {
   // First draft is invalid (servings as a string); repaired draft is valid.
   using mock = anthropic([
@@ -241,14 +257,45 @@ Deno.test('callValidateThenTranslate: a failed translation pass falls back to th
   assertEquals(mock.calls.length, 3);
 });
 
-Deno.test('callAndValidate: a text-only (no tool call) response is not repaired', async () => {
-  using mock = anthropic([textResponse('I cannot find a recipe here.')]);
+Deno.test('callAndValidate: a text-only (no tool call) response is retried once, not repaired', async () => {
+  using mock = anthropic([
+    textResponse('I cannot find a recipe here.'),
+    textResponse('Still no recipe here.'),
+  ]);
   const res = await callAndValidate(BASE_OPTS);
   assert(!res.ok);
   if (!res.ok) {
     assertEquals(res.reason, 'parse');
-    assertEquals(res.raw, 'I cannot find a recipe here.');
+    assertEquals(res.raw, 'Still no recipe here.');
   }
-  // No candidate object to repair, so no second call.
-  assertEquals(mock.calls.length, 1);
+  // One plain retry (models on tool_choice:auto can skip the tool), then no
+  // repair turn: there is no candidate object to repair.
+  assertEquals(mock.calls.length, 2);
+});
+
+Deno.test('callAndValidate: a missed tool call that succeeds on retry returns the recipe with summed usage', async () => {
+  using mock = anthropic([
+    textResponse('Here is the recipe…'),
+    toolUseResponse(validRecipe(), { usage: { input: 1000, output: 500 } }),
+  ]);
+  const res = await callAndValidate(BASE_OPTS);
+  assert(res.ok, JSON.stringify(res));
+  assertEquals(mock.calls.length, 2);
+  if (res.ok) {
+    assertEquals(res.usage.input, 1100);
+    assertEquals(res.usage.output, 510);
+  }
+});
+
+// Vision lane (eval round 3): Sonnet 5.5 400s on a forced tool_choice and on
+// thinking:{type:'disabled'}, so the request falls back to auto + between_tools.
+Deno.test('aiChat request: vision lane uses Sonnet 5.5 with auto tool_choice and between_tools thinking', async () => {
+  using mock = anthropic([toolUseResponse(validRecipe())]);
+  const res = await callAndValidate({ ...BASE_OPTS, lane: 'vision' });
+  assert(res.ok, JSON.stringify(res));
+  const body = await mock.calls[0]!.json();
+  assertEquals(body.model, 'claude-sonnet-5-5');
+  assertEquals(body.tool_choice, { type: 'auto' });
+  assertEquals(body.thinking, { type: 'between_tools' });
+  assert(!('temperature' in body));
 });

@@ -1,0 +1,221 @@
+{
+  "title": "Veggie Lasagna",
+  "description": "Vegetarian lasagna with a tomato ragù, béchamel and mozzarella.",
+  "source_type": "instagram",
+  "source_url": "https://www.instagram.com/reel/LASAGNA/",
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 6,
+  "total_time_min": null,
+  "hero_image_path": null,
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "2 tbsp olive oil",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "olive oil",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 1,
+      "raw_text": "1 onion, finely chopped",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "onion",
+      "notes": "finely chopped",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 2,
+      "raw_text": "2 carrots, diced",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "carrot",
+      "notes": "diced",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 3,
+      "raw_text": "2 cloves garlic, crushed",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "garlic",
+      "notes": "crushed",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 4,
+      "raw_text": "2 x 400g tins chopped tomatoes",
+      "quantity": 800,
+      "unit": "g",
+      "ingredient_name": "chopped tomatoes",
+      "notes": "2 x 400g tins",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 5,
+      "raw_text": "1-2 tbsp tomato purée",
+      "quantity": 1,
+      "unit": "tbsp",
+      "ingredient_name": "tomato purée",
+      "notes": "1-2 tbsp",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 6,
+      "raw_text": "1 tsp dried oregano",
+      "quantity": 1,
+      "unit": "tsp",
+      "ingredient_name": "dried oregano",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the ragù"
+    },
+    {
+      "position": 7,
+      "raw_text": "a handful of fresh basil",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "fresh basil",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "handful",
+      "section": "For the ragù"
+    },
+    {
+      "position": 8,
+      "raw_text": "50g butter",
+      "quantity": 50,
+      "unit": "g",
+      "ingredient_name": "butter",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the béchamel"
+    },
+    {
+      "position": 9,
+      "raw_text": "50g plain flour",
+      "quantity": 50,
+      "unit": "g",
+      "ingredient_name": "plain flour",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the béchamel"
+    },
+    {
+      "position": 10,
+      "raw_text": "600ml milk",
+      "quantity": 600,
+      "unit": "ml",
+      "ingredient_name": "milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the béchamel"
+    },
+    {
+      "position": 11,
+      "raw_text": "a pinch of nutmeg",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "nutmeg",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "pinch",
+      "section": "For the béchamel"
+    },
+    {
+      "position": 12,
+      "raw_text": "100g grated parmesan",
+      "quantity": 100,
+      "unit": "g",
+      "ingredient_name": "parmesan",
+      "notes": "grated",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "For the béchamel"
+    },
+    {
+      "position": 13,
+      "raw_text": "250g dried lasagna sheets",
+      "quantity": 250,
+      "unit": "g",
+      "ingredient_name": "dried lasagna sheets",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "To assemble"
+    },
+    {
+      "position": 14,
+      "raw_text": "125g mozzarella, torn",
+      "quantity": 125,
+      "unit": "g",
+      "ingredient_name": "mozzarella",
+      "notes": "torn",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "To assemble"
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Heat the oil and soften the onion, carrot and garlic for 8-10 minutes.",
+      "duration_min": 8
+    },
+    {
+      "position": 1,
+      "body": "Add the tomatoes, purée and oregano and simmer for 20 minutes.",
+      "duration_min": 20
+    },
+    {
+      "position": 2,
+      "body": "Stir in the basil.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "For the béchamel, melt the butter and stir in the flour.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Whisk in the milk until thick, then season with nutmeg.",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Layer the ragù, lasagna sheets and béchamel in a dish.",
+      "duration_min": null
+    },
+    {
+      "position": 6,
+      "body": "Finish with the béchamel, parmesan and mozzarella on top.",
+      "duration_min": null
+    },
+    {
+      "position": 7,
+      "body": "Bake at 180°C (355°F) for 35-40 minutes until golden and bubbling.",
+      "duration_min": 35
+    }
+  ]
+}

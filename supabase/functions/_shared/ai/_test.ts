@@ -338,6 +338,19 @@ Deno.test('RECIPE_JSON_SHAPE points the model at the household whitelist', () =>
   assertStringIncludes(RECIPE_JSON_SHAPE, 'subset');
 });
 
+// Eval round 3: Haiku 5.5 reads the rules more literally than Haiku 4.5 — it
+// defaulted servings to 1 on "kb. 8 db" and left bare "salt" untagged. These
+// two rules close those gaps.
+Deno.test('RECIPE_JSON_SHAPE treats a stated yield as servings', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'A stated yield counts as servings');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'makes 12 cookies');
+});
+
+Deno.test('RECIPE_JSON_SHAPE marks amount-less ingredients to_taste', () => {
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'no amount at all');
+  assertStringIncludes(RECIPE_JSON_SHAPE, 'non_scalable_qty="to_taste"');
+});
+
 Deno.test('RECIPE_JSON_SHAPE asks for a short 4-5 word title', () => {
   assertStringIncludes(RECIPE_JSON_SHAPE, '4-5 words maximum');
   assertStringIncludes(RECIPE_JSON_SHAPE, 'short, recognisable dish name');

@@ -1,0 +1,167 @@
+{
+  "title": "Light and Fluffy American Pancakes",
+  "description": null,
+  "source_type": "photo",
+  "source_url": null,
+  "source_language": "en",
+  "canonical_unit_system": "metric",
+  "servings": 4,
+  "total_time_min": null,
+  "hero_image_path": null,
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "150g plain white flour",
+      "quantity": 150,
+      "unit": "g",
+      "ingredient_name": "plain white flour",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "250ml oat milk",
+      "quantity": 250,
+      "unit": "ml",
+      "ingredient_name": "oat milk",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "2.5 tbsp ground flax seeds",
+      "quantity": 20,
+      "unit": "g",
+      "ingredient_name": "ground flax seeds",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "2.5 tbsp maple syrup",
+      "quantity": 2.5,
+      "unit": "tbsp",
+      "ingredient_name": "maple syrup",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "1.9 tsp baking powder",
+      "quantity": 1.9,
+      "unit": "tsp",
+      "ingredient_name": "baking powder",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "1.25 tsp vanilla extract",
+      "quantity": 1.25,
+      "unit": "tsp",
+      "ingredient_name": "vanilla extract",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "Pinch of salt",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "salt",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "pinch",
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "½ tsp oil",
+      "quantity": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "unit": "tsp",
+      "ingredient_name": "oil",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Put all the ingredients except the oil into a blender and blend until smooth, or whisk together in a large bowl.",
+      "duration_min": null
+    },
+    {
+      "position": 1,
+      "body": "Leave to sit for a couple of minutes.",
+      "duration_min": 2
+    },
+    {
+      "position": 2,
+      "body": "Heat the oil in a large non-stick frying pan on a medium heat until it's warm.",
+      "duration_min": null
+    },
+    {
+      "position": 3,
+      "body": "If making the basic or American-style pancakes, pour 5 to 8 tablespoons of batter into the pan per pancake and don't spread them out.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "When bubbles or air pockets start to appear and the top of the pancake starts to dry out, it's time to turn them (a small silicone spatula will help to flip them).",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Turn your pancakes over and cook for 1 minute more, until golden.",
+      "duration_min": 1
+    },
+    {
+      "position": 6,
+      "body": "If you're making crêpes, pour a small ladleful of batter into the middle of the pan, then tilt the pan until the batter covers the base in a thin layer.",
+      "duration_min": null
+    },
+    {
+      "position": 7,
+      "body": "Cook for 60 to 90 seconds, until set and golden, then use a silicone spatula to flip it over.",
+      "duration_min": 1
+    },
+    {
+      "position": 8,
+      "body": "Cook the other side for about 60 seconds, until golden.",
+      "duration_min": 1
+    },
+    {
+      "position": 9,
+      "body": "Pancakes are very plain on their own, so get creative with toppings. Typical toppings include a dollop of non-dairy yoghurt, fruit compote or stewed fruit (see p. 26), fresh fruit or berries or caramelized banana (see p. 49), and don't forget a generous drizzle of maple syrup or your favourite sweetener.",
+      "duration_min": null
+    },
+    {
+      "position": 10,
+      "body": "If making crêpes, try chocolate hazelnut spread and sliced bananas for a real treat.",
+      "duration_min": null
+    },
+    {
+      "position": 11,
+      "body": "When we were kids our mom sprinkled caster sugar and lemon on our pancakes, so every time we eat them that way now, we feel like six-year-old boys again!",
+      "duration_min": null
+    }
+  ]
+}

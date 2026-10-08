@@ -1,0 +1,161 @@
+{
+  "title": "Házi lángos",
+  "description": "Házi lángos, a kedvenc utcai kajám!",
+  "source_type": "instagram",
+  "source_url": "https://www.instagram.com/reel/LANGOS/",
+  "source_language": "hu",
+  "canonical_unit_system": "metric",
+  "servings": 8,
+  "total_time_min": null,
+  "hero_image_path": null,
+  "tags": [],
+  "ingredients": [
+    {
+      "position": 0,
+      "raw_text": "50 dkg finomliszt",
+      "quantity": 500,
+      "unit": "g",
+      "ingredient_name": "finomliszt",
+      "notes": "50 dkg",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 1,
+      "raw_text": "1 tasak szárazélesztő",
+      "quantity": 1,
+      "unit": "count",
+      "ingredient_name": "szárazélesztő",
+      "notes": "1 tasak",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 2,
+      "raw_text": "3 dl langyos tej",
+      "quantity": 300,
+      "unit": "ml",
+      "ingredient_name": "langyos tej",
+      "notes": "3 dl",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 3,
+      "raw_text": "1 tk só",
+      "quantity": 6,
+      "unit": "g",
+      "ingredient_name": "só",
+      "notes": "1 tk",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 4,
+      "raw_text": "1 tk cukor",
+      "quantity": 5,
+      "unit": "g",
+      "ingredient_name": "cukor",
+      "notes": "1 tk",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 5,
+      "raw_text": "2 ek olaj",
+      "quantity": 2,
+      "unit": "tbsp",
+      "ingredient_name": "olaj",
+      "notes": null,
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": null
+    },
+    {
+      "position": 6,
+      "raw_text": "olaj a sütéshez",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "olaj",
+      "notes": "a sütéshez",
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": null
+    },
+    {
+      "position": 7,
+      "raw_text": "2 gerezd fokhagyma",
+      "quantity": 2,
+      "unit": "count",
+      "ingredient_name": "fokhagyma",
+      "notes": "gerezd",
+      "scalable": true,
+      "non_scalable_qty": null,
+      "section": "Tetejére"
+    },
+    {
+      "position": 8,
+      "raw_text": "tejföl",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "tejföl",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "Tetejére"
+    },
+    {
+      "position": 9,
+      "raw_text": "reszelt sajt",
+      "quantity": null,
+      "unit": null,
+      "ingredient_name": "reszelt sajt",
+      "notes": null,
+      "scalable": false,
+      "non_scalable_qty": "to_taste",
+      "section": "Tetejére"
+    }
+  ],
+  "steps": [
+    {
+      "position": 0,
+      "body": "Let the yeast foam up in the lukewarm milk with the sugar.",
+      "duration_min": 10
+    },
+    {
+      "position": 1,
+      "body": "Add the salt and oil to the flour and knead into a smooth dough.",
+      "duration_min": null
+    },
+    {
+      "position": 2,
+      "body": "Cover and leave to rise for about 1 hour, until doubled in size.",
+      "duration_min": 60
+    },
+    {
+      "position": 3,
+      "body": "Shape into small loaves and flatten them.",
+      "duration_min": null
+    },
+    {
+      "position": 4,
+      "body": "Fry in plenty of hot oil until golden brown on both sides.",
+      "duration_min": null
+    },
+    {
+      "position": 5,
+      "body": "Brush with garlic water.",
+      "duration_min": null
+    },
+    {
+      "position": 6,
+      "body": "Serve topped with sour cream and grated cheese.",
+      "duration_min": null
+    }
+  ]
+}

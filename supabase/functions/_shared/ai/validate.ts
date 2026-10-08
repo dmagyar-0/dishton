@@ -72,9 +72,9 @@ type Interpreted =
 // Zod errors to feed back).
 function interpret(result: AiResult): Interpreted {
   if (result.tool_input === undefined) {
-    // Forced tool_choice should make this branch effectively unreachable, but
-    // if Anthropic ever returns a text-only response (e.g. tool-call failure),
-    // surface it as a parse error rather than crashing.
+    // A text-only response: rare with a forced tool_choice, possible on models
+    // that only accept `auto` (Sonnet 5.5) or on a refusal. callAndValidate
+    // retries once; otherwise it surfaces as a parse error.
     return { ok: false, reason: 'parse', raw: result.content };
   }
   const raw = JSON.stringify(result.tool_input);
@@ -129,7 +129,19 @@ export async function callAndValidate(opts: AiCallOpts): Promise<ValidationResul
     if (isUpstreamError(err)) return { ok: false, reason: 'upstream', raw: '' };
     throw err;
   }
-  const firstParsed = interpret(first);
+  let firstParsed = interpret(first);
+  // No tool call at all: models that reject a forced tool_choice run on `auto`
+  // and can occasionally answer in text. Ask once more before giving up.
+  if (!firstParsed.ok && firstParsed.reason === 'parse') {
+    try {
+      const retry = await aiChat({ ...opts, ...TOOL_FIELDS });
+      first = { ...retry, usage: sumUsage(first.usage, retry.usage) };
+    } catch (err) {
+      if (isUpstreamError(err)) return { ok: false, reason: 'upstream', raw: '' };
+      throw err;
+    }
+    firstParsed = interpret(first);
+  }
   if (firstParsed.ok) {
     return {
       ok: true,

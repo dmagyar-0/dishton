@@ -131,7 +131,6 @@ serve(async (req: Request) => {
         lane: 'text',
         messages: translatePrompt({ recipeJson: JSON.stringify(recipe), targetLanguage: body.language }),
         estimatedTokens: 2500,
-        temperature: 0.2,
       }),
     );
 

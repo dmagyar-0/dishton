@@ -1,8 +1,11 @@
-# Cookbook photos: binary + possibly copyrighted. Supply locally (see PLAN.md).
+# Cookbook photos: only the committed eval fixtures (downscaled to 1568px, the
+# API's working size) are tracked; anything else dropped in stays local.
 fixtures/images/**/*.jpg
 fixtures/images/**/*.jpeg
 fixtures/images/**/*.png
 fixtures/images/**/*.webp
+!fixtures/images/shepherdless-pie/*.jpg
+!fixtures/images/classic-pancakes/*.jpg
 
 # Scratch run reports (smoke tests / credit-check / auto-timestamped).
 # The canonical clean runs (runs/r2.0-*.md) are committed.

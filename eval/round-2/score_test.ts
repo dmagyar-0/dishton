@@ -138,3 +138,21 @@ Deno.test('goldDiff: detects bleed + matches veg→vegetable', () => {
   assert(g.bleed.includes('onion'));
   assert(g.matched.includes('veg stock')); // "veg"⊂"vegetable", "stock" present
 });
+
+Deno.test('goldDiff: amounts check catches a printed value read instead of the handwritten one', () => {
+  const parsed = validateSchema(JSON.stringify(validRecipe));
+  assert(parsed.ok);
+  const ok = goldDiff(parsed.recipe, {
+    ...gold,
+    amounts: [{ term: 'green beans', quantity: 100, unit: 'g' }],
+  });
+  assertEquals(ok.amountMisses, []);
+  const miss = goldDiff(parsed.recipe, {
+    ...gold,
+    amounts: [
+      { term: 'green beans', quantity: 150, unit: 'g' },
+      { term: 'oat milk', quantity: 250, unit: 'ml' },
+    ],
+  });
+  assertEquals(miss.amountMisses, ['green beans: 100 g ≠ 150 g', 'oat milk: missing ≠ 250 ml']);
+});

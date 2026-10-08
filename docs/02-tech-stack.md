@@ -58,7 +58,7 @@ or `https://deno.land` URLs. The values below freeze the major.
 
 | Import | Version | Rationale |
 |---|---|---|
-| `npm:@anthropic-ai/sdk` | `^0.40.0` | Official Anthropic client; used for `claude-haiku-4-5` (text + vision). |
+| `npm:@anthropic-ai/sdk` | `^0.40.0` | Official Anthropic client; used for `claude-haiku-5-5` (text) and `claude-sonnet-5-5` (vision). |
 | `npm:zod@3` | `^3` | Same schemas as the SPA, imported via shared module. |
 | `https://deno.land/std@0.224.0/...` | `0.224.x` | stdlib for `crypto`, `path`, `bytes`, `testing`. |
 | `npm:linkedom@0.18` | `^0.18` | Deno-compatible DOM, used by `extractRecipeJsonLd`. The HTML body fed to the model goes through string-level `lightStripHtml` instead of Readability — see `_shared/scrape/strip-html.ts`. |

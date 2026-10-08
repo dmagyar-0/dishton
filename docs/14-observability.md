@@ -243,7 +243,9 @@ create table app.ai_model_prices (
 
 Seeded with Anthropic list prices (cache read = 0.1x input, 5-minute cache
 write = 1.25x input) for `claude-haiku-4-5`, `claude-sonnet-4-6`,
-`claude-opus-5`, `claude-sonnet-5`. `app.metrics_ai_cost` joins each
+`claude-opus-5`, `claude-sonnet-5`; `claude-haiku-5-5` and `claude-sonnet-5-5`
+added by `20261008120000_ai_price_haiku_5_5.sql` /
+`20261008130000_ai_price_sonnet_5_5.sql`. `app.metrics_ai_cost` joins each
 `ai_usage` row to the newest `ai_model_prices` row for that model with
 `effective_from <= occurred_at::date` via `left join lateral`, so a
 supported-price change takes effect only for usage from that date forward.

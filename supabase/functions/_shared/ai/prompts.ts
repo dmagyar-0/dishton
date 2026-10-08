@@ -61,12 +61,19 @@ Rules:
   source has none.
 - If a quantity is ambiguous (e.g. "a pinch"), set quantity=null and
   non_scalable_qty to the matching token; scalable=false.
+- An ingredient listed with no amount at all (e.g. "salt", "olive oil",
+  "sour cream", "lime zest") is also non-scalable: quantity=null,
+  scalable=false, and non_scalable_qty="to_taste" unless a more specific
+  token fits.
 - For range quantities like "1-2 tbsp", "1 - 1.5 cups", or "2-2.5 limes",
   set quantity to the lower bound as a number (or fraction object) and
   copy the full range text into notes (e.g. quantity=1, unit="tbsp",
   notes="1-2 tbsp"). Never emit quantity as a string.
-- "servings" must be a positive integer. If the source does not state
-  servings, default to 1. Never emit servings as null.
+- "servings" must be a positive integer. A stated yield counts as servings
+  in any language or form ("serves 4", "makes 12 cookies", Hungarian
+  "4 adag" or "12 db", German "für 4 Personen") — use that
+  number. Only if the source states no servings or yield at all, default to
+  1. Never emit servings as null.
 - "total_time_min" is the total recipe time in minutes (integer ≥ 0) or
   null. If the source does not state a total time, set it to null.
 - "cup" defaults to "cup_us" (240 ml). For European-language sources, use
