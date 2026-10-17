@@ -39,7 +39,7 @@ jobs:
           # Deploy exactly the commit CI validated, not whatever main points
           # at by the time this job runs.
           ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
 
