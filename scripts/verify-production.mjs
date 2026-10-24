@@ -84,8 +84,7 @@ for (const m of markers) {
 // --- 2. Render the real thing, via Node-fulfilled requests. -----------------
 
 const { chromium } = await import('@playwright/test');
-const executablePath =
-  process.env.PROD_VERIFY_CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const executablePath = process.env.PROD_VERIFY_CHROMIUM ?? '/opt/pw-browsers/chromium';
 const browser = await chromium.launch({ executablePath });
 
 let blockedAnalytics = 0;
