@@ -5,11 +5,11 @@
 //
 // Re-running creates a NEW environment + agent (the environment name is
 // timestamped to stay unique). To update an existing agent's config instead,
-// POST /v1/agents/{id} — see docs/runbooks/recipe-chat-setup.md.
+// run scripts/managed-agents/update.ts — see docs/runbooks/recipe-chat-setup.md.
 
 import {
   MANAGED_AGENTS_BETA,
-  RECIPE_AGENT_MODEL,
+  RECIPE_AGENT_MODEL_CONFIG,
   RECIPE_AGENT_SYSTEM,
   RECIPE_AGENT_TOOLS,
 } from '../../supabase/functions/_shared/agents/config.ts';
@@ -47,7 +47,7 @@ const environment = await post('/v1/environments', {
 
 const agent = await post('/v1/agents', {
   name: 'Dishton Recipe Drafter',
-  model: RECIPE_AGENT_MODEL,
+  model: RECIPE_AGENT_MODEL_CONFIG,
   system: RECIPE_AGENT_SYSTEM,
   tools: RECIPE_AGENT_TOOLS,
 });

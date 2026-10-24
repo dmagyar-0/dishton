@@ -90,3 +90,28 @@ export async function getRecipe(
     tags: ((tags.data ?? []) as { tag: string }[]).map((t) => t.tag),
   };
 }
+
+type TasteRecipe = {
+  title: string;
+  unit_system: string;
+  language: string;
+  tags: string[];
+  key_ingredients: string[];
+};
+
+// Renders listMyRecipes() output as a compact block that rides in the first
+// user message, so the agent learns the household's taste without spending a
+// list_my_recipes round trip (each custom tool call costs a full
+// idle -> webhook -> resume cycle).
+export function formatTasteSummary(summary: unknown): string {
+  const recipes = ((summary as { recipes?: TasteRecipe[] } | null)?.recipes ?? []).slice(0, 40);
+  if (recipes.length === 0) {
+    return "The household's existing recipes: none yet.\n\n";
+  }
+  const lines = recipes.map((r) => {
+    const tags = r.tags.length > 0 ? ` [${r.tags.join(', ')}]` : '';
+    const ings = r.key_ingredients.slice(0, 8).join(', ');
+    return `- ${r.title}${tags} (${r.unit_system}, ${r.language})${ings ? `: ${ings}` : ''}`;
+  });
+  return `The household's existing recipes (${recipes.length}, newest first):\n${lines.join('\n')}\n\n`;
+}

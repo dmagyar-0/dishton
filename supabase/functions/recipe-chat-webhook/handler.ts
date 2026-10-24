@@ -3,6 +3,7 @@ import { env } from '../_shared/env.ts';
 import { verifyWebhook } from '../_shared/agents/webhook.ts';
 import { archiveSession, listEvents, sendToolResult } from '../_shared/agents/transport.ts';
 import { getRecipe, listMyRecipes, validateDraft } from '../_shared/agents/recipe-tools.ts';
+import { storeAgentMessages } from '../_shared/agents/messages.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 
 // Cost controls for the webhook-driven agent loop. recipe-chat-send reserves
@@ -108,10 +109,15 @@ export const handler = async (req: Request): Promise<Response> => {
   const fresh = events.slice(startIdx);
   let repairAttempts = session.draft_repair_attempts as number;
   let lastId = cursor;
+  // A tool result resumes the agent, so the turn isn't over: keep the session
+  // 'running' so the SPA's thinking indicator doesn't flicker off between
+  // cycles. Only an idle with nothing left to answer ends the turn.
+  let resumed = false;
 
   for (const ev of fresh) {
     lastId = ev.id;
     if (ev.type === 'agent.custom_tool_use') {
+      resumed = true;
       try {
         if (ev.name === 'list_my_recipes') {
           const out = await listMyRecipes(db as never, session.household_id as string, ev.input ?? {});
@@ -158,23 +164,14 @@ export const handler = async (req: Request): Promise<Response> => {
         await sendToolResult(anthropicSessionId, ev.id, { error: 'tool failed' }, true);
       }
     } else if (ev.type === 'agent.message') {
-      const text = (ev.content ?? [])
-        .filter((b) => b.type === 'text')
-        .map((b) => b.text ?? '')
-        .join('');
-      if (text.trim()) {
-        await db.from('recipe_chat_messages').insert({
-          chat_session_id: session.id,
-          role: 'agent',
-          content: text,
-        });
-      }
+      // recipe-chat-progress may already have stored it; keyed on event id.
+      await storeAgentMessages(db as never, session.id as string, [ev]);
     }
   }
 
   await db
     .from('recipe_chat_sessions')
-    .update({ status: 'idle', events_cursor: lastId })
+    .update({ status: resumed ? 'running' : 'idle', events_cursor: lastId })
     .eq('id', session.id);
   return new Response(null, { status: 204 });
 };

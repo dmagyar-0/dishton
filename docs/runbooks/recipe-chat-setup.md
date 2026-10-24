@@ -13,9 +13,23 @@ ANTHROPIC_API_KEY=sk-ant-... deno run -A scripts/managed-agents/setup.ts
 
 Copy the printed `RECIPE_ENV_ID` and `RECIPE_AGENT_ID`.
 
-To change the agent's behaviour later, update it in place (`POST /v1/agents/{id}`)
-rather than re-running setup — each update creates a new version and existing
-sessions keep their pinned version.
+To change the agent's behaviour later (model, effort, system prompt, tools —
+all defined in `supabase/functions/_shared/agents/config.ts`), update it in
+place rather than re-running setup:
+
+```sh
+ANTHROPIC_API_KEY=sk-ant-... RECIPE_AGENT_ID=agent_... \
+  deno run -A scripts/managed-agents/update.ts
+```
+
+Each update creates a new agent version. New chats pick it up immediately;
+chats already started keep the version they were created on.
+
+The agent's `web_search` tool obeys the environment's networking. `setup.ts`
+creates a `limited` environment with no `allowed_hosts`, under which web search
+returns no results. To let the drafter search, give the environment
+`unrestricted` networking, or `limited` with the sites to allow in
+`allowed_hosts`.
 
 ## 2. Set Supabase secrets
 
@@ -34,7 +48,10 @@ supabase secrets set \
 pnpm fn:deploy
 ```
 
-Deploys `recipe-chat-send`, `recipe-chat-webhook`, and `recipe-chat-save`.
+Deploys `recipe-chat-send`, `recipe-chat-progress`, `recipe-chat-webhook`, and
+`recipe-chat-save`. `recipe-chat-progress` is polled by the app while the agent
+works: it reports what the agent is doing and stores the agent's opening reply
+before the session idles, so the cook sees text before the full draft lands.
 
 ## 4. Register the webhook
 
