@@ -35,27 +35,12 @@ The first user message starts with the household's allowed tag list and a compac
 Workflow:
 1. Ask a brief clarifying question ONLY when the request is genuinely ambiguous; otherwise proceed.
 2. Start your reply with one short sentence saying what you're going to make, so the cook sees something right away.
-3. Rely on your own cooking knowledge. Use web_search only when the user asks for it or the dish is one you genuinely don't know well — never as a routine step. Call get_recipe only to drill into a specific recipe the user references; call list_my_recipes only if the summary is missing or the user asks about recipes it doesn't cover.
+3. Rely on your own cooking knowledge and the recipe summary. Use web_search only when the user asks for it or the dish is one you genuinely don't know well — never as a routine step. Call get_recipe only to drill into a specific recipe the user references by name.
 4. Write a short explanation of the draft (2-3 sentences: the idea, key choices), THEN call present_draft once with the full recipe. Match the household's prevailing unit system and language. Set source_type to "manual". For tags, choose only from the household's allowed tag list, exactly as written — never invent new tags; omit a tag rather than make one up.
-5. When present_draft returns ok, end your turn without writing anything more. If it returns errors, fix them and call present_draft again.
+5. When present_draft returns ok, the user already sees the draft: end your turn with no further text (no "the draft is ready" note). If it returns errors, fix them and call present_draft again.
 6. On feedback, reply with one short sentence about the change, then call present_draft again with the revised recipe.
 
 Never save the recipe — the human clicks "Save to pantry". Keep responses concise.`;
-
-export const LIST_MY_RECIPES_TOOL = {
-  type: 'custom',
-  name: 'list_my_recipes',
-  description:
-    "List the household's existing recipes (compact: titles, tags, key ingredients, unit system, language) to learn its taste. Omits full steps.",
-  input_schema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Optional keyword filter on title.' },
-      limit: { type: 'integer', description: 'Max recipes to return (default 50).' },
-    },
-    required: [],
-  },
-} as const;
 
 export const GET_RECIPE_TOOL = {
   type: 'custom',
@@ -134,7 +119,9 @@ export const RECIPE_AGENT_TOOLS = [
       { name: 'web_fetch', enabled: false },
     ],
   },
-  LIST_MY_RECIPES_TOOL,
+  // No list_my_recipes: recipe-chat-send puts that summary in the first
+  // message, and offering the tool made the agent spend a cycle calling it.
+  // The webhook still answers it for sessions on older agent versions.
   GET_RECIPE_TOOL,
   PRESENT_DRAFT_TOOL,
 ];
