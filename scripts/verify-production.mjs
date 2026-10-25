@@ -193,7 +193,7 @@ async function chatWalk(page, householdId) {
   );
   record('chat: draft ready, status line cleared', readyAt !== null, `${readyAt ?? '>180'}s`);
   // The tab's name gains a "Ready" badge once a draft exists.
-  await page.getByRole('tab', { name: /^draft/i }).click();
+  await page.getByRole('tab', { name: /^draft( ready)?$/i }).click();
   await shoot(page, 'chat-draft');
 }
 
