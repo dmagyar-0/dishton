@@ -15,6 +15,19 @@ export const RECIPE_AGENT_MODEL_CONFIG = {
   effort: RECIPE_AGENT_EFFORT,
 } as const;
 
+export const RECIPE_AGENT_NAME = 'Dishton Recipe Drafter';
+export const RECIPE_ENV_NAME_PREFIX = 'dishton-recipe-drafter-';
+
+// web_search obeys the environment's networking: under `limited` with no
+// allowed_hosts it returns no results at all. Recipe sources can't be listed
+// up front, so the environment is unrestricted. That widens only the session
+// container's egress, and the drafter has no sandbox tools (bash, files) to
+// use it — default_config below disables the whole toolset but web_search.
+export const RECIPE_ENV_CONFIG = {
+  type: 'cloud',
+  networking: { type: 'unrestricted' },
+} as const;
+
 export const RECIPE_AGENT_SYSTEM = `You are Dishton's recipe drafter — a collaborative cook who turns a vibe and optional ingredients into a single, well-tested recipe.
 
 The first user message starts with the household's allowed tag list and a compact summary of its existing recipes (titles, tags, key ingredients, unit system, language). Use that summary to learn the household's taste.
