@@ -117,6 +117,31 @@ export function useChatSession(chatSessionId: string | null, poll = false) {
   return query;
 }
 
+// Mirrors ChatPhase in supabase/functions/_shared/agents/messages.ts.
+export type ChatPhase = 'thinking' | 'searching' | 'drafting';
+
+// Slower than POLL_MS: each tick lists the agent session's events upstream.
+const PROGRESS_POLL_MS = 2500;
+
+// While the agent works, ask recipe-chat-progress what it's doing. The call
+// also stores any reply the agent has already written, so it reaches the
+// thread (via realtime / the message poll) before the full draft is done.
+export function useChatProgress(chatSessionId: string | null, active: boolean): ChatPhase {
+  const query = useQuery({
+    queryKey: ['recipe-chat-progress', chatSessionId],
+    enabled: !!chatSessionId && active,
+    refetchInterval: active ? PROGRESS_POLL_MS : false,
+    queryFn: async (): Promise<ChatPhase> => {
+      const { data, error } = await invokeFunction<{ phase: ChatPhase }>('recipe-chat-progress', {
+        body: { chat_session_id: chatSessionId },
+      });
+      if (error) throw error;
+      return (data as { phase: ChatPhase }).phase;
+    },
+  });
+  return active ? (query.data ?? 'thinking') : 'thinking';
+}
+
 export function useSendChatMessage(householdId: string) {
   return useMutation({
     mutationFn: async (args: {

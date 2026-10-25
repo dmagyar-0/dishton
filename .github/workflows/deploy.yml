@@ -33,6 +33,7 @@ jobs:
     # step's env below.
     env:
       HAS_SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+      HAS_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
@@ -166,3 +167,17 @@ jobs:
           done
           echo "Smoke check failed for $url" >&2
           exit 1
+
+      # Push the recipe-drafter agent definition (model, prompt, tools) and its
+      # environment networking from supabase/functions/_shared/agents/config.ts
+      # to Anthropic. A no-op when nothing changed. Last on purpose: the app
+      # is already live, so a failure here flags the job without blocking the
+      # deploy. Skipped when the ANTHROPIC_API_KEY repo secret isn't set.
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        if: ${{ env.HAS_ANTHROPIC_API_KEY == 'true' }}
+        with: { deno-version: v1.46.3 }
+      - name: Sync recipe agent
+        if: ${{ env.HAS_ANTHROPIC_API_KEY == 'true' }}
+        run: deno run -A scripts/managed-agents/update.ts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

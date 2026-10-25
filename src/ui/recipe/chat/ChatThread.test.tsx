@@ -26,4 +26,9 @@ describe('ChatThread', () => {
     render(<ChatThread messages={[]} thinking={true} />);
     expect(screen.getByText('chat.thinking')).toBeInTheDocument();
   });
+
+  it('names what the agent is doing when a phase is known', () => {
+    render(<ChatThread messages={[]} thinking={true} phase="searching" />);
+    expect(screen.getByText('chat.phase_searching')).toBeInTheDocument();
+  });
 });

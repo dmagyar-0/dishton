@@ -1,5 +1,6 @@
 import {
   useChatMessages,
+  useChatProgress,
   useChatSession,
   useChatSessions,
   useDeleteChatSession,
@@ -82,6 +83,7 @@ export function DraftWorkspace({ householdId }: { householdId: string }) {
 
   const draft = session.data?.current_draft ?? null;
   const thinking = send.isPending || awaitingReply || session.data?.status === 'running';
+  const phase = useChatProgress(chatSessionId, thinking);
 
   const onSend = (text: string) => {
     send.mutate(
@@ -123,7 +125,7 @@ export function DraftWorkspace({ householdId }: { householdId: string }) {
       <TabsContent value="chat">
         <div className="flex flex-col gap-4">
           <div className="min-h-[30dvh]">
-            <ChatThread messages={messages.data ?? []} thinking={thinking} />
+            <ChatThread messages={messages.data ?? []} thinking={thinking} phase={phase} />
           </div>
           {/* Pin the composer to the bottom of the viewport. The thread grows
               the page, so on an empty chat (the default sub-tab) a tall fixed

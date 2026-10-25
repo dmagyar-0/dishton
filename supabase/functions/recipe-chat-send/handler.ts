@@ -12,6 +12,7 @@ import { isMockMode } from '../_shared/ai/mock.ts';
 import { formatAllowedTags } from '../_shared/ai/prompts.ts';
 import { withRateBudget } from '../_shared/ai/rate-budget.ts';
 import { createSession, sendUserMessage } from '../_shared/agents/transport.ts';
+import { formatTasteSummary, listMyRecipes } from '../_shared/agents/recipe-tools.ts';
 
 const Body = z.object({
   chat_session_id: z.string().uuid().optional(),
@@ -112,10 +113,17 @@ export const handler = async (req: Request): Promise<Response> => {
     // Constrain the drafter to the household's tag whitelist. The agent's
     // system prompt is shared across households, so — exactly like the import
     // structuring prompts — the per-household list rides in the user message.
-    // Only the original `body.message` is stored/shown; the agent sees the
-    // tag-prefixed text.
-    const allowedTags = await getHouseholdAllowedTags(caller.client, body.household_id);
-    const agentMessage = `${formatAllowedTags(allowedTags)}${body.message}`;
+    // A new chat also carries a compact taste summary of the household's
+    // recipes, which saves the agent a list_my_recipes round trip. Only the
+    // original `body.message` is stored/shown; the agent sees the prefixed text.
+    const isNewChat = !body.chat_session_id;
+    const [allowedTags, tasteSummary] = await Promise.all([
+      getHouseholdAllowedTags(caller.client, body.household_id),
+      isNewChat
+        ? listMyRecipes(caller.client, body.household_id, { limit: 40 }).then(formatTasteSummary)
+        : Promise.resolve(''),
+    ]);
+    const agentMessage = `${formatAllowedTags(allowedTags)}${tasteSummary}${body.message}`;
 
     let chatSessionId = body.chat_session_id;
     if (!chatSessionId) {

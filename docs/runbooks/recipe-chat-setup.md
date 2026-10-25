@@ -3,7 +3,8 @@
 The recipe-drafting chat runs on Anthropic Managed Agents. The code lives in the
 repo; these steps wire it to your Anthropic account and Supabase project. They
 require your Anthropic API key and Supabase access, so a maintainer runs them —
-they are intentionally **not** part of CI.
+they are intentionally **not** part of CI. Later config changes are synced by
+the deploy workflow (see "Keeping the agent in sync").
 
 ## 1. Create the Agent + Environment
 
@@ -13,9 +14,27 @@ ANTHROPIC_API_KEY=sk-ant-... deno run -A scripts/managed-agents/setup.ts
 
 Copy the printed `RECIPE_ENV_ID` and `RECIPE_AGENT_ID`.
 
-To change the agent's behaviour later, update it in place (`POST /v1/agents/{id}`)
-rather than re-running setup — each update creates a new version and existing
-sessions keep their pinned version.
+### Keeping the agent in sync
+
+The agent's model, effort, system prompt and tools, and the environment's
+networking, are defined in `supabase/functions/_shared/agents/config.ts`.
+`scripts/managed-agents/update.ts` pushes them to Anthropic. It finds the agent
+by name and the environments by name prefix, and leaves an unchanged agent
+alone. It runs:
+
+- **Automatically**, as the last step of every production deploy, once the
+  `ANTHROPIC_API_KEY` repository secret is set (GitHub → Settings → Secrets
+  and variables → Actions). Without the secret, the step is skipped.
+- **On demand**, from the **Sync recipe agent** workflow (Actions tab →
+  Run workflow; also works in the GitHub mobile app).
+- **By hand**: `ANTHROPIC_API_KEY=sk-ant-... deno run -A scripts/managed-agents/update.ts`.
+
+Each agent change creates a new agent version. New chats pick it up
+immediately; chats already started keep the version they were created on.
+
+The environment runs with `unrestricted` networking because `web_search` obeys
+it: under `limited` with no `allowed_hosts`, search returns no results. The
+agent has no sandbox tools, so nothing else uses that egress.
 
 ## 2. Set Supabase secrets
 
@@ -34,7 +53,10 @@ supabase secrets set \
 pnpm fn:deploy
 ```
 
-Deploys `recipe-chat-send`, `recipe-chat-webhook`, and `recipe-chat-save`.
+Deploys `recipe-chat-send`, `recipe-chat-progress`, `recipe-chat-webhook`, and
+`recipe-chat-save`. `recipe-chat-progress` is polled by the app while the agent
+works: it reports what the agent is doing and stores the agent's opening reply
+before the session idles, so the cook sees text before the full draft lands.
 
 ## 4. Register the webhook
 

@@ -1,8 +1,22 @@
-import type { ChatMessage } from '@/lib/queries/recipe-chat';
+import type { ChatMessage, ChatPhase } from '@/lib/queries/recipe-chat';
 import { cn } from '@/ui/cn';
 import { useTranslation } from 'react-i18next';
 
-export function ChatThread({ messages, thinking }: { messages: ChatMessage[]; thinking: boolean }) {
+const PHASE_LABEL: Record<ChatPhase, string> = {
+  thinking: 'chat.thinking',
+  searching: 'chat.phase_searching',
+  drafting: 'chat.phase_drafting',
+};
+
+export function ChatThread({
+  messages,
+  thinking,
+  phase = 'thinking',
+}: {
+  messages: ChatMessage[];
+  thinking: boolean;
+  phase?: ChatPhase;
+}) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-3">
@@ -19,7 +33,7 @@ export function ChatThread({ messages, thinking }: { messages: ChatMessage[]; th
       ))}
       {thinking && (
         <p className="self-start text-ink-soft text-sm italic" role="status">
-          {t('chat.thinking')}
+          {t(PHASE_LABEL[phase])}
         </p>
       )}
     </div>

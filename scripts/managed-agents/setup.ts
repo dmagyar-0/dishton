@@ -5,13 +5,16 @@
 //
 // Re-running creates a NEW environment + agent (the environment name is
 // timestamped to stay unique). To update an existing agent's config instead,
-// POST /v1/agents/{id} — see docs/runbooks/recipe-chat-setup.md.
+// run scripts/managed-agents/update.ts — see docs/runbooks/recipe-chat-setup.md.
 
 import {
   MANAGED_AGENTS_BETA,
-  RECIPE_AGENT_MODEL,
+  RECIPE_AGENT_MODEL_CONFIG,
+  RECIPE_AGENT_NAME,
   RECIPE_AGENT_SYSTEM,
   RECIPE_AGENT_TOOLS,
+  RECIPE_ENV_CONFIG,
+  RECIPE_ENV_NAME_PREFIX,
 } from '../../supabase/functions/_shared/agents/config.ts';
 
 const KEY = Deno.env.get('ANTHROPIC_API_KEY');
@@ -41,13 +44,13 @@ async function post(path: string, body: unknown): Promise<{ id: string }> {
 }
 
 const environment = await post('/v1/environments', {
-  name: `dishton-recipe-drafter-${Date.now()}`,
-  config: { type: 'cloud', networking: { type: 'limited' } },
+  name: `${RECIPE_ENV_NAME_PREFIX}${Date.now()}`,
+  config: RECIPE_ENV_CONFIG,
 });
 
 const agent = await post('/v1/agents', {
-  name: 'Dishton Recipe Drafter',
-  model: RECIPE_AGENT_MODEL,
+  name: RECIPE_AGENT_NAME,
+  model: RECIPE_AGENT_MODEL_CONFIG,
   system: RECIPE_AGENT_SYSTEM,
   tools: RECIPE_AGENT_TOOLS,
 });

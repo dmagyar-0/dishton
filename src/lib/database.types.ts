@@ -571,6 +571,7 @@ export type Database = {
       }
       recipe_chat_messages: {
         Row: {
+          anthropic_event_id: string | null
           chat_session_id: string
           content: string
           created_at: string
@@ -578,6 +579,7 @@ export type Database = {
           role: string
         }
         Insert: {
+          anthropic_event_id?: string | null
           chat_session_id: string
           content: string
           created_at?: string
@@ -585,6 +587,7 @@ export type Database = {
           role: string
         }
         Update: {
+          anthropic_event_id?: string | null
           chat_session_id?: string
           content?: string
           created_at?: string

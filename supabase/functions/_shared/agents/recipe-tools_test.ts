@@ -1,5 +1,5 @@
 import { assert, assertEquals } from 'jsr:@std/assert';
-import { validateDraft } from './recipe-tools.ts';
+import { formatTasteSummary, validateDraft } from './recipe-tools.ts';
 
 const VALID = {
   title: 'Test Soup',
@@ -41,4 +41,31 @@ Deno.test('validateDraft reports errors for an invalid recipe', () => {
   const res = validateDraft({ ...VALID, title: '' });
   assert(!res.ok);
   if (!res.ok) assert(res.errors.length > 0);
+});
+
+Deno.test('formatTasteSummary renders one compact line per recipe', () => {
+  const out = formatTasteSummary({
+    count: 2,
+    recipes: [
+      {
+        id: 'r1',
+        title: 'Lentil Soup',
+        unit_system: 'metric',
+        language: 'en',
+        tags: ['soup', 'vegetarian'],
+        key_ingredients: ['lentils', 'carrot', 'cumin'],
+      },
+      { id: 'r2', title: 'Toast', unit_system: 'imperial', language: 'en', tags: [], key_ingredients: [] },
+    ],
+  });
+  assertEquals(
+    out,
+    "The household's existing recipes (2, newest first):\n" +
+      '- Lentil Soup [soup, vegetarian] (metric, en): lentils, carrot, cumin\n' +
+      '- Toast (imperial, en)\n\n',
+  );
+});
+
+Deno.test('formatTasteSummary says so when the household has no recipes', () => {
+  assertEquals(formatTasteSummary({ count: 0, recipes: [] }), "The household's existing recipes: none yet.\n\n");
 });
