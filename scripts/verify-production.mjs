@@ -46,6 +46,7 @@ const BASE = opt('base', 'https://dishton.vercel.app').replace(/\/$/, '');
 const OUT = opt('out', 'prod-verification');
 const AUTHED = has('authed');
 const KEEP_ANALYTICS = has('keep-analytics');
+const CHAT = AUTHED && has('chat');
 const markers = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--marker' && args[i + 1]) markers.push(args[i + 1]);
@@ -142,6 +143,60 @@ async function shoot(page, label) {
   return { file, text };
 }
 
+// Sends one message and records, in seconds from send, when each status-line
+// label and each agent reply first shows, and when the draft is ready.
+async function chatWalk(page, householdId) {
+  await page.goto(`${BASE}/h/${householdId}/import`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('tab', { name: /draft with ai/i }).click();
+  const box = page.getByLabel(/describe the vibe/i);
+  await box.fill('A quick weeknight pasta with spinach and lemon, for two.');
+  await box.press('Enter').catch(() => {});
+  if (await box.inputValue().catch(() => '')) {
+    await page.locator('form button[type="submit"]').last().click();
+  }
+  const sentAt = Date.now();
+  const seen = new Map();
+  const status = page.locator('[role="status"]');
+  const agentBubbles = page.locator('.self-start.bg-ink\\/5');
+  let readyAt = null;
+  while (Date.now() - sentAt < 180000) {
+    const t = ((Date.now() - sentAt) / 1000).toFixed(1);
+    const label = (
+      await status
+        .first()
+        .textContent()
+        .catch(() => null)
+    )?.trim();
+    if (label && !seen.has(`status: ${label}`)) {
+      seen.set(`status: ${label}`, t);
+      await page.screenshot({ path: join(OUT, `chat-${seen.size}-${t}s.png`), fullPage: true });
+    }
+    const replies = await agentBubbles.count();
+    if (replies > 0 && !seen.has(`agent reply ${replies}`)) {
+      seen.set(`agent reply ${replies}`, t);
+      await page.screenshot({ path: join(OUT, `chat-${seen.size}-${t}s.png`), fullPage: true });
+    }
+    const ready = await page
+      .getByText(/^ready$/i)
+      .isVisible()
+      .catch(() => false);
+    if (ready && !label) {
+      readyAt = t;
+      break;
+    }
+    await page.waitForTimeout(500);
+  }
+  for (const [what, t] of seen) console.log(`  chat ${t}s  ${what}`);
+  record(
+    'chat: agent replied',
+    [...seen.keys()].some((k) => k.startsWith('agent reply')),
+  );
+  record('chat: draft ready, status line cleared', readyAt !== null, `${readyAt ?? '>180'}s`);
+  // The tab's name gains a "Ready" badge once a draft exists.
+  await page.getByRole('tab', { name: /^draft/i }).click();
+  await shoot(page, 'chat-draft');
+}
+
 for (const [name, viewport, isMobile] of VIEWPORTS) {
   const ctx = await browser.newContext({ viewport, isMobile, hasTouch: isMobile });
   await attachRouting(ctx);
@@ -162,6 +217,12 @@ for (const [name, viewport, isMobile] of VIEWPORTS) {
       await page.waitForURL(/\/h\//, { timeout: 45000 }).catch(() => {});
       record(`${name}: signed in`, /\/h\//.test(page.url()), page.url());
       await shoot(page, `${name}-own-list`);
+
+      // --chat (desktop only): one real Draft-with-AI turn on the smoke
+      // account's own household. It calls the live agent, so it costs a
+      // little and leaves a chat session behind — opt-in, not every run.
+      const householdId = (page.url().match(/\/h\/([0-9a-f-]{36})/) ?? [])[1];
+      if (CHAT && !isMobile && householdId) await chatWalk(page, householdId);
 
       await page.goto(`${BASE}/households`, { waitUntil: 'domcontentloaded' });
       const households = await shoot(page, `${name}-households`);
