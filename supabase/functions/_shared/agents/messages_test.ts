@@ -31,6 +31,29 @@ Deno.test('currentPhase reports drafting once the opening reply is written', () 
   );
 });
 
+Deno.test('currentPhase stays on drafting across a tool call before the draft', () => {
+  assertEquals(
+    currentPhase([
+      ev('user.message'),
+      ev('agent.message', { content: [{ type: 'text', text: 'A lemon pasta.' }] }),
+      ev('agent.custom_tool_use', { name: 'get_recipe' }),
+      ev('user.custom_tool_result'),
+    ]),
+    'drafting',
+  );
+});
+
+Deno.test('currentPhase goes back to thinking once the draft is presented', () => {
+  assertEquals(
+    currentPhase([
+      ev('user.message'),
+      ev('agent.message', { content: [{ type: 'text', text: 'A lemon pasta.' }] }),
+      ev('agent.custom_tool_use', { name: 'present_draft' }),
+    ]),
+    'thinking',
+  );
+});
+
 Deno.test('currentPhase only looks at the latest turn', () => {
   assertEquals(
     currentPhase([

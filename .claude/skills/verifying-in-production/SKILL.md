@@ -39,7 +39,10 @@ node --env-file=<scratchpad>/smoke.env scripts/verify-production.mjs --authed \
 ```
 
 Options: `--base <url>` (default `https://dishton.vercel.app`), `--out <dir>`,
-`--marker <str>` (repeatable), `--keep-analytics`.
+`--marker <str>` (repeatable), `--keep-analytics`, `--chat` (with `--authed`:
+desktop runs one real Draft-with-AI turn on the smoke account's own household
+and prints when each status label and reply appeared; it calls the live agent,
+so it costs a little and leaves a chat session behind).
 
 Exit code is non-zero if any check fails; `results.json` and the screenshots
 land in `--out`.

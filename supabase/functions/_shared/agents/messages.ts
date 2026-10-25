@@ -51,14 +51,18 @@ export function currentPhase(events: AgentEvent[]): ChatPhase {
       break;
     }
   }
-  let phase: ChatPhase = 'thinking';
+  // The agent says what it is making, then writes the full recipe as
+  // present_draft input: from its first reply until present_draft is called,
+  // the slow part is that draft, even across other tool calls in between.
+  let replied = false;
+  let presented = false;
+  let searching = false;
   for (const ev of events.slice(start)) {
-    if (ev.type === 'agent.tool_use' && ev.name === 'web_search') phase = 'searching';
-    else if (ev.type === 'agent.tool_result') phase = 'thinking';
-    // The agent says what it is making, then writes the full recipe as
-    // present_draft input: after a reply, the slow part is that draft.
-    else if (ev.type === 'agent.message') phase = 'drafting';
-    else if (ev.type === 'agent.custom_tool_use') phase = 'thinking';
+    if (ev.type === 'agent.tool_use' && ev.name === 'web_search') searching = true;
+    else if (ev.type === 'agent.tool_result') searching = false;
+    else if (ev.type === 'agent.message') replied = true;
+    else if (ev.type === 'agent.custom_tool_use' && ev.name === 'present_draft') presented = true;
   }
-  return phase;
+  if (searching) return 'searching';
+  return replied && !presented ? 'drafting' : 'thinking';
 }

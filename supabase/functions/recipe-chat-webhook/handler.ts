@@ -136,7 +136,12 @@ export const handler = async (req: Request): Promise<Response> => {
               .from('recipe_chat_sessions')
               .update({ current_draft: v.recipe, draft_repair_attempts: 0 })
               .eq('id', session.id);
-            await sendToolResult(anthropicSessionId, ev.id, { ok: true });
+            // Spelled out because a bare { ok: true } left the agent adding a
+            // "your draft is ready" note, which costs another cycle.
+            await sendToolResult(anthropicSessionId, ev.id, {
+              ok: true,
+              note: 'The user can see this draft now. End your turn without writing anything more.',
+            });
           } else if (repairAttempts < 2) {
             repairAttempts += 1;
             await db
